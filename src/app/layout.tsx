@@ -20,12 +20,12 @@ export const metadata: Metadata = {
   keywords: ["IPO allotment", "PAN check", "KFintech", "IPO status", "allotment checker", "IPO Desk"],
   icons: {
     icon: [
-      { url: "/Logo.png", sizes: "32x32", type: "image/png" },
-      { url: "/Logo.png", sizes: "192x192", type: "image/png" },
-      { url: "/Logo.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/Logo.png", sizes: "180x180", type: "image/png" }],
-    shortcut: "/Logo.png",
+    apple: [{ url: "/apple-icon-180.png", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon.ico",
   },
   openGraph: {
     title: "IPO Desk — IPO Allotment Checker",
