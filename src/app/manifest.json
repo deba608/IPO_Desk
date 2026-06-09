@@ -1,21 +1,15 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "IPO Desk",
+  "short_name": "IPO Desk",
   "icons": [
     {
-      "src": "/web-app-manifest-192x192.png",
-      "sizes": "192x192",
+      "src": "/Logo.png",
+      "sizes": "any",
       "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/web-app-manifest-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "background_color": "#0f172a",
   "display": "standalone"
 }
