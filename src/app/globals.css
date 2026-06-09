@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  /* Custom design tokens mapped to Tailwind utility names */
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-card: #1e293b;
+  --color-popover: #1e293b;
+  --color-border: #334155;
+  --color-input: #334155;
+  --color-muted: #1e293b;
+  --color-muted-fg: #94a3b8;
+
+  /* Primary — Indigo */
+  --color-primary: #6366f1;
+  --color-primary-fg: #ffffff;
+  --color-primary-light: rgba(99, 102, 241, 0.15);
+
+  /* Status */
+  --color-success: #10b981;
+  --color-success-fg: #ffffff;
+  --color-success-light: rgba(16, 185, 129, 0.15);
+
+  --color-danger: #f43f5e;
+  --color-danger-fg: #ffffff;
+  --color-danger-light: rgba(244, 63, 94, 0.15);
+
+  --color-warning: #f59e0b;
+  --color-warning-fg: #ffffff;
+  --color-warning-light: rgba(245, 158, 11, 0.15);
+
+  /* Text */
+  --color-fg: #f1f5f9;
+  --color-fg-muted: #94a3b8;
+  --color-fg-dim: #64748b;
+}
+
+/* Reset & base */
+*, *::before, *::after {
+  border-color: #334155;
+}
+
+body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+  font-family: var(--font-geist-sans, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility overrides — map legacy names to actual values */
+.bg-background { background-color: #0f172a; }
+.bg-card { background-color: #1e293b; }
+.bg-popover { background-color: #1e293b; }
+.bg-muted { background-color: #1e293b; }
+.bg-secondary { background-color: #1e293b; }
+.bg-accent { background-color: #1e293b; }
+.bg-primary { background-color: #6366f1; }
+.bg-destructive { background-color: #f43f5e; }
+
+.text-foreground { color: #f1f5f9; }
+.text-card-foreground { color: #f1f5f9; }
+.text-popover-foreground { color: #f1f5f9; }
+.text-primary { color: #6366f1; }
+.text-primary-foreground { color: #ffffff; }
+.text-secondary-foreground { color: #f1f5f9; }
+.text-muted-foreground { color: #94a3b8; }
+.text-accent-foreground { color: #f1f5f9; }
+.text-destructive { color: #f43f5e; }
+.text-destructive-foreground { color: #ffffff; }
+
+.border-border { border-color: #334155; }
+.border-input { border-color: #334155; }
+
+.ring-ring { --tw-ring-color: #6366f1; }
+.ring-offset-background { --tw-ring-offset-color: #0f172a; }
+
+.hover\:bg-primary\/90:hover { background-color: rgba(99, 102, 241, 0.9); }
+.hover\:bg-accent:hover { background-color: #293548; }
+.hover\:text-accent-foreground:hover { color: #f1f5f9; }
+.hover\:bg-muted\/30:hover { background-color: rgba(30, 41, 59, 0.3); }
+.hover\:bg-secondary\/80:hover { background-color: rgba(30, 41, 59, 0.8); }
+.hover\:bg-destructive\/90:hover { background-color: rgba(244, 63, 94, 0.9); }
+
+.data-\[state\=active\]\:bg-background[data-state=active] { background-color: #0f172a; }
+.data-\[state\=active\]\:text-foreground[data-state=active] { color: #f1f5f9; }
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #1e293b; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
