@@ -14,12 +14,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IPO Allotment Checker — Check Your IPO Status Instantly",
+  title: "IPO Desk — IPO Allotment Checker | Check Status Instantly",
   description:
     "Check IPO allotment status for multiple PANs simultaneously. Supports KFintech IPOs. Upload Excel files for bulk checking. Free and instant results.",
-  keywords: ["IPO allotment", "PAN check", "KFintech", "IPO status", "allotment checker"],
+  keywords: ["IPO allotment", "PAN check", "KFintech", "IPO status", "allotment checker", "IPO Desk"],
+  icons: {
+    icon: [
+      { url: "/logo.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/logo.png", sizes: "180x180" }],
+    shortcut: "/logo.png",
+  },
   openGraph: {
-    title: "IPO Allotment Checker",
+    title: "IPO Desk — IPO Allotment Checker",
     description: "Check IPO allotment status for multiple PANs instantly",
     type: "website",
   },

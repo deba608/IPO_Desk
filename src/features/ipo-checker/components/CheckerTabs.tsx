@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   X,
+  ArrowUp,
 } from "lucide-react";
 import { IPO } from "@/types/ipo.types";
 import { parsePANsFromText } from "../utils/pan-validator";
@@ -331,7 +332,7 @@ export function CheckerTabs({
       {/* Notice */}
       {!selectedIPO && (
         <p className="text-xs text-center text-muted-foreground">
-          ⬆️ Please select an IPO above before checking
+          <ArrowUp className="inline h-3 w-3" /> Please select an IPO above before checking
         </p>
       )}
     </div>

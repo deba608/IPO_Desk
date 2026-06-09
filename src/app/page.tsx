@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import {
-  TrendingUp,
   Shield,
   Zap,
   Users,
@@ -103,10 +103,15 @@ export default function Home() {
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <TrendingUp className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-lg font-bold">IPOCheck</span>
+            <Image
+              src="/logo.png"
+              alt="IPO Desk"
+              width={36}
+              height={36}
+              className="rounded-lg"
+              priority
+            />
+            <span className="text-lg font-bold tracking-tight">IPO Desk</span>
             <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary sm:inline-flex">
               Pro
             </span>
@@ -279,7 +284,7 @@ export default function Home() {
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center">
           <p className="text-sm text-muted-foreground">
-            IPOCheck — Real-time allotment data from KFintech Registrar.
+            IPO Desk — Real-time allotment data from KFintech Registrar.
             <span className="mx-2">·</span>
             Data is fetched live from official KFintech APIs.
           </p>
