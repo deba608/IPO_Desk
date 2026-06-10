@@ -13,7 +13,6 @@ import {
   Upload,
   FileSpreadsheet,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { IPOSelector } from "@/features/ipo-checker/components/IPOSelector";
 import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
 import { ResultsDashboard } from "@/features/ipo-checker/components/ResultsDashboard";
@@ -112,9 +111,6 @@ export default function Home() {
               priority
             />
             <span className="text-lg font-bold tracking-tight">IPO Desk</span>
-            <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary sm:inline-flex">
-              Pro
-            </span>
           </div>
           <nav className="flex items-center gap-2">
             <span className="hidden text-xs text-muted-foreground sm:inline">
@@ -137,13 +133,7 @@ export default function Home() {
           </div>
 
           <div className="relative container mx-auto max-w-5xl text-center">
-            {/* Badge */}
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary">
-              <Zap className="h-3.5 w-3.5" />
-              Real-time KFintech Integration · 28 Active IPOs
-            </div>
-
-            {/* Title */}
+                {/* Title */}
             <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
               Check IPO Allotment
               <span className="block gradient-text">in Seconds</span>
