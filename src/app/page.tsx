@@ -103,7 +103,7 @@ export default function Home() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <Image
-              src="/Logo.png"
+              src="/logo.png"
               alt="IPO Desk"
               width={36}
               height={36}
