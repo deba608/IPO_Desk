@@ -274,9 +274,7 @@ export default function Home() {
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center">
           <p className="text-sm text-muted-foreground">
-            IPO Desk — Real-time allotment data from KFintech Registrar.
-            <span className="mx-2">·</span>
-            Data is fetched live from official KFintech APIs.
+            Made with ❤️ by Dev 
           </p>
         </div>
       </footer>
