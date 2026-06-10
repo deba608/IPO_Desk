@@ -26,7 +26,7 @@ function getAdapter(registrarName: string): RegistrarAdapter {
 export async function checkAllotment(request: CheckRequest): Promise<CheckResponse> {
   const { pans, ipoClientId } = request;
 
-  const ipo = findIPOByClientId(ipoClientId);
+  const ipo = await findIPOByClientId(ipoClientId);
   if (!ipo) {
     throw new Error(`IPO not found for clientId: ${ipoClientId}`);
   }

@@ -6,7 +6,8 @@ import axios, { AxiosInstance } from "axios";
 import { RegistrarAdapter } from "./adapter.interface";
 import { AllotmentResult, KFinTechResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
-import { KFINTECH_ACTIVE_IPOS } from "@/data/kfintech-ipos";
+import { getActiveIPOs as getSyncedIPOs } from "@/services/kfintech-sync";
+import { log } from "@/services/logger.service";
 
 const KFINTECH_BASE_URL =
   "https://0uz601ms56.execute-api.ap-south-1.amazonaws.com/prod/api/query?type=";
@@ -19,7 +20,7 @@ const RETRY_CONFIG = {
   jitter: "full" as const,
 };
 
-const CHUNK_SIZE = 10;
+const CHUNK_SIZE = 5; // max simultaneous API requests (rate-limit protection)
 const CHUNK_DELAY_MS = 500;
 
 async function delay(ms: number): Promise<void> {
@@ -76,12 +77,13 @@ export class KFinTechAdapter implements RegistrarAdapter {
   }
 
   async getActiveIPOs(): Promise<IPO[]> {
-    // IPO list is sourced from the KFintech bundle (refreshed periodically)
-    // Future: implement bundle scraper for real-time updates
-    return KFINTECH_ACTIVE_IPOS;
+    // Dynamic discovery lives in the sync service (6h cache, snapshot
+    // fallback, sync logging) — see src/services/kfintech-sync.ts
+    return getSyncedIPOs();
   }
 
   async checkAllotment(pan: string, clientId: string): Promise<AllotmentResult> {
+    const started = Date.now();
     try {
       const response = await withRetry(async () => {
         return this.http.get<KFinTechResponse>(KFINTECH_BASE_URL + "pan", {
@@ -113,6 +115,11 @@ export class KFinTechAdapter implements RegistrarAdapter {
       const allottedShares = Number(record.All_Shares);
       const appliedShares = Number(record.App_Shares);
 
+      log("info", "api_response_time", "KFintech PAN query completed", {
+        durationMs: Date.now() - started,
+        meta: { clientId },
+      });
+
       return {
         pan: record.Pan_No || pan.toUpperCase(),
         name: record.Name,
@@ -122,7 +129,12 @@ export class KFinTechAdapter implements RegistrarAdapter {
       };
     } catch (error: unknown) {
       const err = error as { response?: { status?: number }; message?: string };
-      
+
+      log("error", "pan_check_failure", `PAN check failed: ${err.message ?? "unknown"}`, {
+        durationMs: Date.now() - started,
+        meta: { clientId, httpStatus: err.response?.status ?? "none" },
+      });
+
       if (!err.response) {
         // Network error
         return {
