@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import {
@@ -23,7 +23,15 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<CheckResponse | null>(null);
   const [progress, setProgress] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 30);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleCheck = useCallback(
     async (pans: string[]) => {
@@ -127,23 +135,34 @@ export default function Home() {
         }}
       />
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+      <header
+        className={`sticky top-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? ""
+            : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
+        }`}
+      >
+        <div
+          className={`flex items-center justify-between transition-all duration-300 ${
+            scrolled
+              ? "mx-auto max-w-5xl h-12 rounded-2xl bg-background/95 px-4 shadow-lg"
+              : "container mx-auto h-16 px-4"
+          }`}
+        >
           <div className="flex items-center gap-3">
             <Image
               src="/logo.png"
               alt="IPO Desk"
-              width={36}
-              height={36}
-              className="rounded-lg"
+              width={scrolled ? 28 : 36}
+              height={scrolled ? 28 : 36}
+              className="rounded-lg transition-all duration-300"
               priority
             />
-            <span className="text-lg font-bold tracking-tight">IPO Desk</span>
+            <span className={`font-bold tracking-tight transition-all duration-300 ${scrolled ? "text-base" : "text-lg"}`}>
+              IPO Desk
+            </span>
           </div>
           <nav className="flex items-center gap-2">
-            <span className="hidden text-xs text-muted-foreground sm:inline">
-              Powered by KFintech
-            </span>
             <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="hidden text-xs text-emerald-400 sm:inline">Live</span>
           </nav>
@@ -283,10 +302,12 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-border py-8">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            © 2026 IPO Desk. All rights reserved.
-          </p>
+        <div className="container mx-auto px-4 flex items-center">
+          <div className="flex-1" />
+          <p className="text-sm text-muted-foreground">Made with ❤️ by Dev</p>
+          <div className="flex-1 text-right">
+            <p className="text-sm text-muted-foreground">© 2026 IPO Desk. All rights reserved.</p>
+          </div>
         </div>
       </footer>
     </div>
