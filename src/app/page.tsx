@@ -7,7 +7,6 @@ import {
   Shield,
   Zap,
   Users,
-  ArrowRight,
   CheckCircle2,
   BarChart3,
   Upload,
@@ -246,9 +245,7 @@ export default function Home() {
                   </div>
                   <h3 className="mb-2 font-semibold">{title}</h3>
                   <p className="text-sm text-muted-foreground">{desc}</p>
-                  {step !== "03" && (
-                    <ArrowRight className="absolute -right-3 top-1/2 hidden h-6 w-6 -translate-y-1/2 text-muted-foreground md:block" />
-                  )}
+
                 </div>
               ))}
             </div>
