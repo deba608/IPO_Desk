@@ -2,11 +2,40 @@ import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
 
+const siteUrl = "https://ipodesk.com";
+
 export const metadata: Metadata = {
-  title: "IPO Desk — IPO Allotment Checker | Check Status Instantly",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "IPO Desk — IPO Allotment Checker | Check Status Instantly",
+    template: "%s | IPO Desk",
+  },
   description:
-    "Check IPO allotment status for multiple PANs simultaneously. Supports KFintech IPOs. Upload Excel files for bulk checking. Free and instant results.",
-  keywords: ["IPO allotment", "PAN check", "KFintech", "IPO status", "allotment checker", "IPO Desk"],
+    "Check IPO allotment status for single or multiple PANs instantly. Free IPO allotment checker supporting KFintech IPOs. Upload Excel for bulk checking and export results to CSV.",
+  keywords: [
+    "IPO allotment check",
+    "PAN check IPO",
+    "KFintech allotment",
+    "IPO status checker",
+    "bulk PAN checker",
+    "IPO allotment status",
+    "India IPO checker",
+    "IPO Desk",
+  ],
+  authors: [{ name: "IPO Desk" }],
+  creator: "IPO Desk",
+  publisher: "IPO Desk",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   icons: {
     icon: [
       { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
@@ -16,11 +45,24 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-icon-180.png", sizes: "180x180", type: "image/png" }],
     shortcut: "/favicon.ico",
   },
+  manifest: "/manifest.json",
   openGraph: {
     title: "IPO Desk — IPO Allotment Checker",
     description: "Check IPO allotment status for multiple PANs instantly",
+    url: siteUrl,
+    siteName: "IPO Desk",
     type: "website",
+    locale: "en_IN",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "IPO Desk — IPO Allotment Checker",
+    description: "Check IPO allotment status for multiple PANs instantly",
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
+  category: "finance",
 };
 
 export const viewport: Viewport = {

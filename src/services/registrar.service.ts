@@ -1,38 +1,25 @@
 // src/services/registrar.service.ts
-import { RegistrarAdapter } from "@/registrars/adapter.interface";
-import { KFinTechAdapter } from "@/registrars/kfintech";
-import { LinkInTimeAdapter } from "@/registrars/linkintime";
-import { BigShareAdapter } from "@/registrars/bigshare";
-import { MUFGAdapter } from "@/registrars/mufg";
+// Registrar-agnostic allotment check pipeline. The caller never knows which
+// registrar serves an IPO: the IPO is resolved from the catalogue, the
+// matching adapter is selected from the registry, and every adapter returns
+// the same AllotmentResult shape.
+
+import { getAdapter } from "@/registrars/registry";
 import { AllotmentResult, CheckRequest, CheckResponse } from "@/types/allotment.types";
-import { findIPOByClientId } from "./ipo.service";
-
-// Registrar registry — add new registrars here
-const REGISTRAR_REGISTRY: Record<string, RegistrarAdapter> = {
-  kfintech: new KFinTechAdapter(),
-  linkintime: new LinkInTimeAdapter(),
-  bigshare: new BigShareAdapter(),
-  mufg: new MUFGAdapter(),
-};
-
-function getAdapter(registrarName: string): RegistrarAdapter {
-  const adapter = REGISTRAR_REGISTRY[registrarName];
-  if (!adapter) {
-    throw new Error(`Unknown registrar: ${registrarName}`);
-  }
-  return adapter;
-}
+import { findIPO } from "./ipo.service";
 
 export async function checkAllotment(request: CheckRequest): Promise<CheckResponse> {
   const { pans, ipoClientId } = request;
 
-  const ipo = await findIPOByClientId(ipoClientId);
+  const ipo = await findIPO(ipoClientId);
   if (!ipo) {
-    throw new Error(`IPO not found for clientId: ${ipoClientId}`);
+    throw new Error(`IPO not found for id: ${ipoClientId}`);
   }
 
   const adapter = getAdapter(ipo.registrar);
-  const results: AllotmentResult[] = await adapter.checkBulkAllotment(pans, ipoClientId);
+  // Adapters always receive the registrar-native clientId, even when the
+  // caller sent the namespaced id.
+  const results: AllotmentResult[] = await adapter.checkBulkAllotment(pans, ipo.clientId);
 
   const summary = {
     total: results.length,
@@ -46,7 +33,7 @@ export async function checkAllotment(request: CheckRequest): Promise<CheckRespon
     results,
     summary,
     ipoName: ipo.name,
-    ipoClientId,
+    ipoClientId: ipo.clientId,
     checkedAt: new Date().toISOString(),
   };
 }

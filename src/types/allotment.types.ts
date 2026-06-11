@@ -47,3 +47,17 @@ export interface KFinTechAllotmentRecord {
 export interface KFinTechResponse {
   data: KFinTechAllotmentRecord[];
 }
+
+// Raw Bigshare Data.aspx/FetchIpodetails response (`d` property)
+export interface BigShareCheckRecord {
+  APPLICATION_NO: string;
+  /** DP ID / folio — also carries sentinel messages like "No data found" */
+  DPID: string;
+  Name: string;
+  APPLIED: string;
+  ALLOTED: string;
+}
+
+export interface BigShareCheckResponse {
+  d: BigShareCheckRecord;
+}

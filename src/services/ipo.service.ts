@@ -1,15 +1,15 @@
 // src/services/ipo.service.ts
-// Thin facade over the KFintech sync service. No IPO data is hardcoded —
-// everything is discovered dynamically (see kfintech-sync.ts).
+// Unified IPO catalogue across all registrars. No IPO data is hardcoded —
+// every adapter discovers its list dynamically (see registrar-sync.ts).
 
 import { IPO, IPOListResponse } from "@/types/ipo.types";
 import {
-  getActiveIPOs as getSyncedIPOs,
+  getAllActiveIPOs,
   getLastSyncedAt,
-} from "./kfintech-sync";
+} from "./registrar-sync";
 
 export async function getActiveIPOs(forceRefresh = false): Promise<IPOListResponse> {
-  const ipos = await getSyncedIPOs(forceRefresh);
+  const ipos = await getAllActiveIPOs(forceRefresh);
 
   return {
     ipos,
@@ -18,17 +18,24 @@ export async function getActiveIPOs(forceRefresh = false): Promise<IPOListRespon
   };
 }
 
-export async function findIPOByClientId(clientId: string): Promise<IPO | undefined> {
-  const ipos = await getSyncedIPOs();
-  const found = ipos.find((ipo) => ipo.clientId === clientId);
+/**
+ * Resolve an IPO by its namespaced id (`${registrar}-${clientId}`, preferred)
+ * or bare registrar clientId (legacy clients; ambiguous if two registrars
+ * reuse the same numeric id, in which case the first match wins).
+ */
+export async function findIPO(idOrClientId: string): Promise<IPO | undefined> {
+  const lookup = (ipos: IPO[]) =>
+    ipos.find((ipo) => ipo.id === idOrClientId) ??
+    ipos.find((ipo) => ipo.clientId === idOrClientId);
+
+  const found = lookup(await getAllActiveIPOs());
   if (found) return found;
 
   // IPO may have been added since the last sync — refresh once and retry
-  const refreshed = await getSyncedIPOs(true);
-  return refreshed.find((ipo) => ipo.clientId === clientId);
+  return lookup(await getAllActiveIPOs(true));
 }
 
-export async function getRegistrarForIPO(clientId: string): Promise<string> {
-  const ipo = await findIPOByClientId(clientId);
+export async function getRegistrarForIPO(idOrClientId: string): Promise<string> {
+  const ipo = await findIPO(idOrClientId);
   return ipo?.registrar ?? "kfintech";
 }

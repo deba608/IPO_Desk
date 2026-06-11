@@ -124,7 +124,7 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
                 ) : (
                   filtered.map((ipo) => (
                     <button
-                      key={ipo.clientId}
+                      key={ipo.id}
                       type="button"
                       onClick={() => {
                         onChange(ipo);
@@ -134,7 +134,7 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
                       className={cn(
                         "flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors",
                         "hover:bg-accent hover:text-accent-foreground",
-                        value?.clientId === ipo.clientId &&
+                        value?.id === ipo.id &&
                           "bg-primary/10 text-primary font-medium"
                       )}
                     >

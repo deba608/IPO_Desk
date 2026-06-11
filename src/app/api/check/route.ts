@@ -35,12 +35,15 @@ const CheckRequestSchema = z.object({
     .array(PANSchema)
     .min(1, "At least one PAN is required")
     .max(500, "Maximum 500 PANs per request"),
+  // Namespaced IPO id ("mufg-11908") preferred; bare numeric clientIds are
+  // still accepted for backwards compatibility. Bigshare ids can be as short
+  // as 3 digits.
   ipoClientId: z
     .string()
     .trim()
-    .min(8)
-    .max(15)
-    .regex(/^\d+$/, "Invalid IPO client ID"),
+    .min(1)
+    .max(64)
+    .regex(/^(?:[a-z]+-)?\d+$/i, "Invalid IPO id"),
 });
 
 export async function POST(request: Request) {

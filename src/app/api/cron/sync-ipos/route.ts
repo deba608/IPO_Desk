@@ -3,7 +3,7 @@
 // (see vercel.json). Can also be hit manually to force a refresh.
 
 import { NextRequest, NextResponse } from "next/server";
-import { syncActiveIPOs } from "@/services/kfintech-sync";
+import { syncAllRegistrars } from "@/services/registrar-sync";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,10 +19,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const ipos = await syncActiveIPOs();
+    const counts = await syncAllRegistrars();
     return NextResponse.json({
       ok: true,
-      synced: ipos.length,
+      synced: Object.values(counts).reduce((sum, n) => sum + n, 0),
+      byRegistrar: counts,
       syncedAt: new Date().toISOString(),
     });
   } catch (error: unknown) {

@@ -1,23 +1,23 @@
 // src/registrars/linkintime.ts
-// Link Intime Registrar Adapter — Stub (not yet implemented)
-import { RegistrarAdapter } from "./adapter.interface";
-import { AllotmentResult } from "@/types/allotment.types";
+// Link Intime Registrar Adapter — alias of MUFG Intime.
+//
+// Link Intime India was acquired by MUFG and rebranded "MUFG Intime India"
+// in 2024; linkintime.co.in now serves from in.mpms.mufg.com. This adapter
+// exists so IPO metadata stored with registrar "linkintime" keeps working —
+// all calls are served by the MUFG implementation.
+
+import { MUFGAdapter } from "./mufg";
 import { IPO } from "@/types/ipo.types";
 
-export class LinkInTimeAdapter implements RegistrarAdapter {
-  readonly name = "linkintime";
-  readonly displayName = "Link Intime India Pvt. Ltd.";
+export class LinkInTimeAdapter extends MUFGAdapter {
+  readonly name: string = "linkintime";
+  readonly displayName: string = "Link Intime India (now MUFG Intime)";
 
   async getActiveIPOs(): Promise<IPO[]> {
-    // TODO: Implement Link Intime API integration
+    // Discovery is owned by the MUFG adapter; returning the same list here
+    // would duplicate every IPO in the merged catalogue.
     return [];
   }
-
-  async checkAllotment(_pan: string, _clientId: string): Promise<AllotmentResult> {
-    return { pan: _pan, status: "error", error: "Link Intime integration not yet implemented." };
-  }
-
-  async checkBulkAllotment(pans: string[], _clientId: string): Promise<AllotmentResult[]> {
-    return pans.map((pan) => ({ pan, status: "error" as const, error: "Link Intime integration not yet implemented." }));
-  }
 }
+
+export const linkInTimeAdapter = new LinkInTimeAdapter();

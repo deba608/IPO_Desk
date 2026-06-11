@@ -51,7 +51,9 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             pans,
-            ipoClientId: selectedIPO.clientId,
+            // Namespaced id so the backend resolves the right registrar even
+            // when two registrars reuse the same numeric clientId
+            ipoClientId: selectedIPO.id,
           }),
         });
 
@@ -97,6 +99,33 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            name: "IPO Desk — IPO Allotment Checker",
+            url: "https://ipodesk.com",
+            description:
+              "Check IPO allotment status for single or multiple PANs instantly. Free IPO allotment checker supporting KFintech IPOs.",
+            applicationCategory: "FinanceApplication",
+            operatingSystem: "All",
+            browserRequirements: "Modern browser with JavaScript enabled",
+            offers: {
+              "@type": "Offer",
+              price: "0",
+              priceCurrency: "INR",
+            },
+            featureList: [
+              "Single PAN check",
+              "Bulk PAN check",
+              "Excel file upload",
+              "CSV/Excel export",
+            ],
+          }),
+        }}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
