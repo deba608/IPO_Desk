@@ -136,16 +136,16 @@ export default function Home() {
       />
       {/* Header */}
       <header
-        className={`sticky top-0 z-50 transition-all duration-300 ${
+        className={`sticky top-0 z-50 transition-all duration-300 bg-background/95 ${
           scrolled
-            ? ""
-            : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
+            ? "shadow-lg"
+            : "border-b border-border/50"
         }`}
       >
         <div
           className={`flex items-center justify-between transition-all duration-300 ${
             scrolled
-              ? "mx-auto max-w-5xl h-12 rounded-2xl bg-background/95 px-4 shadow-lg"
+              ? "mx-auto max-w-5xl h-12 rounded-2xl px-4"
               : "container mx-auto h-16 px-4"
           }`}
         >
@@ -155,7 +155,7 @@ export default function Home() {
               alt="IPO Desk"
               width={36}
               height={36}
-              className="rounded-lg transition-all duration-300"
+              className="rounded-lg transition-all duration-300 shrink-0"
               style={{ width: scrolled ? 28 : 36, height: "auto" }}
               priority
             />
@@ -164,7 +164,7 @@ export default function Home() {
             </span>
           </div>
           <nav className="flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <span className="hidden text-xs text-emerald-400 sm:inline">Live</span>
           </nav>
         </div>
