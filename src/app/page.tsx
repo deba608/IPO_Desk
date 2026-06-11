@@ -153,9 +153,10 @@ export default function Home() {
             <Image
               src="/logo.png"
               alt="IPO Desk"
-              width={scrolled ? 28 : 36}
-              height={scrolled ? 28 : 36}
+              width={36}
+              height={36}
               className="rounded-lg transition-all duration-300"
+              style={{ width: scrolled ? 28 : 36, height: "auto" }}
               priority
             />
             <span className={`font-bold tracking-tight transition-all duration-300 ${scrolled ? "text-base" : "text-lg"}`}>
