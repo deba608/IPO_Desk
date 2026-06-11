@@ -186,7 +186,7 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
                       )}
                     >
                       <span className="truncate pr-4">{ipo.name}</span>
-                      <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <span className="shrink-0 rounded-full border border-border px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] uppercase tracking-wide text-muted-foreground">
                         {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
                       </span>
                     </button>

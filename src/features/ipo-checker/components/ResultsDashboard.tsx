@@ -186,21 +186,21 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
   return (
     <div className="space-y-6">
       {/* Results Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Results</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold">Results</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
             {results.ipoName} · Checked{" "}
             {new Date(results.checkedAt).toLocaleString("en-IN")}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={() => handleExport("csv")}
             disabled={isExporting !== null}
-            className="gap-2"
+            className="gap-2 flex-1 sm:flex-none"
           >
             {isExporting === "csv" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -214,7 +214,7 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
             size="sm"
             onClick={() => handleExport("xlsx")}
             disabled={isExporting !== null}
-            className="gap-2"
+            className="gap-2 flex-1 sm:flex-none"
           >
             {isExporting === "xlsx" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -227,7 +227,7 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
             size="sm"
             onClick={() => handleExport("xlsx")}
             disabled={isExporting !== null}
-            className="gap-2"
+            className="gap-2 flex-1 sm:flex-none"
           >
             <Download className="h-4 w-4" />
             Export All
@@ -282,16 +282,16 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
 
       {/* Table Card */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="text-base">Detailed Results</CardTitle>
-          <div className="flex items-center gap-3">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 space-y-0 pb-4 px-4 sm:px-6">
+          <CardTitle className="text-sm sm:text-base">Detailed Results</CardTitle>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
             {/* Status Filter */}
-            <div className="flex gap-1">
+            <div className="flex gap-1 overflow-x-auto pb-0.5 w-full sm:w-auto">
               {["all", "allotted", "not_allotted", "not_found"].map((s) => (
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  className={`shrink-0 px-2 sm:px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                     statusFilter === s
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -309,13 +309,13 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
             </div>
 
             {/* Search */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search PAN or name..."
+                placeholder="Search..."
                 value={globalFilter ?? ""}
                 onChange={(e) => setGlobalFilter(e.target.value)}
-                className="h-8 pl-8 text-sm w-48"
+                className="h-8 pl-8 text-sm w-full sm:w-44"
               />
             </div>
           </div>
@@ -395,12 +395,12 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
           )}
 
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-border px-6 py-3">
-            <p className="text-xs text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border px-4 sm:px-6 py-3">
+            <p className="text-xs text-muted-foreground order-2 sm:order-1">
               Showing {table.getRowModel().rows.length} of{" "}
               {filteredData.length} results
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 order-1 sm:order-2">
               <select
                 value={table.getState().pagination.pageSize}
                 onChange={(e) => table.setPageSize(Number(e.target.value))}
@@ -408,7 +408,7 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
               >
                 {[10, 25, 50, 100].map((size) => (
                   <option key={size} value={size}>
-                    {size} per page
+                    {size}
                   </option>
                 ))}
               </select>
@@ -416,20 +416,19 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8"
+                  className="h-8 px-2 sm:px-3"
                   onClick={() => table.previousPage()}
                   disabled={!table.getCanPreviousPage()}
                 >
-                  Previous
+                  Prev
                 </Button>
-                <span className="px-2 text-xs tabular-nums">
-                  Page {table.getState().pagination.pageIndex + 1} of{" "}
-                  {table.getPageCount()}
+                <span className="px-1 sm:px-2 text-xs tabular-nums">
+                  {table.getState().pagination.pageIndex + 1}/{table.getPageCount()}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8"
+                  className="h-8 px-2 sm:px-3"
                   onClick={() => table.nextPage()}
                   disabled={!table.getCanNextPage()}
                 >

@@ -98,17 +98,17 @@ export function CheckerTabs({
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full grid grid-cols-3">
-          <TabsTrigger value="single" className="gap-2">
-            <UserIcon className="h-3.5 w-3.5" />
-            Single PAN
+          <TabsTrigger value="single" className="gap-1 sm:gap-2 px-1 sm:px-3">
+            <UserIcon className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] sm:text-sm">Single</span>
           </TabsTrigger>
-          <TabsTrigger value="bulk" className="gap-2">
-            <Users className="h-3.5 w-3.5" />
-            Bulk PAN
+          <TabsTrigger value="bulk" className="gap-1 sm:gap-2 px-1 sm:px-3">
+            <Users className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] sm:text-sm">Bulk</span>
           </TabsTrigger>
-          <TabsTrigger value="upload" className="gap-2">
-            <Upload className="h-3.5 w-3.5" />
-            Upload File
+          <TabsTrigger value="upload" className="gap-1 sm:gap-2 px-1 sm:px-3">
+            <Upload className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] sm:text-sm">Upload</span>
           </TabsTrigger>
         </TabsList>
 
@@ -214,7 +214,7 @@ export function CheckerTabs({
           {/* Drop Zone */}
           <div
             className={cn(
-              "relative rounded-xl border-2 border-dashed p-8 text-center transition-all",
+              "relative rounded-xl border-2 border-dashed p-4 sm:p-8 text-center transition-all",
               isDragOver
                 ? "border-primary bg-primary/5"
                 : "border-border hover:border-primary/50 hover:bg-muted/30",
