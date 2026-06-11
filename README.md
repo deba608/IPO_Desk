@@ -108,7 +108,7 @@ Allotment checks always hit the registrar live, per request. IPO catalogues are 
 
 ## Deploy
 
-[![Deploy with Vercel](https://vercel.com/btn.svg)](https://vercel.com/new)
+[![Deploy with Vercel]
 
 No environment variables required — all registrar APIs are public.
 
