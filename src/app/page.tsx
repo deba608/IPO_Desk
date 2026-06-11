@@ -77,11 +77,11 @@ export default function Home() {
 
         if (allotted > 0) {
           toast.success(
-            `🎉 ${allotted} of ${total} PANs got allotment!`,
+            `Allotment confirmed: ${allotted} of ${total} PANs were allotted.`,
             { duration: 5000 }
           );
         } else {
-          toast.info(`Checked ${total} PANs — No allotments found`, {
+          toast.info(`Check complete: ${total} PANs checked. No allotments found.`, {
             duration: 4000,
           });
         }
@@ -282,11 +282,10 @@ export default function Home() {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center">
           <p className="text-sm text-muted-foreground">
-            Made with ❤️ by Dev 
+            © 2026 IPO Desk. All rights reserved.
           </p>
         </div>
       </footer>

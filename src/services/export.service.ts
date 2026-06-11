@@ -3,10 +3,10 @@ import * as XLSX from "xlsx";
 import { AllotmentResult } from "@/types/allotment.types";
 
 const STATUS_LABELS: Record<string, string> = {
-  allotted: "✅ Allotted",
-  not_allotted: "❌ Not Allotted",
-  not_found: "⚠️ Not Found",
-  error: "❗ Error",
+  allotted: "Allotted",
+  not_allotted: "Not Allotted",
+  not_found: "Not Found",
+  error: "Error",
 };
 
 export interface ExportRow {
@@ -75,10 +75,10 @@ export function exportToXLSX(
     ["IPO Name", ipoName],
     ["Generated At", new Date(checkedAt).toLocaleString("en-IN")],
     ["Total PANs", results.length],
-    ["✅ Allotted", results.filter((r) => r.status === "allotted").length],
-    ["❌ Not Allotted", results.filter((r) => r.status === "not_allotted").length],
-    ["⚠️ Not Found", results.filter((r) => r.status === "not_found").length],
-    ["❗ Errors", results.filter((r) => r.status === "error").length],
+    ["Allotted", results.filter((r) => r.status === "allotted").length],
+    ["Not Allotted", results.filter((r) => r.status === "not_allotted").length],
+    ["Not Found", results.filter((r) => r.status === "not_found").length],
+    ["Errors", results.filter((r) => r.status === "error").length],
   ];
 
   const summaryWs = XLSX.utils.aoa_to_sheet(summary);

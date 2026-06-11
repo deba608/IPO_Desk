@@ -300,10 +300,10 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
                   {s === "all"
                     ? "All"
                     : s === "allotted"
-                    ? "✅ Allotted"
+                    ? "Allotted"
                     : s === "not_allotted"
-                    ? "❌ Not Allotted"
-                    : "⚠️ Not Found"}
+                    ? "Not Allotted"
+                    : "Not Found"}
                 </button>
               ))}
             </div>
