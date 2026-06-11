@@ -10,32 +10,58 @@ interface IPOSelectorProps {
   onChange: (ipo: IPO | null) => void;
 }
 
+const REGISTRAR_LABELS: Record<string, string> = {
+  kfintech: "KFintech",
+  mufg: "MUFG Intime",
+  linkintime: "Link Intime",
+  bigshare: "Bigshare",
+};
+
+const LIST_REFRESH_MS = 60 * 1000;
+
 export function IPOSelector({ value, onChange }: IPOSelectorProps) {
   const [ipos, setIpos] = useState<IPO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [registrarFilter, setRegistrarFilter] = useState<string>("all");
 
   useEffect(() => {
-    async function fetchIPOs() {
+    let cancelled = false;
+
+    async function fetchIPOs(initial: boolean) {
       try {
-        setLoading(true);
+        if (initial) setLoading(true);
         const response = await fetch("/api/ipos");
         if (!response.ok) throw new Error("Failed to fetch IPOs");
         const data = await response.json();
-        setIpos(data.ipos ?? []);
+        if (!cancelled) {
+          setIpos(data.ipos ?? []);
+          setError(null);
+        }
       } catch {
-        setError("Failed to load IPO list. Please refresh.");
+        // Keep the last good list on background refresh failures
+        if (!cancelled && initial) setError("Failed to load IPO list. Please refresh.");
       } finally {
-        setLoading(false);
+        if (!cancelled && initial) setLoading(false);
       }
     }
-    fetchIPOs();
+
+    fetchIPOs(true);
+    const interval = setInterval(() => fetchIPOs(false), LIST_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
-  const filtered = ipos.filter((ipo) =>
-    ipo.name.toLowerCase().includes(search.toLowerCase())
+  const registrars = [...new Set(ipos.map((ipo) => ipo.registrar))];
+
+  const filtered = ipos.filter(
+    (ipo) =>
+      (registrarFilter === "all" || ipo.registrar === registrarFilter) &&
+      ipo.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -113,6 +139,27 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
                     autoFocus
                   />
                 </div>
+
+                {/* Registrar Filter */}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {["all", ...registrars].map((registrar) => (
+                    <button
+                      key={registrar}
+                      type="button"
+                      onClick={() => setRegistrarFilter(registrar)}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        registrarFilter === registrar
+                          ? "border-primary bg-primary/10 text-primary font-medium"
+                          : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                      )}
+                    >
+                      {registrar === "all"
+                        ? `All (${ipos.length})`
+                        : `${REGISTRAR_LABELS[registrar] ?? registrar} (${ipos.filter((i) => i.registrar === registrar).length})`}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* IPO List */}
@@ -139,8 +186,8 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
                       )}
                     >
                       <span className="truncate pr-4">{ipo.name}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground font-mono">
-                        {ipo.clientId}
+                      <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
                       </span>
                     </button>
                   ))
@@ -163,7 +210,8 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
           Client ID:{" "}
           <code className="font-mono text-primary">{value.clientId}</code>
           {" · "}
-          Registrar: <span className="capitalize">{value.registrar}</span>
+          Registrar:{" "}
+          <span>{REGISTRAR_LABELS[value.registrar] ?? value.registrar}</span>
         </p>
       )}
     </div>

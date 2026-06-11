@@ -14,7 +14,9 @@ import { IPO } from "@/types/ipo.types";
 import { listAdapters } from "@/registrars/registry";
 import { log } from "./logger.service";
 
-const SYNC_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+// Short TTL so newly opened allotments appear within minutes; checks
+// themselves always hit the registrar live per request.
+const SYNC_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 interface RegistrarSyncState {
   ipos: IPO[];

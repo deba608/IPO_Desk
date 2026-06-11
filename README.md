@@ -63,7 +63,8 @@ is needed anywhere.
 `linkintime` remains as an alias adapter for legacy metadata — Link Intime
 rebranded to MUFG Intime in 2024 and both routes hit the same API.
 
-IPO catalogues are cached for 6 hours per registrar with stale-cache and
+Allotment checks always hit the registrar live, per request. IPO catalogues
+are cached for just 5 minutes per registrar with stale-cache and
 disk-snapshot fallbacks; one registrar failing never hides the others.
 
 ## ☁️ Deploy

@@ -21,7 +21,7 @@ import { IPO } from "@/types/ipo.types";
 import { log } from "./logger.service";
 
 const KFINTECH_SITE_URL = "https://ipostatus.kfintech.com/";
-const SYNC_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const SYNC_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const FETCH_TIMEOUT_MS = 30000;
 const SNAPSHOT_FILE = path.join(os.tmpdir(), "kfintech-ipo-snapshot.json");
 
