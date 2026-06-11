@@ -161,21 +161,7 @@ export default function Home() {
                   {text}
                 </div>
               ))}
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 max-w-md mx-auto mb-2">
-              {[
-                { value: "28", label: "Active IPOs" },
-                { value: "500+", label: "PANs/Batch" },
-                { value: "100%", label: "Free" },
-              ].map(({ value, label }) => (
-                <div key={label} className="text-center">
-                  <div className="text-2xl font-bold text-primary">{value}</div>
-                  <div className="text-xs text-muted-foreground">{label}</div>
-                </div>
-              ))}
-            </div>
+            </div>            
           </div>
         </section>
 
