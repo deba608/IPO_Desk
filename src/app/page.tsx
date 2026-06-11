@@ -305,7 +305,7 @@ export default function Home() {
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 flex items-center">
           <div className="flex-1" />
-          <p className="text-sm text-muted-foreground">Made with ❤️ by Dev</p>
+          <p className="text-sm text-muted-foreground">Made with care by Dev</p>
           <div className="flex-1 text-right">
             <p className="text-sm text-muted-foreground">© 2026 IPO Desk. All rights reserved.</p>
           </div>
