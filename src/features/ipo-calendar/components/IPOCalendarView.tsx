@@ -28,6 +28,48 @@ const BOARD_FILTERS: { key: BoardFilter; label: string }[] = [
   { key: "sme", label: "SME" },
 ];
 
+type SortKey =
+  | "openDate_desc"
+  | "openDate_asc"
+  | "closeDate_asc"
+  | "listingDate_asc"
+  | "issueSize_desc"
+  | "gmp_desc";
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "openDate_desc", label: "Open Date (Newest)" },
+  { key: "openDate_asc", label: "Open Date (Oldest)" },
+  { key: "closeDate_asc", label: "Close Date (Earliest)" },
+  { key: "listingDate_asc", label: "Listing Date (Earliest)" },
+  { key: "issueSize_desc", label: "Issue Size (Largest)" },
+  { key: "gmp_desc", label: "GMP (Highest)" },
+];
+
+function sortIPOs(ipos: CalendarIPOWithStatus[], sortKey: SortKey): CalendarIPOWithStatus[] {
+  return [...ipos].sort((a, b) => {
+    switch (sortKey) {
+      case "openDate_desc":
+        return (b.openDate ?? "").localeCompare(a.openDate ?? "");
+      case "openDate_asc":
+        return (a.openDate ?? "").localeCompare(b.openDate ?? "");
+      case "closeDate_asc":
+        return (a.closeDate ?? "").localeCompare(b.closeDate ?? "");
+      case "listingDate_asc": {
+        // IPOs without a listing date go to the end
+        const la = a.listingDate ?? "9999";
+        const lb = b.listingDate ?? "9999";
+        return la.localeCompare(lb);
+      }
+      case "issueSize_desc":
+        return (b.issueSizeCr ?? 0) - (a.issueSizeCr ?? 0);
+      case "gmp_desc":
+        return (b.gmp ?? -Infinity) - (a.gmp ?? -Infinity);
+      default:
+        return 0;
+    }
+  });
+}
+
 function CardSkeleton() {
   return (
     <div className="rounded-xl border border-border bg-card p-5">
@@ -53,6 +95,7 @@ export function IPOCalendarView() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<LifecycleTab>("open");
   const [board, setBoard] = useState<BoardFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("openDate_desc");
   const [now, setNow] = useState(() => Date.now());
   const didInit = useRef(false);
 
@@ -119,12 +162,13 @@ export function IPOCalendarView() {
 
   const visible = useMemo<CalendarIPOWithStatus[]>(() => {
     if (!data) return [];
-    return data.ipos.filter(
+    const filtered = data.ipos.filter(
       (ipo) =>
         (tab === "all" || ipo.lifecycle === tab) &&
         (board === "all" || ipo.board === board)
     );
-  }, [data, tab, board]);
+    return sortIPOs(filtered, sortKey);
+  }, [data, tab, board, sortKey]);
 
   // Live IST wall-clock, re-rendered every second via `now`.
   const istClock = useMemo(
@@ -208,23 +252,52 @@ export function IPOCalendarView() {
         })}
       </div>
 
-      {/* Board filter */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {BOARD_FILTERS.map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setBoard(key)}
+      {/* Board filter + Sort */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Board filter pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {BOARD_FILTERS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setBoard(key)}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                board === key
+                  ? "border-primary bg-primary/10 text-primary font-medium"
+                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sort dropdown */}
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="ipo-sort"
+            className="text-xs text-muted-foreground whitespace-nowrap"
+          >
+            Sort by
+          </label>
+          <select
+            id="ipo-sort"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
             className={cn(
-              "rounded-full border px-2.5 py-1 text-xs transition-colors",
-              board === key
-                ? "border-primary bg-primary/10 text-primary font-medium"
-                : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+              "rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs",
+              "text-foreground transition-colors",
+              "hover:border-primary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
             )}
           >
-            {label}
-          </button>
-        ))}
+            {SORT_OPTIONS.map(({ key, label }) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Content */}
