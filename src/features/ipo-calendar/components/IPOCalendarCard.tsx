@@ -11,11 +11,41 @@ import {
   Rocket,
   Flame,
   ChevronRight,
+  Star,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIPOWithStatus, IPOLifecycle } from "@/types/calendar.types";
 import { cn } from "@/lib/utils";
+import { useWatchlist } from "@/hooks/useWatchlist";
 import { formatCrore, formatINR, formatDate, formatDateRange } from "../lib/format";
+
+/** "Closes in 2d" / "Opens today" / "Lists in 5d" relative to now (IST dates). */
+function relativeChip(ipo: CalendarIPOWithStatus): string | null {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const startOfTodayIST = () => {
+    const iso = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    return new Date(`${iso}T00:00:00+05:30`).getTime();
+  };
+  const daysUntil = (iso: string) =>
+    Math.round((new Date(`${iso}T00:00:00+05:30`).getTime() - startOfTodayIST()) / dayMs);
+  const word = (n: number) => (n === 0 ? "today" : n === 1 ? "in 1 day" : `in ${n} days`);
+
+  switch (ipo.lifecycle) {
+    case "upcoming":
+      return `Opens ${word(daysUntil(ipo.openDate))}`;
+    case "open":
+      return `Closes ${word(daysUntil(ipo.closeDate))}`;
+    case "closed":
+      return ipo.listingDate ? `Lists ${word(daysUntil(ipo.listingDate))}` : null;
+    default:
+      return null;
+  }
+}
 
 const REGISTRAR_LABELS: Record<string, string> = {
   kfintech: "KFintech",
