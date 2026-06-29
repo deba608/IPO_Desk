@@ -88,6 +88,9 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
       cancelled = true;
       clearInterval(interval);
     };
+    // Mount-only: polling + one-shot deep-link preselect. value/onChange are
+    // read for the initial preselect only and intentionally not re-subscribed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const registrars = [...new Set(ipos.map((ipo) => ipo.registrar))];
