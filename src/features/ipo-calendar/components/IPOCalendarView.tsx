@@ -238,6 +238,9 @@ export function IPOCalendarView() {
         )}
       </div>
 
+      {/* At-a-glance highlights */}
+      {data && data.ipos.length > 0 && <CalendarHighlights ipos={data.ipos} />}
+
       {/* Lifecycle tabs */}
       <div className="flex flex-wrap items-center gap-2">
         {LIFECYCLE_TABS.map(({ key, label }) => {
@@ -269,6 +272,29 @@ export function IPOCalendarView() {
             </button>
           );
         })}
+
+        {/* Watchlist tab */}
+        <button
+          type="button"
+          onClick={() => setTab("watchlist")}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+            tab === "watchlist"
+              ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+              : "border-border text-muted-foreground hover:border-amber-500/40 hover:text-amber-400"
+          )}
+        >
+          <Star className={cn("h-3.5 w-3.5", watchedCount > 0 && "fill-current")} />
+          Watchlist
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[11px]",
+              tab === "watchlist" ? "bg-amber-500/20" : "bg-muted"
+            )}
+          >
+            {watchedCount}
+          </span>
+        </button>
       </div>
 
       {/* Board filter + Sort */}
@@ -292,11 +318,31 @@ export function IPOCalendarView() {
           ))}
         </div>
 
-        {/* Sort dropdown */}
+        {/* Search + Sort */}
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 focus-within:border-primary">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search IPOs..."
+              className="w-28 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground sm:w-40"
+            />
+            {query && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setQuery("")}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           <label
             htmlFor="ipo-sort"
-            className="text-xs text-muted-foreground whitespace-nowrap"
+            className="hidden text-xs text-muted-foreground whitespace-nowrap sm:inline"
           >
             Sort by
           </label>
@@ -333,10 +379,28 @@ export function IPOCalendarView() {
         </div>
       ) : visible.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
-          <CalendarRange className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            No {board !== "all" ? `${board} ` : ""}IPOs in this category right now.
-          </p>
+          {tab === "watchlist" ? (
+            <>
+              <Star className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Your watchlist is empty. Tap the ☆ on any IPO to track it here.
+              </p>
+            </>
+          ) : query ? (
+            <>
+              <Search className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                No IPOs match “{query}”.
+              </p>
+            </>
+          ) : (
+            <>
+              <CalendarRange className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                No {board !== "all" ? `${board} ` : ""}IPOs in this category right now.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -19,6 +19,7 @@ import {
 import { formatCrore, formatINR } from "@/features/ipo-calendar/lib/format";
 import { SubscriptionBars } from "@/features/ipo-detail/components/SubscriptionBars";
 import { Timeline } from "@/features/ipo-detail/components/Timeline";
+import { AddToCalendar } from "@/features/ipo-detail/components/AddToCalendar";
 import { Header } from "@/components/common/Header";
 
 export const dynamic = "force-dynamic";
