@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CalendarRange, Clock, Search, ArrowUpDown, Star, X } from "lucide-react";
+import { AlertCircle, CalendarRange, Clock, Search, Star, X } from "lucide-react";
 import {
   CalendarIPOWithStatus,
   CalendarResponse,
@@ -10,7 +10,6 @@ import {
 } from "@/types/calendar.types";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
-import { sortCalendar, SORT_OPTIONS, SortKey } from "../lib/calendar-sort";
 import { IPOCalendarCard } from "./IPOCalendarCard";
 import { CalendarHighlights } from "./CalendarHighlights";
 
@@ -99,8 +98,10 @@ export function IPOCalendarView() {
   const [tab, setTab] = useState<LifecycleTab>("open");
   const [board, setBoard] = useState<BoardFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("openDate_desc");
+  const [query, setQuery] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const didInit = useRef(false);
+  const { ids: watchedIds, isWatched } = useWatchlist();
 
   // Tick every second so the live IST clock and "updated Xs ago" stay current.
   useEffect(() => {
@@ -163,15 +164,30 @@ export function IPOCalendarView() {
     };
   }, [load]);
 
+  const watchedCount = useMemo(
+    () => (data ? data.ipos.filter((ipo) => watchedIds.includes(ipo.id)).length : 0),
+    [data, watchedIds]
+  );
+
   const visible = useMemo<CalendarIPOWithStatus[]>(() => {
     if (!data) return [];
-    const filtered = data.ipos.filter(
-      (ipo) =>
-        (tab === "all" || ipo.lifecycle === tab) &&
-        (board === "all" || ipo.board === board)
-    );
+    const q = query.trim().toLowerCase();
+    const filtered = data.ipos.filter((ipo) => {
+      const matchesTab =
+        tab === "all"
+          ? true
+          : tab === "watchlist"
+          ? isWatched(ipo.id)
+          : ipo.lifecycle === tab;
+      const matchesBoard = board === "all" || ipo.board === board;
+      const matchesQuery =
+        q === "" ||
+        ipo.name.toLowerCase().includes(q) ||
+        (ipo.symbol?.toLowerCase().includes(q) ?? false);
+      return matchesTab && matchesBoard && matchesQuery;
+    });
     return sortIPOs(filtered, sortKey);
-  }, [data, tab, board, sortKey]);
+  }, [data, tab, board, sortKey, query, isWatched]);
 
   // Live IST wall-clock, re-rendered every second via `now`.
   const istClock = useMemo(
