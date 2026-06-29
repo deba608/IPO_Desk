@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   Shield,
@@ -163,8 +164,14 @@ export default function Home() {
               IPO Desk
             </span>
           </div>
-          <nav className="flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <nav className="flex items-center gap-1 sm:gap-2">
+            <Link
+              href="/calendar"
+              className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Calendar
+            </Link>
+            <div className="ml-1 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <span className="hidden text-xs text-emerald-400 sm:inline">Live</span>
           </nav>
         </div>
