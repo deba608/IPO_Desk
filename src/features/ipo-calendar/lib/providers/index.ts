@@ -22,15 +22,18 @@ const TTL_MS = 60 * 1000; // 1 minute — matches client polling interval
 
 let cache: { at: number; result: CatalogueResult } | null = null;
 
-// Live-source priority:
-//   1. IPO Guru   — when IPOGURU_API_KEY is set (official partner feed)
+// Live-source priority (first that succeeds wins):
+//   1. IPO Guru     — when IPOGURU_API_KEY is set (official partner feed)
 //   2. InvestorGain — keyless, richest free source (GMP + dates + lot + size)
-//   3. NSE official — keyless fallback (no GMP) via the catch in loadCatalogue
+//   3. NSE official — keyless fallback (no GMP)
 // Seed sample data is only reached if every live source fails.
-function selectProvider(): CalendarProvider {
+function liveProviders(): CalendarProvider[] {
   const key = process.env.IPOGURU_API_KEY?.trim();
-  if (key) return createIpoGuruProvider(key);
-  return createInvestorGainProvider();
+  const chain: CalendarProvider[] = [];
+  if (key) chain.push(createIpoGuruProvider(key));
+  chain.push(createInvestorGainProvider());
+  chain.push(createNseProvider());
+  return chain;
 }
 
 /** Returns the IPO catalogue + its source, cached for TTL_MS. */
@@ -39,23 +42,20 @@ export async function loadCatalogue(forceRefresh = false): Promise<CatalogueResu
     return cache.result;
   }
 
-  const provider = selectProvider();
-  try {
-    const ipos = await provider.fetchCatalogue();
-    // An empty live response is suspicious — keep last good cache if we have it.
-    if (provider.source === "live" && ipos.length === 0 && cache) {
-      return cache.result;
+  // Try each live source in priority order; first non-empty result wins.
+  for (const provider of liveProviders()) {
+    try {
+      const ipos = await provider.fetchCatalogue();
+      if (ipos.length === 0) continue; // empty → try the next source
+      const result: CatalogueResult = { ipos, source: provider.source };
+      cache = { at: Date.now(), result };
+      return result;
+    } catch (err) {
+      console.error("[calendar] live provider failed, trying next source:", err);
     }
-    const result: CatalogueResult = { ipos, source: provider.source };
-    cache = { at: Date.now(), result };
-    return result;
-  } catch (err) {
-    console.error("[calendar] live provider failed, falling back to seed:", err);
-    if (cache) return cache.result; // prefer last good data over sample
-    const result: CatalogueResult = {
-      ipos: await seedProvider.fetchCatalogue(),
-      source: "sample",
-    };
-    return result;
   }
+
+  // Every live source failed/empty: prefer last good cache, else sample seed.
+  if (cache) return cache.result;
+  return { ipos: await seedProvider.fetchCatalogue(), source: "sample" };
 }
