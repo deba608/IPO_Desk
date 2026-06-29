@@ -102,9 +102,13 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
         <Metric
           icon={Layers}
           label="Lot Size"
-          value={`${ipo.lotSize.toLocaleString("en-IN")} shares`}
+          value={ipo.lotSize > 0 ? `${ipo.lotSize.toLocaleString("en-IN")} shares` : "TBA"}
         />
-        <Metric icon={IndianRupee} label="Min. Investment" value={formatINR(ipo.minInvestment)} />
+        <Metric
+          icon={IndianRupee}
+          label="Min. Investment"
+          value={ipo.minInvestment > 0 ? formatINR(ipo.minInvestment) : "TBA"}
+        />
         <Metric
           icon={CalendarDays}
           label="Subscription"

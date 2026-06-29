@@ -10,6 +10,7 @@ import { CalendarIPO, DataSource } from "@/types/calendar.types";
 import { CalendarProvider } from "./types";
 import { seedProvider } from "./seed.provider";
 import { createIpoGuruProvider } from "./ipoguru.provider";
+import { createNseProvider } from "./nse.provider";
 
 export interface CatalogueResult {
   ipos: CalendarIPO[];
@@ -20,9 +21,13 @@ const TTL_MS = 60 * 1000; // 1 minute — matches client polling interval
 
 let cache: { at: number; result: CatalogueResult } | null = null;
 
+// Live-source priority: IPO Guru (richest: GMP + subscription) when a key is
+// configured, otherwise NSE official (no key, no GMP). Seed is only reached via
+// the failure fallback in loadCatalogue().
 function selectProvider(): CalendarProvider {
   const key = process.env.IPOGURU_API_KEY?.trim();
-  return key ? createIpoGuruProvider(key) : seedProvider;
+  if (key) return createIpoGuruProvider(key);
+  return createNseProvider();
 }
 
 /** Returns the IPO catalogue + its source, cached for TTL_MS. */
