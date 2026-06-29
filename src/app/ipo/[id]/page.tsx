@@ -237,8 +237,14 @@ export default async function IPODetailPage({ params }: PageProps) {
               </dl>
             </SectionCard>
 
-            {/* CTA to allotment checker */}
-            <Link href="/" className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4 transition-colors hover:bg-primary/15">
+            {/* Add to calendar */}
+            <AddToCalendar ipo={ipo} />
+
+            {/* CTA to allotment checker — deep-links with the IPO preselected */}
+            <Link
+              href={`/?ipo=${encodeURIComponent(ipo.name)}`}
+              className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4 transition-colors hover:bg-primary/15"
+            >
               <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" />
               <div>
                 <p className="text-sm font-medium text-foreground">Check your allotment</p>

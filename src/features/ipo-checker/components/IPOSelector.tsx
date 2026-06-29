@@ -1,9 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search, ChevronDown, Loader2, AlertCircle } from "lucide-react";
 import { IPO } from "@/types/ipo.types";
 import { cn } from "@/lib/utils";
+
+/** Normalise an IPO name for fuzzy matching: drop suffixes + non-alphanumerics. */
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b(limited|ltd|ipo|pvt|private)\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+/** Best match for a target name within a list, or null. */
+function matchByName(ipos: IPO[], target: string): IPO | null {
+  const t = normalizeName(target);
+  if (!t) return null;
+  return (
+    ipos.find((i) => normalizeName(i.name) === t) ??
+    ipos.find((i) => {
+      const n = normalizeName(i.name);
+      return n.startsWith(t) || t.startsWith(n);
+    }) ??
+    null
+  );
+}
 
 interface IPOSelectorProps {
   value: IPO | null;
@@ -26,6 +48,7 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [registrarFilter, setRegistrarFilter] = useState<string>("all");
+  const didAutoSelect = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,8 +60,19 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
         if (!response.ok) throw new Error("Failed to fetch IPOs");
         const data = await response.json();
         if (!cancelled) {
-          setIpos(data.ipos ?? []);
+          const list: IPO[] = data.ipos ?? [];
+          setIpos(list);
           setError(null);
+
+          // One-time deep-link preselect: /?ipo=<name> from a calendar page.
+          if (!didAutoSelect.current && !value) {
+            didAutoSelect.current = true;
+            const target = new URLSearchParams(window.location.search).get("ipo");
+            if (target) {
+              const match = matchByName(list, target);
+              if (match) onChange(match);
+            }
+          }
         }
       } catch {
         // Keep the last good list on background refresh failures
