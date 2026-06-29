@@ -39,6 +39,8 @@ export function useWatchlist() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    // One-time hydration from localStorage after mount (SSR has no storage).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIds(readStore());
     setHydrated(true);
 
