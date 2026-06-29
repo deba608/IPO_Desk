@@ -88,6 +88,9 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
   const status = LIFECYCLE_CONFIG[ipo.lifecycle];
   const gain = ipo.listingGainPercent;
   const subTotal = ipo.subscription?.total;
+  const chip = relativeChip(ipo);
+  const { isWatched, toggle, hydrated } = useWatchlist();
+  const watched = isWatched(ipo.id);
 
   return (
     <Link
@@ -115,10 +118,35 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
             </span>
           </div>
         </div>
-        <Badge variant={status.variant} className="shrink-0 gap-1.5">
-          <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
-          {status.label}
-        </Badge>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
+            aria-pressed={watched}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggle(ipo.id);
+            }}
+            className={cn(
+              "rounded-md p-1 transition-colors",
+              hydrated && watched
+                ? "text-amber-400 hover:text-amber-300"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Star className={cn("h-4 w-4", hydrated && watched && "fill-current")} />
+          </button>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant={status.variant} className="gap-1.5">
+              <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
+              {status.label}
+            </Badge>
+            {chip && (
+              <span className="text-[10px] font-medium text-muted-foreground">{chip}</span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Metrics grid */}

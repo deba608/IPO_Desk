@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CalendarRange, Clock } from "lucide-react";
+import { AlertCircle, CalendarRange, Clock, Search, ArrowUpDown, Star, X } from "lucide-react";
 import {
   CalendarIPOWithStatus,
   CalendarResponse,
@@ -9,9 +9,12 @@ import {
   IPOLifecycle,
 } from "@/types/calendar.types";
 import { cn } from "@/lib/utils";
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { sortCalendar, SORT_OPTIONS, SortKey } from "../lib/calendar-sort";
 import { IPOCalendarCard } from "./IPOCalendarCard";
+import { CalendarHighlights } from "./CalendarHighlights";
 
-type LifecycleTab = IPOLifecycle | "all";
+type LifecycleTab = IPOLifecycle | "all" | "watchlist";
 type BoardFilter = IPOBoard | "all";
 
 const LIFECYCLE_TABS: { key: LifecycleTab; label: string }[] = [
