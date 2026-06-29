@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { CalendarRange } from "lucide-react";
 import { IPOCalendarView } from "@/features/ipo-calendar/components/IPOCalendarView";
+import { Header } from "@/components/common/Header";
 
 export const metadata: Metadata = {
   title: "IPO Calendar — Upcoming, Open, Closed & Listed IPOs",
@@ -14,37 +13,7 @@ export const metadata: Metadata = {
 export default function CalendarPage() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/logo.png"
-              alt="IPO Desk"
-              width={36}
-              height={36}
-              className="rounded-lg"
-              style={{ height: "auto" }}
-              priority
-            />
-            <span className="text-lg font-bold tracking-tight">IPO Desk</span>
-          </Link>
-          <nav className="flex items-center gap-1 text-sm">
-            <Link
-              href="/calendar"
-              className="rounded-lg px-3 py-2 font-medium text-primary"
-            >
-              Calendar
-            </Link>
-            <Link
-              href="/"
-              className="rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Allotment Checker
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       <main>
         {/* Page heading */}

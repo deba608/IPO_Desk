@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
+import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
   Shield,
@@ -18,21 +16,14 @@ import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
 import { ResultsDashboard } from "@/features/ipo-checker/components/ResultsDashboard";
 import { CheckResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
+import { Header } from "@/components/common/Header";
 
 export default function Home() {
   const [selectedIPO, setSelectedIPO] = useState<IPO | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<CheckResponse | null>(null);
   const [progress, setProgress] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 30);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   const handleCheck = useCallback(
     async (pans: string[]) => {
@@ -135,47 +126,7 @@ export default function Home() {
           }),
         }}
       />
-      {/* Header */}
-      <header
-        className={`sticky top-0 z-50 transition-all duration-300 bg-background/95 ${
-          scrolled
-            ? "shadow-lg"
-            : "border-b border-border/50"
-        }`}
-      >
-        <div
-          className={`flex items-center justify-between transition-all duration-300 ${
-            scrolled
-              ? "mx-auto max-w-5xl h-12 rounded-2xl px-4"
-              : "container mx-auto h-16 px-4"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <Image
-              src="/logo.png"
-              alt="IPO Desk"
-              width={36}
-              height={36}
-              className="rounded-lg transition-all duration-300 shrink-0"
-              style={{ width: scrolled ? 28 : 36, height: "auto" }}
-              priority
-            />
-            <span className={`font-bold tracking-tight transition-all duration-300 ${scrolled ? "text-base" : "text-lg"}`}>
-              IPO Desk
-            </span>
-          </div>
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <Link
-              href="/calendar"
-              className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Calendar
-            </Link>
-            <div className="ml-1 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="hidden text-xs text-emerald-400 sm:inline">Live</span>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       <main>
         {/* Hero Section */}

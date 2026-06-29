@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -20,6 +19,7 @@ import {
 import { formatCrore, formatINR } from "@/features/ipo-calendar/lib/format";
 import { SubscriptionBars } from "@/features/ipo-detail/components/SubscriptionBars";
 import { Timeline } from "@/features/ipo-detail/components/Timeline";
+import { Header } from "@/components/common/Header";
 
 export const dynamic = "force-dynamic";
 
@@ -88,19 +88,7 @@ export default async function IPODetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-3">
-            <Image src="/logo.png" alt="IPO Desk" width={36} height={36} className="rounded-lg" style={{ height: "auto" }} priority />
-            <span className="text-lg font-bold tracking-tight">IPO Desk</span>
-          </Link>
-          <nav className="flex items-center gap-1 text-sm">
-            <Link href="/calendar" className="rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:text-foreground">Calendar</Link>
-            <Link href="/" className="rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:text-foreground">Allotment Checker</Link>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       <main className="container mx-auto max-w-5xl px-4 py-8">
         {/* Breadcrumb */}
