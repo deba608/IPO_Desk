@@ -1,7 +1,3 @@
-// Database service — wraps Prisma calls with graceful fallback when no DB is configured.
-// All callers check `isAvailable()` first, then call the Prisma methods directly or
-// use the fallback methods in this service.
-
 let isAvailable: boolean | null = null;
 
 export function checkDbAvailability(): boolean {
@@ -19,4 +15,4 @@ export function resetDbCheck(): void {
   isAvailable = null;
 }
 
-export { prisma } from "@/lib/prisma";
+export { getPrisma } from "@/lib/prisma";
