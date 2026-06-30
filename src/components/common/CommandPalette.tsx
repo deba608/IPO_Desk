@@ -78,6 +78,10 @@ export function CommandPalette() {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-[6px]" />
         <Dialog.Content className="fixed top-[15%] left-[50%] z-50 w-[92vw] max-w-lg -translate-x-[50%] rounded-xl border border-slate-800 bg-slate-900 text-slate-100 shadow-2xl overflow-hidden focus:outline-none">
+          <Dialog.Title className="sr-only">Command Palette</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Search IPOs, navigate to sections, and manage your watchlist.
+          </Dialog.Description>
           <Command
             label="Global Command Palette"
             className="flex flex-col"
