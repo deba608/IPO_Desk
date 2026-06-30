@@ -27,6 +27,7 @@ import {
   Loader2,
   Tag,
   Pencil,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AllotmentResult, CheckResponse } from "@/types/allotment.types";
 import { usePanLabels } from "@/hooks/usePanLabels";
+import { shareResultCard } from "../lib/shareCard";
 import { toast } from "sonner";
 
 interface ResultsDashboardProps {
