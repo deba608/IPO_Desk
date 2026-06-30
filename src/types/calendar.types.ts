@@ -65,6 +65,8 @@ export interface CalendarIPO {
   gmp?: number;
   /** ISO timestamp of the last GMP update */
   gmpUpdatedAt?: string;
+  /** Historical GMP snapshots for trend chart (most recent first) */
+  gmpHistory?: GMPEntry[];
   /** Live subscription multiples by category, when available */
   subscription?: Subscription;
   /** Issue price used for listing-day returns, once listed (INR) */
@@ -79,6 +81,16 @@ export interface CalendarIPOWithStatus extends CalendarIPO {
   gmpPercent?: number;
   /** Listing gain % vs upper price band, once listed */
   listingGainPercent?: number;
+}
+
+/** A single GMP data point for trend charts */
+export interface GMPEntry {
+  /** ISO date (yyyy-mm-dd) of the snapshot */
+  date: string;
+  /** GMP value in INR */
+  gmp: number;
+  /** Estimated gain % (gmp / upper price band * 100), when price band is known */
+  gainPercent?: number;
 }
 
 export interface CalendarResponse {

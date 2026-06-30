@@ -1,118 +1,169 @@
 # IPO Desk — Allotment Checker
 
-Check IPO allotment status for single or multiple PANs instantly. Supports bulk checking via Excel/CSV upload with export to CSV or styled Excel. All IPO data is discovered dynamically from registrar APIs — no hardcoded lists.
+Check IPO allotment status for single or multiple PANs instantly. Track IPO calendars, analyse GMP, view subscription data, and manage a personal check history — all in one dark-themed dashboard.
+
+All IPO data is discovered **dynamically from registrar APIs** — no hardcoded lists. The calendar uses live provider data (InvestorGain, NSE, IPO Guru) with curated sample fallback.
+
+---
 
 ## Features
 
-- **Single & Bulk PAN Check** — type one, paste many, or upload Excel/CSV (max 5 MB)
+### Allotment Checker
+- **Single & Bulk PAN Check** — type one PAN, paste many, or upload Excel/CSV (max 5 MB)
+- **Cross-IPO Scan** — check the same PANs across all active IPOs at once
 - **Results Dashboard** — sortable, filterable TanStack Table with pagination (10/25/50/100)
+- **PAN Labels** — assign nicknames to PANs for easy identification in results
+- **Share Card** — Canvas-generated PNG share card for allotment results
 - **Export** — CSV & styled XLSX with summary sheet
-- **Live Multi-Registrar Data** — KFintech, MUFG Intime (formerly Link Intime), and Bigshare, all discovered dynamically with 5-minute caching
-- **Registrar-Agnostic** — the frontend never knows which registrar serves an IPO; adding one means implementing `RegistrarAdapter` and registering it
-- **Scroll-Responsive Navbar** — sticky header shrinks with rounded corners and shadow on scroll
-- **Secure** — all API calls server-side only, rate limiting, Zod validation, security headers
 
-## Getting Started
+### IPO Calendar
+- **Live Clock & Auto-Refresh** — IST clock, 60-second polling, tab-focus refresh
+- **Lifecycle Tabs** — All / Open / Upcoming / Closed / Listed with per-tab counts
+- **Board Filter** — Mainboard / SME / All
+- **Search & Sort** — search by name, sort by GMP, issue size, dates, subscription
+- **Watchlist** — star IPOs to track, persisted in localStorage with cross-tab sync
+- **Data Source Badge** — honest "Live" vs "Sample" indicator
+- **Calendar Highlights** — at-a-glance stats (open count, top GMP, most subscribed)
 
-```bash
-npm install
-npm run dev
-# -> http://localhost:3000
-```
+### IPO Detail Page
+- **Key Stats** — price band, lot size, issue size, minimum investment
+- **Subscription Bars** — QIB / NII / Retail / Total subscription multiples
+- **GMP Analysis** — grey-market premium, estimated listing price, gain %
+- **Timeline** — visual stepper from open to listing
+- **Issue Details** — registrar, lead managers, exchanges
+- **Add to Calendar** — download `.ics` or add to Google Calendar
+- **Deep-Link to Checker** — one click to check allotment for this IPO
+
+### Check History
+- **Stats Cards** — total checks, PANs checked, allotted count, win rate
+- **Entry List** — scrollable history with per-entry status badges
+- **Remove / Clear** — delete individual entries or wipe all history
+
+### Technical
+- **Live Multi-Registrar Discovery** — KFintech, MUFG Intime (ex Link Intime), Bigshare — all discovered dynamically
+- **Fault Isolation** — each registrar syncs independently; one failing never hides others
+- **Rate Limiting** — in-memory per-IP rate limiting on check/scan endpoints
+- **Zod Validation** — all API inputs validated with detailed error responses
+- **Structured Logging** — ring-buffer logger viewable at `/api/logs`
+- **Server-Side Only** — all registrar API calls are server-side; client only talks to Next.js
+
+---
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Framework | Next.js 16 (App Router) |
-| UI | React 19 + Tailwind CSS v4 |
+| UI | React 19 + Tailwind CSS v4 + shadcn/ui |
 | Table | TanStack Table v8 |
-| Forms | React Hook Form + Zod |
-| File Parsing | XLSX (SheetJS) |
-| HTTP | Axios with retry |
 | Notifications | Sonner |
 | Icons | Lucide React |
+| HTTP | Axios |
+| File Parsing | SheetJS (xlsx) |
+| File Export | SheetJS (CSV / styled XLSX) |
+| Validation | Zod |
+| PWA | Web app manifest (`standalone` mode) |
+
+---
+
+## Pages
+
+| Route | Description |
+|---|---|
+| `/` | Allotment checker — single/bulk/excel check, results dashboard, cross-IPO scan |
+| `/calendar` | IPO calendar — live data, lifecycle tabs, search, sort, watchlist |
+| `/ipo/[id]` | IPO detail — key stats, subscription, GMP, timeline, add to calendar |
+| `/history` | Check history — stats, per-entry list, remove/clear |
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/check` | POST | Check allotment for 1–500 PANs on a single IPO |
+| `/api/scan` | POST | Check PANs against all active IPOs (max 50 PANs) |
+| `/api/ipos` | GET | List active IPOs merged across all registrars |
+| `/api/calendar` | GET | IPO calendar data with lifecycle derivation |
+| `/api/export` | POST | Download results as CSV or XLSX |
+| `/api/logs` | GET | Debug event logs (ring buffer) |
+| `/api/cron/sync-ipos` | GET | Vercel Cron daily sync |
+
+---
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
+# → http://localhost:3000
+```
+
+No environment variables required — all registrar APIs are public. Optional:
+
+| Variable | Description |
+|---|---|
+| `IPOGURU_API_KEY` | Enables IPO Guru as the live calendar data source |
+| `CRON_SECRET` | Protects the `/api/cron/sync-ipos` endpoint |
+
+---
+
+## Registrar Integrations
+
+Every IPO is checked through the same `RegistrarAdapter` interface. All integrations use the registrars' own public endpoints — no Playwright or headless browser needed.
+
+| Registrar | Discovery | Allotment Check |
+|---|---|---|
+| **KFintech** | SPA bundle scrape from `ipostatus.kfintech.com` | `GET .../prod/api/query?type=pan` |
+| **MUFG Intime** (ex Link Intime) | `POST /Initial_Offer/IPO.aspx/GetDetails` | `POST /Initial_Offer/IPO.aspx/SearchOnPan` |
+| **Bigshare** | HTML `<select>` scrape from `IPO_Status.html` | `POST /Data.aspx/FetchIpodetails` |
+
+Allotment checks always hit the registrar live per request. IPO catalogues are cached for 5 minutes with stale-cache and disk-snapshot fallbacks.
+
+---
+
+## Calendar Data Providers
+
+| Provider | API Key | Data |
+|---|---|---|
+| **IPO Guru** | Required (`IPOGURU_API_KEY`) | Full IPO data + GMP + subscription |
+| **InvestorGain** | None | GMP, dates, price band, lot size, category |
+| **NSE India** | None | Official NSE/BSE issue data (no GMP) |
+| **Seed** (fallback) | None | 10 curated IPOs with dynamic dates |
+
+Providers are tried in priority order; the first to return data wins. If all live sources fail, the curated seed ensures the calendar is never empty.
+
+---
 
 ## Project Structure
 
 ```
 src/
   app/
-    api/
-      check/           # POST - allotment check (rate-limited, Zod-validated)
-      cron/sync-ipos/  # GET  - Vercel Cron daily sync
-      export/          # POST - CSV/XLSX download
-      ipos/            # GET  - active IPO list (merged, cached)
-      logs/            # GET  - debug event logs
-    globals.css
-    layout.tsx
-    manifest.json
-    page.tsx           # main landing page
+    api/               # Route handlers (check, scan, calendar, export, logs, ipos, cron)
+    calendar/page.tsx  # IPO calendar page
+    history/page.tsx   # Check history page
+    ipo/[id]/page.tsx  # IPO detail page
+    page.tsx           # Home — allotment checker
   components/
-    common/
-      StatusBadge.tsx
-    ui/                # shadcn-style primitives (badge, button, card, input, etc.)
-  features/ipo-checker/
-    components/
-      IPOSelector.tsx  # searchable dropdown with registrar filter pills
-      CheckerTabs.tsx  # single / bulk / file-upload input modes
-      ResultsDashboard.tsx  # table, summary cards, export buttons
-    utils/
-      pan-validator.ts
-      pan-parser.ts    # Excel/CSV column auto-detection
-  lib/utils.ts
-  registrars/          # RegistrarAdapter interface + live implementations
-    adapter.interface.ts
-    bigshare.ts
-    kfintech.ts
-    linkintime.ts      # alias adapter (rebranded -> MUFG)
-    mufg.ts
-    registry.ts
-    shared.ts          # retry, bulk-check, ASP.NET XML parser
-  services/
-    export.service.ts
-    ipo.service.ts
-    kfintech-sync.ts   # KFintech SPA bundle scraping + cache
-    logger.service.ts  # ring-buffer logger (viewable at /api/logs)
-    registrar.service.ts  # main check pipeline
-    registrar-sync.ts  # multi-registrar sync with fault isolation
-  types/
-    allotment.types.ts
-    api.types.ts
-    ipo.types.ts
+    common/            # Header, StatusBadge
+    ui/                # shadcn primitives (badge, button, card, input, tabs, etc.)
+  features/
+    ipo-checker/       # CheckerTabs, IPOSelector, ResultsDashboard, ScanResultsDashboard
+    ipo-calendar/      # Calendar view, cards, highlights, providers, format utils, ICS
+    ipo-detail/        # Subscription bars, timeline, add-to-calendar
+  hooks/               # useWatchlist, usePanLabels, useCheckHistory
+  lib/utils.ts         # cn() helper
+  registrars/          # RegistrarAdapter interface + KFintech, MUFG, Bigshare adapters
+  services/            # check pipeline, registrar sync, KFintech sync, export, logger
+  types/               # Allotment, IPO, calendar, API type definitions
 ```
 
-## Registrar Integrations
+---
 
-Every IPO is checked through the same `RegistrarAdapter` interface; the correct adapter is selected from the IPO's metadata. All integrations use the registrars' own public endpoints — no Playwright or headless browser needed.
+## Roadmap
 
-| Registrar | Discovery | Allotment check |
-|---|---|---|
-| KFintech | IPO list embedded in their SPA bundle | `GET .../prod/api/query?type=pan` |
-| MUFG Intime (ex Link Intime) | `POST /Initial_Offer/IPO.aspx/GetDetails` | `POST /Initial_Offer/IPO.aspx/SearchOnPan` |
-| Bigshare | Parsed from `IPO_Status.html` dropdown | `POST /Data.aspx/FetchIpodetails` |
+See [ROADMAP.md](./ROADMAP.md) for planned features: GMP trend charts, AI research reports, IPO scoring engine, database, alerts, admin panel, and more.
 
-`linkintime` remains as an alias adapter for legacy metadata — both routes hit the same MUFG API.
-
-Allotment checks always hit the registrar live, per request. IPO catalogues are cached for 5 minutes per registrar with stale-cache and disk-snapshot fallbacks; one registrar failing never hides the others.
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/check` | POST | Check allotment for 1-500 PANs |
-| `/api/ipos` | GET | List active IPOs (merged across registrars) |
-| `/api/export` | POST | Download results as CSV or XLSX |
-| `/api/logs` | GET | Debug event logs (ring buffer) |
-| `/api/cron/sync-ipos` | GET | Vercel Cron daily sync (optional `CRON_SECRET`) |
-
-## Deploy
-
-[Deploy with Vercel]
-
-No environment variables required — all registrar APIs are public.
-
-Optional: `CRON_SECRET` to protect the `/api/cron/sync-ipos` endpoint.
+---
 
 ## License
 
