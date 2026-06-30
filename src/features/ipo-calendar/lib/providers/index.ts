@@ -80,7 +80,7 @@ async function persistToDb(ipos: CalendarIPO[], source: DataSource): Promise<voi
       });
 
       if (ipo.gmp !== undefined) {
-        const dbIpo = await prisma.ipo.findUnique({ where: { slug: ipo.id } });
+        const dbIpo = await (await getPrisma()).ipo.findUnique({ where: { slug: ipo.id } });
         if (dbIpo) {
           await prisma.gmpSnapshot.create({
             data: { ipoId: dbIpo.id, gmp: ipo.gmp, source: "investorgain" },
