@@ -184,6 +184,10 @@ export default async function IPODetailPage({ params }: PageProps) {
                     </div>
                   )}
                 </div>
+                <div className="mt-5">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">GMP Trend</p>
+                  <GMPTrendChart ipoId={ipo.id} />
+                </div>
                 <p className="mt-3 text-[11px] text-muted-foreground">
                   Grey-market premium is unofficial and volatile — for reference only, not investment advice.
                 </p>

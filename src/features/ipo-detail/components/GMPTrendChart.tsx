@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -98,11 +96,11 @@ export function GMPTrendChart({ ipoId }: GMPTrendChartProps) {
               fontSize: "13px",
             }}
             labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
-            formatter={(_: number, name: string) => {
-              if (name === "gmp") return [formatINR(_), "GMP"];
-              return [_, name];
-            }}
-            labelFormatter={(label: string) => {
+            formatter={((value: number, name: string) => {
+              if (name === "gmp") return [formatINR(value), "GMP"];
+              return [value, name];
+            }) as any}
+            labelFormatter={((label: string) => {
               const d = new Date(label + "T00:00:00");
               return d.toLocaleDateString("en-IN", {
                 weekday: "short",
@@ -110,7 +108,7 @@ export function GMPTrendChart({ ipoId }: GMPTrendChartProps) {
                 month: "short",
                 year: "numeric",
               });
-            }}
+            }) as any}
           />
           <Area
             type="monotone"
