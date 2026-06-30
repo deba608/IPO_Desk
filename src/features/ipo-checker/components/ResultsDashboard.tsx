@@ -204,6 +204,33 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
 
   const { total, allotted, notAllotted, notFound, errors } = results.summary;
 
+  const handleShare = async () => {
+    setIsSharing(true);
+    try {
+      const rate = total > 0 ? Math.round((allotted / total) * 100) : 0;
+      const outcome = await shareResultCard(
+        {
+          title: "Allotment Result",
+          subtitle: results.ipoName,
+          headline: allotted > 0 ? `${allotted} of ${total} allotted` : "No allotment",
+          positive: allotted > 0,
+          stats: [
+            { label: "Allotted", value: String(allotted) },
+            { label: "Not Allotted", value: String(notAllotted) },
+            { label: "Checked", value: String(total) },
+            { label: "Win Rate", value: `${rate}%` },
+          ],
+        },
+        `ipo-allotment-${results.ipoName.replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 40)}.png`
+      );
+      toast.success(outcome === "shared" ? "Shared!" : "Image downloaded");
+    } catch {
+      toast.error("Couldn't generate share image");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Results Header */}
@@ -216,6 +243,20 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            disabled={isSharing}
+            className="gap-2 flex-1 sm:flex-none"
+          >
+            {isSharing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Share2 className="h-4 w-4" />
+            )}
+            Share
+          </Button>
           <Button
             variant="outline"
             size="sm"
