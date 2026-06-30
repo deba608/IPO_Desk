@@ -12,6 +12,7 @@ const ExportRequestSchema = z.object({
       allottedShares: z.number().optional(),
       status: z.enum(["allotted", "not_allotted", "not_found", "error"]),
       error: z.string().optional(),
+      label: z.string().optional(),
     })
   ),
   format: z.enum(["csv", "xlsx"]),

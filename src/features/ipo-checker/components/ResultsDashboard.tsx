@@ -167,7 +167,10 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          results: results.results,
+          results: results.results.map((r) => ({
+            ...r,
+            label: labels[r.pan],
+          })),
           format,
           ipoName: results.ipoName,
           checkedAt: results.checkedAt,
