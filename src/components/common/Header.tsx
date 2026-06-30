@@ -208,9 +208,7 @@ export function Header() {
           >
             <Search className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 motion-reduce:transform-none" />
             <span className="hidden lg:inline">Search</span>
-            <kbd className="ml-1 hidden rounded border border-border bg-background px-1.5 py-0.5 font-sans text-[10px] font-medium text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:text-foreground lg:inline">
-              ⌘K
-            </kbd>
+
           </button>
         </nav>
 
