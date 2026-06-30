@@ -29,6 +29,41 @@ export interface CheckResponse {
   checkedAt: string;
 }
 
+/** One IPO's worth of results within a cross-IPO scan. */
+export interface ScanIPOResult {
+  ipoId: string;
+  ipoName: string;
+  registrar: string;
+  results: AllotmentResult[];
+  summary: {
+    total: number;
+    allotted: number;
+    notAllotted: number;
+    notFound: number;
+    errors: number;
+  };
+}
+
+export interface ScanRequest {
+  pans: string[];
+  /** Optional registrar filter; omit to scan every active IPO. */
+  registrar?: string;
+}
+
+export interface ScanResponse {
+  /** IPOs the PAN(s) actually applied to (allotted or not_allotted), most allotments first. */
+  ipos: ScanIPOResult[];
+  /** Total active IPOs scanned (including those with no hits). */
+  scanned: number;
+  /** Distinct PANs checked per IPO. */
+  pansChecked: number;
+  /** IPOs where at least one PAN was allotted. */
+  iposWithAllotment: number;
+  totalAllotted: number;
+  errors: number;
+  checkedAt: string;
+}
+
 export interface ExportRequest {
   results: AllotmentResult[];
   format: "csv" | "xlsx";

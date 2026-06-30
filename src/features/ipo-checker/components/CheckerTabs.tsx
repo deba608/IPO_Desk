@@ -29,6 +29,8 @@ interface CheckerTabsProps {
   isLoading: boolean;
   progress: number;
   selectedIPO: IPO | null;
+  /** When true, PANs are scanned across every active IPO — no IPO selection needed. */
+  scanMode?: boolean;
 }
 
 export function CheckerTabs({
@@ -36,7 +38,10 @@ export function CheckerTabs({
   isLoading,
   progress,
   selectedIPO,
+  scanMode = false,
 }: CheckerTabsProps) {
+  // A target is ready when scanning all IPOs, or a single IPO is selected.
+  const noTarget = !scanMode && !selectedIPO;
   const [singlePAN, setSinglePAN] = useState("");
   const [singleError, setSingleError] = useState("");
   const [bulkText, setBulkText] = useState("");
@@ -140,7 +145,7 @@ export function CheckerTabs({
               </div>
               <Button
                 onClick={handleSingleCheck}
-                disabled={isLoading || !selectedIPO || singlePAN.length < 10}
+                disabled={isLoading || noTarget || singlePAN.length < 10}
                 size="default"
                 className="px-6"
               >
@@ -194,7 +199,7 @@ export function CheckerTabs({
           </div>
           <Button
             onClick={handleBulkCheck}
-            disabled={isLoading || !selectedIPO || bulkPANs.valid.length === 0}
+            disabled={isLoading || noTarget || bulkPANs.valid.length === 0}
             size="default"
             className="w-full"
           >
@@ -301,7 +306,7 @@ export function CheckerTabs({
 
           <Button
             onClick={() => parsedFile && onCheck(parsedFile.pans)}
-            disabled={isLoading || !selectedIPO || !parsedFile}
+            disabled={isLoading || noTarget || !parsedFile}
             size="default"
             className="w-full"
           >
@@ -330,9 +335,14 @@ export function CheckerTabs({
       )}
 
       {/* Notice */}
-      {!selectedIPO && (
+      {noTarget && (
         <p className="text-xs text-center text-muted-foreground">
           <ArrowUp className="inline h-3 w-3" /> Please select an IPO above before checking
+        </p>
+      )}
+      {scanMode && (
+        <p className="text-xs text-center text-muted-foreground">
+          PANs will be checked across <span className="font-medium text-foreground">all active IPOs</span>.
         </p>
       )}
     </div>
