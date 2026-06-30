@@ -8,7 +8,6 @@ import {
   Layers,
   TrendingUp,
   TrendingDown,
-  Sparkles,
   ClipboardCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
