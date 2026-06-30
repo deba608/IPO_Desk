@@ -62,6 +62,7 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isExporting, setIsExporting] = useState<"csv" | "xlsx" | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
   const { labels, setLabel } = usePanLabels();
 
   const filteredData = useMemo(() => {
