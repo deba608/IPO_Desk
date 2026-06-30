@@ -1,7 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Search, ChevronDown, Loader2, AlertCircle } from "lucide-react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import {
+  Search,
+  ChevronDown,
+  Loader2,
+  AlertCircle,
+  Check,
+  X,
+  Building2,
+  Inbox,
+} from "lucide-react";
 import { IPO } from "@/types/ipo.types";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +36,23 @@ function matchByName(ipos: IPO[], target: string): IPO | null {
   );
 }
 
+/** Split a name into [before, match, after] for highlighting the search hit. */
+function highlight(name: string, query: string): React.ReactNode {
+  const q = query.trim();
+  if (!q) return name;
+  const idx = name.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return name;
+  return (
+    <>
+      {name.slice(0, idx)}
+      <mark className="rounded bg-primary/25 text-primary-foreground">
+        {name.slice(idx, idx + q.length)}
+      </mark>
+      {name.slice(idx + q.length)}
+    </>
+  );
+}
+
 interface IPOSelectorProps {
   value: IPO | null;
   onChange: (ipo: IPO | null) => void;
@@ -48,7 +74,12 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [registrarFilter, setRegistrarFilter] = useState<string>("all");
+  const [activeIndex, setActiveIndex] = useState(0);
   const didAutoSelect = useRef(false);
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,36 +124,111 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const registrars = [...new Set(ipos.map((ipo) => ipo.registrar))];
-
-  const filtered = ipos.filter(
-    (ipo) =>
-      (registrarFilter === "all" || ipo.registrar === registrarFilter) &&
-      ipo.name.toLowerCase().includes(search.toLowerCase())
+  const registrars = useMemo(
+    () => [...new Set(ipos.map((ipo) => ipo.registrar))],
+    [ipos]
   );
 
+  const filtered = useMemo(
+    () =>
+      ipos.filter(
+        (ipo) =>
+          (registrarFilter === "all" || ipo.registrar === registrarFilter) &&
+          ipo.name.toLowerCase().includes(search.toLowerCase())
+      ),
+    [ipos, registrarFilter, search]
+  );
+
+  const closeDropdown = useCallback(() => {
+    setOpen(false);
+    setSearch("");
+    setRegistrarFilter("all");
+  }, []);
+
+  const selectIPO = useCallback(
+    (ipo: IPO) => {
+      onChange(ipo);
+      closeDropdown();
+    },
+    [onChange, closeDropdown]
+  );
+
+  // Keep the active option in view + clamp it whenever the result set changes.
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [search, registrarFilter, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  // Close on outside click / Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        closeDropdown();
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open, closeDropdown]);
+
+  const onSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const ipo = filtered[activeIndex];
+      if (ipo) selectIPO(ipo);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeDropdown();
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setActiveIndex(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setActiveIndex(filtered.length - 1);
+    }
+  };
+
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium">
+    <div className="space-y-2" ref={rootRef}>
+      <label
+        htmlFor="ipo-selector-trigger"
+        className="text-sm font-medium"
+      >
         Select IPO <span className="text-destructive">*</span>
       </label>
 
       <div className="relative">
         {/* Trigger Button */}
         <button
+          id="ipo-selector-trigger"
           type="button"
-          onClick={() => setOpen(!open)}
+          role="combobox"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-controls="ipo-selector-list"
+          disabled={loading || !!error}
+          onClick={() => setOpen((o) => !o)}
           className={cn(
-            "flex w-full items-center justify-between rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all",
-            "hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring",
-            open && "border-primary ring-2 ring-ring",
+            "flex w-full items-center justify-between gap-2 rounded-lg border bg-background px-4 py-3 text-sm transition-all",
+            "hover:border-primary/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            open ? "border-primary ring-2 ring-ring" : "border-input",
             !value && "text-muted-foreground"
           )}
         >
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin shrink-0 text-muted-foreground" />
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
                 <span>Loading IPOs...</span>
               </>
             ) : error ? (
@@ -131,22 +237,51 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
                 <span className="text-destructive">{error}</span>
               </>
             ) : value ? (
-              <span className="truncate font-medium text-foreground">
-                {value.name}
-              </span>
+              <>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <Building2 className="h-4 w-4" />
+                </span>
+                <span className="truncate font-medium text-foreground">
+                  {value.name}
+                </span>
+              </>
             ) : (
-              <span>Select an active IPO...</span>
+              <>
+                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>Select an active IPO...</span>
+              </>
             )}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {!loading && !error && (
+          <div className="flex shrink-0 items-center gap-2">
+            {value && !loading && !error && (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="Clear selection"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onChange(null);
+                  }
+                }}
+                className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </span>
+            )}
+            {!loading && !error && !value && (
               <span className="hidden text-xs text-muted-foreground sm:inline">
                 {ipos.length} active
               </span>
             )}
             <ChevronDown
               className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform",
+                "h-4 w-4 text-muted-foreground transition-transform duration-200",
                 open && "rotate-180"
               )}
             />
@@ -155,90 +290,150 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
 
         {/* Dropdown */}
         {open && !loading && !error && (
-          <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setOpen(false)}
-            />
-
-            <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border border-border bg-popover shadow-xl">
-              {/* Search */}
-              <div className="p-2 border-b border-border">
-                <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2">
-                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Search IPOs..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                    autoFocus
-                  />
-                </div>
-
-                {/* Registrar Filter */}
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {["all", ...registrars].map((registrar) => (
-                    <button
-                      key={registrar}
-                      type="button"
-                      onClick={() => setRegistrarFilter(registrar)}
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                        registrarFilter === registrar
-                          ? "border-primary bg-primary/10 text-primary font-medium"
-                          : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                      )}
-                    >
-                      {registrar === "all"
-                        ? `All (${ipos.length})`
-                        : `${REGISTRAR_LABELS[registrar] ?? registrar} (${ipos.filter((i) => i.registrar === registrar).length})`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* IPO List */}
-              <div className="max-h-64 overflow-y-auto py-1">
-                {filtered.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                    No IPOs match your search
-                  </div>
-                ) : (
-                  filtered.map((ipo) => (
-                    <button
-                      key={ipo.id}
-                      type="button"
-                      onClick={() => {
-                        onChange(ipo);
-                        setOpen(false);
-                        setSearch("");
-                      }}
-                      className={cn(
-                        "flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors",
-                        "hover:bg-accent hover:text-accent-foreground",
-                        value?.id === ipo.id &&
-                          "bg-primary/10 text-primary font-medium"
-                      )}
-                    >
-                      <span className="truncate pr-4">{ipo.name}</span>
-                      <span className="shrink-0 rounded-full border border-border px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
-                      </span>
-                    </button>
-                  ))
+          <div
+            id="ipo-selector-list"
+            role="listbox"
+            className={cn(
+              "absolute left-0 right-0 top-full z-20 mt-2 origin-top overflow-hidden rounded-xl border border-border bg-popover shadow-2xl",
+              "animate-in fade-in-0 zoom-in-95 duration-150"
+            )}
+          >
+            {/* Search */}
+            <div className="border-b border-border p-2">
+              <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-ring">
+                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search by company name..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={onSearchKeyDown}
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  autoFocus
+                  role="searchbox"
+                  aria-controls="ipo-selector-list"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="Clear search"
+                    className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 )}
               </div>
 
-              {/* Footer */}
-              <div className="border-t border-border px-4 py-2">
-                <p className="text-xs text-muted-foreground">
-                  Showing {filtered.length} of {ipos.length} active IPOs
-                </p>
-              </div>
+              {/* Registrar Filter */}
+              {registrars.length > 1 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {["all", ...registrars].map((registrar) => {
+                    const count =
+                      registrar === "all"
+                        ? ipos.length
+                        : ipos.filter((i) => i.registrar === registrar).length;
+                    const active = registrarFilter === registrar;
+                    return (
+                      <button
+                        key={registrar}
+                        type="button"
+                        onClick={() => setRegistrarFilter(registrar)}
+                        aria-pressed={active}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                          active
+                            ? "border-primary bg-primary/10 font-medium text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        )}
+                      >
+                        {registrar === "all"
+                          ? `All ${count}`
+                          : `${REGISTRAR_LABELS[registrar] ?? registrar} ${count}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </>
+
+            {/* IPO List */}
+            <div
+              ref={listRef}
+              className="scrollbar max-h-64 overflow-y-auto py-1"
+            >
+              {filtered.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                  <Inbox className="h-6 w-6 text-muted-foreground/60" />
+                  <p className="text-sm text-muted-foreground">
+                    No IPOs match{" "}
+                    {search ? (
+                      <span className="font-medium text-foreground">
+                        “{search}”
+                      </span>
+                    ) : (
+                      "this filter"
+                    )}
+                  </p>
+                </div>
+              ) : (
+                filtered.map((ipo, i) => {
+                  const selected = value?.id === ipo.id;
+                  const isActive = i === activeIndex;
+                  return (
+                    <button
+                      key={ipo.id}
+                      ref={(el) => {
+                        optionRefs.current[i] = el;
+                      }}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onMouseEnter={() => setActiveIndex(i)}
+                      onClick={() => selectIPO(ipo)}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition-colors",
+                        isActive && "bg-accent text-accent-foreground",
+                        selected && "text-primary"
+                      )}
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <Check
+                          className={cn(
+                            "h-4 w-4 shrink-0 transition-opacity",
+                            selected
+                              ? "text-primary opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        <span className="truncate">
+                          {highlight(ipo.name, search)}
+                        </span>
+                      </span>
+                      <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-border px-3 py-2">
+              <p className="text-xs text-muted-foreground">
+                {filtered.length} of {ipos.length} active
+              </p>
+              <p className="hidden items-center gap-1 text-[10px] text-muted-foreground sm:flex">
+                <kbd className="rounded bg-muted px-1 py-0.5 font-mono">↑↓</kbd>
+                navigate
+                <kbd className="ml-1 rounded bg-muted px-1 py-0.5 font-mono">
+                  ↵
+                </kbd>
+                select
+              </p>
+            </div>
+          </div>
         )}
       </div>
 
