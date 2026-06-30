@@ -5,7 +5,9 @@ import { createIpoGuruProvider } from "./ipoguru.provider";
 import { createNseProvider } from "./nse.provider";
 import { createInvestorGainProvider } from "./investorgain.provider";
 import { checkDbAvailability, getPrisma } from "@/services/db.service";
-import type { Board, Registrar } from "@/generated/prisma/enums";
+
+type Board = "mainboard" | "sme";
+type Registrar = "kfintech" | "linkintime" | "bigshare" | "mufg";
 
 export interface CatalogueResult {
   ipos: CalendarIPO[];
