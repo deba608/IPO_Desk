@@ -29,10 +29,15 @@ interface RawRow {
   Name?: string;
   GMP?: string;
   Sub?: string;
+  Rating?: string; // "🔥🔥🔥" (HTML entities) — count = crowd rating 1–5
+  Anchor?: string; // "✅" / "❌" — anchor allotment announced
   "Price (₹)"?: string;
   "IPO Size"?: string;
   Lot?: string;
   "Updated-On"?: string;
+  "~P/E"?: string; // "18.33" | "--"
+  "~gmp_percent_calc"?: string; // authoritative GMP % e.g. "28.28"
+  "~urlrewrite_folder_name"?: string; // "/gmp/<slug>/<id>/"
   "~id"?: number;
   "~IPO_Category"?: string; // "IPO" (mainboard) | "SME"
   "~ipo_name"?: string;
@@ -46,15 +51,40 @@ interface RawResponse {
   reportTableData?: RawRow[];
 }
 
-/** Build the report URL for "today": calendar year + Indian fiscal year. */
-function reportUrl(): string {
+/** A row from the subscription report (333): category multiples by IG id. */
+interface SubRow {
+  Total?: string;
+  QIB?: string;
+  NII?: string;
+  SHNI?: string;
+  BHNI?: string;
+  RII?: string;
+  "~id"?: number;
+}
+interface SubResponse {
+  reportTableData?: SubRow[];
+}
+
+/** Calendar year + Indian fiscal year for "today" (FY runs Apr→Mar). */
+function fyParts(): { cy: number; fy: string } {
   const now = new Date();
   const cy = now.getFullYear();
   const month = now.getMonth() + 1; // 1-12
-  // Indian FY runs Apr→Mar. Apr-Dec → cy-(cy+1); Jan-Mar → (cy-1)-cy.
   const fyStart = month >= 4 ? cy : cy - 1;
   const fy = `${fyStart}-${String((fyStart + 1) % 100).padStart(2, "0")}`;
+  return { cy, fy };
+}
+
+/** Report 331 = "Live IPO GMP" (GMP, price band, dates, rating). */
+function reportUrl(): string {
+  const { cy, fy } = fyParts();
   return `${HOST}/cloud/report/data-read/331/1/5/${cy}/${fy}/0/all`;
+}
+
+/** Report 333 = "IPO Subscription" (category-wise multiples while open). */
+function subscriptionUrl(): string {
+  const { cy, fy } = fyParts();
+  return `${HOST}/cloud/report/data-read/333/1/5/${cy}/${fy}/0/all`;
 }
 
 function stripTags(s?: string): string {
@@ -112,6 +142,58 @@ function parseSub(raw?: string): number | undefined {
 
 function parseBoard(category?: string): IPOBoard {
   return (category ?? "").toUpperCase() === "SME" ? "sme" : "mainboard";
+}
+
+/** Crowd rating = count of 🔥 (entity &#128293; or literal) in the Rating cell, capped 1–5. */
+function parseRating(raw?: string): number | undefined {
+  if (!raw) return undefined;
+  const fires = (raw.match(/128293|🔥/g) ?? []).length;
+  return fires > 0 ? Math.min(fires, 5) : undefined;
+}
+
+/** Plain decimal from a "~P/E"-style field; "--" / "" → undefined. */
+function parseDecimal(raw?: string): number | undefined {
+  const m = stripTags(raw).match(/-?\d+(?:\.\d+)?/);
+  if (!m) return undefined;
+  const n = Number(m[0]);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Anchor column carries a ✅ when the anchor allotment is announced. */
+function parseAnchor(raw?: string): boolean | undefined {
+  if (raw === undefined) return undefined;
+  if (raw.includes("✅")) return true;
+  if (raw.includes("❌")) return false;
+  return undefined;
+}
+
+/** Positive subscription multiple, else undefined ("-" / 0). */
+function subValue(raw?: string): number | undefined {
+  const n = parseDecimal(raw);
+  return n !== undefined && n > 0 ? n : undefined;
+}
+
+/** Build a map of IG id → category subscription from the subscription report. */
+function buildSubMap(rows: SubRow[]): Map<number, import("@/types/calendar.types").Subscription> {
+  const map = new Map<number, import("@/types/calendar.types").Subscription>();
+  const now = new Date().toISOString();
+  for (const r of rows) {
+    if (typeof r["~id"] !== "number") continue;
+    const sub = {
+      total: subValue(r.Total),
+      qib: subValue(r.QIB),
+      nii: subValue(r.NII),
+      shni: subValue(r.SHNI),
+      bhni: subValue(r.BHNI),
+      retail: subValue(r.RII),
+      updatedAt: now,
+    };
+    // Skip rows with no usable numbers at all.
+    if (Object.values(sub).some((v) => typeof v === "number")) {
+      map.set(r["~id"], sub);
+    }
+  }
+  return map;
 }
 
 /** Exchanges from the "NSE SME" / "BSE SME" / "NSE" badge in the Name cell. */
