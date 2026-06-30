@@ -18,7 +18,6 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
   const capPrice = ipo.priceBand.max;
 
-  // Try DB first
   if (checkDbAvailability()) {
     try {
       const dbIpo = await prisma.ipo.findUnique({ where: { slug: id } });
@@ -29,12 +28,13 @@ export async function GET(_request: Request, { params }: RouteParams) {
           take: 30,
         });
         if (snapshots.length >= 2) {
-          const entries: GMPEntry[] = snapshots.map((s) => ({
-            date: s.date.toISOString().split("T")[0],
-            gmp: s.gmp,
-            gainPercent: capPrice > 0 ? Math.round((s.gmp / capPrice) * 1000) / 10 : undefined,
-          }));
-          return NextResponse.json({ history: entries });
+          return NextResponse.json({
+            history: snapshots.map((s: { date: Date; gmp: number }) => ({
+              date: s.date.toISOString().split("T")[0],
+              gmp: s.gmp,
+              gainPercent: capPrice > 0 ? Math.round((s.gmp / capPrice) * 1000) / 10 : undefined,
+            })),
+          });
         }
       }
     } catch {
@@ -42,7 +42,6 @@ export async function GET(_request: Request, { params }: RouteParams) {
     }
   }
 
-  // Demo data when no DB or no snapshots
   if (ipo.gmp === undefined) {
     return NextResponse.json({ history: [] });
   }
