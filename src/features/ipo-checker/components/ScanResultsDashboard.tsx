@@ -11,10 +11,15 @@ import {
   SearchX,
   Layers,
   Tag,
+  Share2,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScanIPOResult, ScanResponse } from "@/types/allotment.types";
 import { usePanLabels } from "@/hooks/usePanLabels";
+import { shareResultCard } from "../lib/shareCard";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const REGISTRAR_LABELS: Record<string, string> = {
@@ -27,17 +32,63 @@ const REGISTRAR_LABELS: Record<string, string> = {
 export function ScanResultsDashboard({ results }: { results: ScanResponse }) {
   const { iposWithAllotment, totalAllotted, scanned, ipos, errors, pansChecked } =
     results;
+  const [isSharing, setIsSharing] = useState(false);
+
+  const handleShare = async () => {
+    setIsSharing(true);
+    try {
+      const outcome = await shareResultCard(
+        {
+          title: "Cross-IPO Scan",
+          subtitle: `${pansChecked} PAN${pansChecked === 1 ? "" : "s"} · ${scanned} IPOs`,
+          headline:
+            iposWithAllotment > 0
+              ? `Allotted in ${iposWithAllotment} IPO${iposWithAllotment === 1 ? "" : "s"}`
+              : "No allotment yet",
+          positive: iposWithAllotment > 0,
+          stats: [
+            { label: "IPOs Scanned", value: String(scanned) },
+            { label: "Applied To", value: String(ipos.length) },
+            { label: "Allotments", value: String(iposWithAllotment) },
+            { label: "Shares", value: String(totalAllotted) },
+          ],
+        },
+        "ipo-scan-result.png"
+      );
+      toast.success(outcome === "shared" ? "Shared!" : "Image downloaded");
+    } catch {
+      toast.error("Couldn't generate share image");
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="min-w-0">
-        <h2 className="text-xl font-bold sm:text-2xl">Scan Results</h2>
-        <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
-          {pansChecked} PAN{pansChecked === 1 ? "" : "s"} across {scanned} active
-          IPO{scanned === 1 ? "" : "s"} · Checked{" "}
-          {new Date(results.checkedAt).toLocaleString("en-IN")}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold sm:text-2xl">Scan Results</h2>
+          <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
+            {pansChecked} PAN{pansChecked === 1 ? "" : "s"} across {scanned} active
+            IPO{scanned === 1 ? "" : "s"} · Checked{" "}
+            {new Date(results.checkedAt).toLocaleString("en-IN")}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleShare}
+          disabled={isSharing}
+          className="shrink-0 gap-2"
+        >
+          {isSharing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Share2 className="h-4 w-4" />
+          )}
+          Share
+        </Button>
       </div>
 
       {/* Summary */}
