@@ -10,6 +10,7 @@ export function Header() {
 
   const isAllotment = pathname === "/";
   const isCalendar = pathname === "/calendar" || pathname.startsWith("/ipo/");
+  const isHistory = pathname === "/history";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur">
@@ -48,6 +49,17 @@ export function Header() {
             )}
           >
             Allotment Checker
+          </Link>
+          <Link
+            href="/history"
+            className={cn(
+              "rounded-lg px-3 py-2 font-medium transition-colors",
+              isHistory
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            History
           </Link>
         </nav>
       </div>

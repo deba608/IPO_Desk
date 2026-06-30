@@ -18,6 +18,7 @@ import { ScanResultsDashboard } from "@/features/ipo-checker/components/ScanResu
 import { CheckResponse, ScanResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
+import { useCheckHistory } from "@/hooks/useCheckHistory";
 import { ScanSearch, Target } from "lucide-react";
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
   const [scanResults, setScanResults] = useState<ScanResponse | null>(null);
   const [progress, setProgress] = useState(0);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const { add: addHistory } = useCheckHistory();
 
   const handleCheck = useCallback(
     async (pans: string[]) => {
@@ -85,6 +87,15 @@ export default function Home() {
           setScanResults(scan);
           setResults(null);
 
+          addHistory({
+            type: "scan",
+            label: `${scan.scanned} IPOs`,
+            pansChecked: scan.pansChecked,
+            allotted: scan.iposWithAllotment,
+            total: scan.scanned,
+            appliedTo: scan.ipos.length,
+          });
+
           if (scan.iposWithAllotment > 0) {
             toast.success(
               `Allotment found in ${scan.iposWithAllotment} IPO${
@@ -108,6 +119,15 @@ export default function Home() {
           const check = data as CheckResponse;
           setScanResults(null);
           setResults(check);
+
+          addHistory({
+            type: "check",
+            label: check.ipoName,
+            registrar: selectedIPO?.registrar,
+            pansChecked: check.summary.total,
+            allotted: check.summary.allotted,
+            total: check.summary.total,
+          });
 
           if (check.summary.allotted > 0) {
             toast.success(
@@ -134,7 +154,7 @@ export default function Home() {
         setTimeout(() => setProgress(0), 1000);
       }
     },
-    [selectedIPO, scanMode]
+    [selectedIPO, scanMode, addHistory]
   );
 
   return (
