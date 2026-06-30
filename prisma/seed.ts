@@ -1,6 +1,8 @@
 import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter });
 
 const seedIpos = [
   {
@@ -47,7 +49,7 @@ const seedIpos = [
     symbol: "GREEN",
     board: "sme" as const,
     registrar: "bigshare" as const,
-    status: "upcoming" as const,
+    status: "pending" as const,
     leadManagers: ["First Overseas Capital"],
     issueSizeCr: 75,
     priceBandMin: 120,
