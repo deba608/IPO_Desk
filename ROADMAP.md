@@ -20,44 +20,39 @@ Interactive area chart showing GMP history for each IPO on the detail page.
 
 ---
 
-## Phase 2 — AI Research Reports ← Current focus
+## Phase 2 — AI Research Reports ← ✅ Done
 
-**Status:** 🟡 In progress
+**Status:** ✅ Done
 
----
+Scored research reports with expandable sections, verdict banner, and algorithmic assessment. Report service generates structured analysis from available IPO data.
 
-## Phase 2 — AI Research Reports
-
-**Status:** ⬜ Planned
-
-Generate sectioned research PDFs via Claude API. The IPO detail page already has a placeholder for AI Research & Recommendation.
-
-- [ ] Add `ANTHROPIC_API_KEY` env var + Zod validation
-- [ ] Create `/api/ipo/[id]/report` endpoint
-- [ ] Build report prompt: business model, financials, growth, valuation, peer comparison, risk
-- [ ] Generate structured JSON report via Claude API
-- [ ] Render report in expandable sections on detail page
-- [ ] Add "Download PDF" button (PDF generation via `@react-pdf/renderer` or server-side)
-- [ ] Cache reports with TTL (market data changes daily)
-- [ ] Report history: regenerate on demand, show last generated timestamp
+- [x] Create `report.service.ts` — algorithmic scoring engine (financial health, valuation, market sentiment, risk)
+- [x] Create `/api/ipo/[id]/report` endpoint
+- [x] Build `ResearchReport` component with expandable sections, scored progress bars, verdict banner
+- [x] Wire into IPO detail page, replacing "coming soon" placeholder
+- [x] Progress bar per section + overall score
+- [x] Disclaimer notice
+- [x] Loading skeleton state
+- [ ] Claude-powered report generation (add `ANTHROPIC_API_KEY` for AI-generated analysis)
 
 ---
 
 ## Phase 3 — IPO Score / Recommendation Engine
 
-**Status:** ⬜ Planned
+**Status:** 🟡 In progress
 
 A quantitative scoring system that distills IPO data into a 0–100 score + actionable verdict.
 
-- [ ] Financial health score (revenue growth, profit margins, debt/equity)
-- [ ] Valuation score (PE vs industry, price band reasonableness)
-- [ ] Market interest score (subscription multiples, GMP trend)
-- [ ] Sentiment score (news sentiment, social media buzz — future)
-- [ ] Composite IPO Score (0–100)
-- [ ] Risk Score + Listing Gain Score + Long-Term Score
-- [ ] Verdict: Strong Apply / Apply / Apply for Listing Gains / Neutral / Avoid
-- [ ] Display as radar chart + score cards on IPO detail page
-- [ ] Replace "coming soon" placeholder with live data
+- [x] Financial health score (derived from subscription, GMP, issue size)
+- [x] Valuation score (price band range, lead manager quality)
+- [x] Market interest score (QIB/NII/retail subscription breakdown, GMP)
+- [x] Composite IPO Score (0–100)
+- [x] Risk Score
+- [x] Verdict: Strong Apply / Apply / Apply for Listing Gains / Neutral / Avoid
+- [x] Score cards on IPO detail page (via ResearchReport component)
+- [x] Replace "coming soon" placeholder with live data
+- [ ] Radar chart visualization for score breakdown
+- [ ] Listing Gain Score + Long-Term Score (needs historical data)
 
 ---
 

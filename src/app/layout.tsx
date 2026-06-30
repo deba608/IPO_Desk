@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
+import { CommandPalette } from "@/components/common/CommandPalette";
 import "./globals.css";
 
 const siteUrl = "https://ipodesk.com";
@@ -82,6 +83,7 @@ export default function RootLayout({
         className="antialiased min-h-screen bg-background"
       >
         {children}
+        <CommandPalette />
         <Toaster
           position="top-right"
           toastOptions={{

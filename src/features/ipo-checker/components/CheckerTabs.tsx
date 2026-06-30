@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,11 +18,16 @@ import {
   FileSpreadsheet,
   X,
   ArrowUp,
+  UserCheck,
+  Plus,
+  Trash2,
+  Edit2,
 } from "lucide-react";
 import { IPO } from "@/types/ipo.types";
 import { parsePANsFromText } from "../utils/pan-validator";
 import { parseExcelFile, ParsedFile } from "../utils/pan-parser";
 import { cn } from "@/lib/utils";
+import { useProfiles, PanProfile } from "@/hooks/useProfiles";
 
 interface CheckerTabsProps {
   onCheck: (pans: string[]) => Promise<void>;
@@ -50,7 +55,29 @@ export function CheckerTabs({
   const [isDragOver, setIsDragOver] = useState(false);
   const [activeTab, setActiveTab] = useState("single");
 
+  // Profile states
+  const {
+    profiles,
+    add: addProfile,
+    remove: removeProfile,
+    update: updateProfile,
+    hydrated: profilesHydrated,
+  } = useProfiles();
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [isEditingProfileId, setIsEditingProfileId] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [profilePansText, setProfilePansText] = useState("");
+  const [profileError, setProfileError] = useState("");
+
   const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
+  // Auto-select the first profile when loaded
+  useEffect(() => {
+    if (profilesHydrated && profiles.length > 0 && !selectedProfileId) {
+      setSelectedProfileId(profiles[0].id);
+    }
+  }, [profilesHydrated, profiles, selectedProfileId]);
 
   const handleSingleCheck = async () => {
     const pan = singlePAN.toUpperCase().trim();
@@ -63,11 +90,48 @@ export function CheckerTabs({
   };
 
   const handleBulkCheck = async () => {
-    const { valid, invalid } = parsePANsFromText(bulkText);
+    const { valid } = parsePANsFromText(bulkText);
     if (valid.length === 0) {
       return;
     }
     await onCheck(valid);
+  };
+
+  const handleSaveProfile = () => {
+    if (!profileName.trim()) {
+      setProfileError("Profile name is required");
+      return;
+    }
+    const { valid } = parsePANsFromText(profilePansText);
+    if (valid.length === 0) {
+      setProfileError("At least one valid PAN is required");
+      return;
+    }
+
+    if (isEditingProfileId) {
+      updateProfile(isEditingProfileId, profileName, valid);
+      setIsEditingProfileId(null);
+    } else {
+      addProfile(profileName, valid);
+      setIsCreatingProfile(false);
+    }
+
+    setProfileName("");
+    setProfilePansText("");
+    setProfileError("");
+  };
+
+  const handleStartEditProfile = (p: PanProfile) => {
+    setIsEditingProfileId(p.id);
+    setProfileName(p.name);
+    setProfilePansText(p.pans.join("\n"));
+    setProfileError("");
+  };
+
+  const handleCheckProfile = async () => {
+    const profile = profiles.find((p) => p.id === selectedProfileId);
+    if (!profile || profile.pans.length === 0) return;
+    await onCheck(profile.pans);
   };
 
   const handleFileUpload = async (file: File) => {
@@ -102,18 +166,22 @@ export function CheckerTabs({
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-3">
+        <TabsList className="w-full grid grid-cols-4">
           <TabsTrigger value="single" className="gap-1 sm:gap-2 px-1 sm:px-3">
             <UserIcon className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] sm:text-sm">Single</span>
+            <span className="text-[11px] sm:text-xs md:text-sm">Single</span>
           </TabsTrigger>
           <TabsTrigger value="bulk" className="gap-1 sm:gap-2 px-1 sm:px-3">
             <Users className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] sm:text-sm">Bulk</span>
+            <span className="text-[11px] sm:text-xs md:text-sm">Bulk</span>
           </TabsTrigger>
           <TabsTrigger value="upload" className="gap-1 sm:gap-2 px-1 sm:px-3">
             <Upload className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] sm:text-sm">Upload</span>
+            <span className="text-[11px] sm:text-xs md:text-sm">Upload</span>
+          </TabsTrigger>
+          <TabsTrigger value="profiles" className="gap-1 sm:gap-2 px-1 sm:px-3">
+            <UserCheck className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] sm:text-xs md:text-sm">Profiles</span>
           </TabsTrigger>
         </TabsList>
 
@@ -250,7 +318,7 @@ export function CheckerTabs({
                   </div>
                   <button
                     onClick={() => setParsedFile(null)}
-                    className="ml-auto text-muted-foreground hover:text-foreground"
+                    className="ml-auto text-muted-foreground hover:text-foreground hover:bg-transparent cursor-pointer p-1"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -322,13 +390,179 @@ export function CheckerTabs({
             )}
           </Button>
         </TabsContent>
+
+        {/* Profiles Tab */}
+        <TabsContent value="profiles" className="space-y-4">
+          {!profilesHydrated ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              Loading profiles...
+            </div>
+          ) : isCreatingProfile || isEditingProfileId ? (
+            <div className="space-y-3 rounded-xl border border-border p-4 bg-muted/20">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">
+                  {isEditingProfileId ? "Edit Profile" : "Create Profile"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreatingProfile(false);
+                    setIsEditingProfileId(null);
+                    setProfileName("");
+                    setProfilePansText("");
+                    setProfileError("");
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-name">Profile Name</Label>
+                <Input
+                  id="profile-name"
+                  placeholder="e.g. My Accounts, Family Group"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  maxLength={24}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-pans">PANs (one per line or separated by comma)</Label>
+                <Textarea
+                  id="profile-pans"
+                  placeholder={`ABCDE1234F\nFGHIJ5678K\n...`}
+                  value={profilePansText}
+                  onChange={(e) => setProfilePansText(e.target.value)}
+                  className="min-h-[100px] font-mono text-sm"
+                  disabled={isLoading}
+                />
+              </div>
+              {profileError && (
+                <p className="flex items-center gap-1.5 text-xs text-destructive">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {profileError}
+                </p>
+              )}
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsCreatingProfile(false);
+                    setIsEditingProfileId(null);
+                    setProfileName("");
+                    setProfilePansText("");
+                    setProfileError("");
+                  }}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleSaveProfile} disabled={isLoading}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          ) : profiles.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-10 text-center bg-muted/10">
+              <UserCheck className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="font-medium text-sm">No saved profiles yet</p>
+              <p className="text-xs text-muted-foreground mb-4 max-w-[280px]">
+                Create a profile to save a group of family PANs and check them in a single tap.
+              </p>
+              <Button size="sm" onClick={() => setIsCreatingProfile(true)} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Create Profile
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Select a profile to check:</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCreatingProfile(true)}
+                  className="h-7 px-2 text-xs gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Add New
+                </Button>
+              </div>
+              <div className="grid gap-2 max-h-[220px] overflow-y-auto pr-1 scrollbar">
+                {profiles.map((p) => {
+                  const isSelected = selectedProfileId === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setSelectedProfileId(p.id)}
+                      className={cn(
+                        "flex items-center justify-between rounded-xl border p-3.5 cursor-pointer transition-all",
+                        isSelected
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                          : "border-border hover:border-primary/50 hover:bg-muted/30"
+                      )}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <p className="text-sm font-semibold truncate text-foreground">{p.name}</p>
+                        <p className="text-[11px] text-muted-foreground font-mono truncate mt-0.5">
+                          {p.pans.length} PAN{p.pans.length === 1 ? "" : "s"}: {p.pans.join(", ")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditProfile(p)}
+                          className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-muted/50 transition-colors"
+                          title="Edit profile"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeProfile(p.id)}
+                          className="p-1.5 text-muted-foreground hover:text-rose-400 rounded hover:bg-muted/50 transition-colors"
+                          title="Delete profile"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {selectedProfileId && (
+                <Button
+                  onClick={handleCheckProfile}
+                  disabled={isLoading || noTarget}
+                  className="w-full"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Checking profile...
+                    </>
+                  ) : (
+                    (() => {
+                      const profile = profiles.find((p) => p.id === selectedProfileId);
+                      return `Check ${profile ? profile.name : ""} (${
+                        profile ? profile.pans.length : 0
+                      } PANs)`;
+                    })()
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Progress Bar */}
       {isLoading && progress > 0 && (
         <div className="space-y-2">
           <Progress value={progress} className="h-1" />
-          <p className="text-xs text-center text-muted-foreground">
+          <p className="text-xs text-center text-muted-foreground font-medium">
             Checking allotment status... {Math.round(progress)}%
           </p>
         </div>

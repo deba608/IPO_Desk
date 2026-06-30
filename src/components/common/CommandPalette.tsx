@@ -117,7 +117,7 @@ export function CommandPalette() {
                 >
                   <SearchCode className="h-4 w-4 text-primary" />
                   <span>Allotment Checker</span>
-                  <Command.Shortcut className="ml-auto text-[10px] text-slate-500">Go to</Command.Shortcut>
+                  <span className="ml-auto text-[10px] text-slate-500">Go to</span>
                 </Command.Item>
                 <Command.Item
                   onSelect={() => navigate("/calendar")}
@@ -125,7 +125,7 @@ export function CommandPalette() {
                 >
                   <Calendar className="h-4 w-4 text-emerald-400" />
                   <span>IPO Calendar</span>
-                  <Command.Shortcut className="ml-auto text-[10px] text-slate-500">Go to</Command.Shortcut>
+                  <span className="ml-auto text-[10px] text-slate-500">Go to</span>
                 </Command.Item>
                 <Command.Item
                   onSelect={() => navigate("/history")}
@@ -133,7 +133,7 @@ export function CommandPalette() {
                 >
                   <History className="h-4 w-4 text-amber-400" />
                   <span>Checking History</span>
-                  <Command.Shortcut className="ml-auto text-[10px] text-slate-500">Go to</Command.Shortcut>
+                  <span className="ml-auto text-[10px] text-slate-500">Go to</span>
                 </Command.Item>
               </Command.Group>
 

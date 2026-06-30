@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Sparkles, AlertTriangle, TrendingUp, BarChart3, Shield } from "lucide-react";
+import {
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ResponsiveContainer,
+} from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -78,6 +86,42 @@ export function ResearchReport({ ipoId }: ResearchReportProps) {
         {report.overallScore !== undefined && (
           <Progress value={report.overallScore} className="mt-3 h-1.5" />
         )}
+
+        {/* Radar chart */}
+        {(() => {
+          const scoredSections = report.sections.filter((s) => s.score !== undefined);
+          if (scoredSections.length < 2) return null;
+          const radarData = scoredSections.map((s) => ({
+            category: s.title.length > 14 ? s.title.slice(0, 13) + "…" : s.title,
+            score: s.score!,
+            fullMark: s.maxScore!,
+          }));
+          return (
+            <div className="mt-4 h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="#334155" />
+                  <PolarAngleAxis
+                    dataKey="category"
+                    tick={{ fontSize: 10, fill: "#94a3b8" }}
+                  />
+                  <PolarRadiusAxis
+                    angle={30}
+                    domain={[0, 100]}
+                    tick={{ fontSize: 9, fill: "#64748b" }}
+                  />
+                  <Radar
+                    dataKey="score"
+                    stroke="#6366f1"
+                    fill="#6366f1"
+                    fillOpacity={0.2}
+                    strokeWidth={2}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          );
+        })()}
       </div>
 
       <Separator />
