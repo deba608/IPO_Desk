@@ -4,18 +4,25 @@
 
 ---
 
-## Phase 1 — GMP Trend Chart (Recharts) ← Current focus
+## Phase 1 — GMP Trend Chart (Recharts) ← ✅ Done
 
-**Status:** ⬜ Planned
+**Status:** ✅ Done
 
-Add an interactive line chart showing GMP history for each IPO on the detail page. The InvestorGain provider already returns `gmpUpdatedAt`; we need a GMP history endpoint + Recharts frontend.
+Interactive area chart showing GMP history for each IPO on the detail page.
 
 - [x] Install Recharts
-- [ ] Add GMP history data collection in InvestorGain provider (store daily snapshots)
-- [ ] Create `/api/ipo/[id]/gmp-history` endpoint returning time-series data
-- [ ] Build `GMPTrendChart` component with Recharts (line chart, tooltips, responsive)
-- [ ] Wire into IPO detail page below GMP analysis section
-- [ ] Empty state when no history available
+- [x] Add `gmpHistory` field to `CalendarIPO` type + `GMPEntry` type
+- [x] Create `/api/ipo/[id]/gmp-history` endpoint returning time-series data
+- [x] Build `GMPTrendChart` component with Recharts (area chart, tooltips, responsive)
+- [x] Wire into IPO detail page below GMP analysis section
+- [x] Empty state when no history available
+- [x] Demo history generation until real DB snapshots land
+
+---
+
+## Phase 2 — AI Research Reports ← Current focus
+
+**Status:** 🟡 In progress
 
 ---
 

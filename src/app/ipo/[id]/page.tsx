@@ -21,6 +21,7 @@ import { SubscriptionBars } from "@/features/ipo-detail/components/SubscriptionB
 import { Timeline } from "@/features/ipo-detail/components/Timeline";
 import { AddToCalendar } from "@/features/ipo-detail/components/AddToCalendar";
 import { GMPTrendChart } from "@/features/ipo-detail/components/GMPTrendChart";
+import { ResearchReport } from "@/features/ipo-detail/components/ResearchReport";
 import { Header } from "@/components/common/Header";
 
 export const dynamic = "force-dynamic";
@@ -194,18 +195,9 @@ export default async function IPODetailPage({ params }: PageProps) {
               </SectionCard>
             )}
 
-            {/* Research — coming with the AI/Recommendation modules */}
+            {/* AI Research & Recommendation */}
             <SectionCard title="AI Research & Recommendation">
-              <div className="flex items-start gap-3 rounded-lg border border-dashed border-border p-4">
-                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">IPO Score, Risk Score & verdict — coming soon</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Business model, financials, peer comparison and an AI-generated Apply/Avoid call
-                    arrive with the Recommendation Engine module.
-                  </p>
-                </div>
-              </div>
+              <ResearchReport ipoId={ipo.id} />
             </SectionCard>
           </div>
 
