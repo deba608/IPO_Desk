@@ -59,11 +59,6 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close the mobile menu whenever the route changes.
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
   return (
     <header
       className={cn(
@@ -181,6 +176,7 @@ export function Header() {
               <Link
                 key={href}
                 href={href}
+                onClick={() => setMenuOpen(false)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex h-12 items-center gap-3 rounded-lg px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",

@@ -8,7 +8,6 @@ import {
   Search,
   Calendar,
   History,
-  TrendingUp,
   Star,
   Sparkles,
   SearchCode,
