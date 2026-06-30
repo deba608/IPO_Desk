@@ -11,6 +11,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export interface ExportRow {
   PAN: string;
+  Label: string;
   Name: string;
   "Applied Shares": string;
   "Allotted Shares": string;
@@ -21,6 +22,9 @@ export interface ExportRow {
 function buildRows(results: AllotmentResult[]): ExportRow[] {
   return results.map((r) => ({
     PAN: r.pan,
+    // Optional client-side nickname (usePanLabels), merged into the payload by
+    // the dashboard before export. Absent on direct API exports.
+    Label: (r as { label?: string }).label?.trim() || "—",
     Name: r.name ?? "—",
     "Applied Shares": r.appliedShares?.toString() ?? "—",
     "Allotted Shares": r.allottedShares?.toString() ?? "—",

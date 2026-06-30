@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -25,6 +25,8 @@ import {
   FileSpreadsheet,
   FileText,
   Loader2,
+  Tag,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AllotmentResult, CheckResponse } from "@/types/allotment.types";
+import { usePanLabels } from "@/hooks/usePanLabels";
 import { toast } from "sonner";
 
 interface ResultsDashboardProps {
@@ -57,6 +60,7 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isExporting, setIsExporting] = useState<"csv" | "xlsx" | null>(null);
+  const { labels, setLabel } = usePanLabels();
 
   const filteredData = useMemo(() => {
     if (statusFilter === "all") return results.results;
@@ -83,6 +87,17 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
               <Copy className="h-3 w-3" />
             </button>
           </div>
+        ),
+      },
+      {
+        id: "label",
+        header: "Label",
+        accessorFn: (row) => labels[row.pan] ?? "",
+        cell: ({ row }) => (
+          <EditableLabel
+            value={labels[row.original.pan] ?? ""}
+            onSave={(v) => setLabel(row.original.pan, v)}
+          />
         ),
       },
       {
@@ -129,7 +144,7 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
         },
       },
     ],
-    []
+    [labels, setLabel]
   );
 
   const table = useReactTable({
@@ -440,6 +455,76 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/**
+ * Inline-editable nickname for a PAN. Renders a subtle "+ Label" affordance when
+ * empty, a tag chip when set; click to edit. Enter / blur saves, Escape cancels.
+ */
+function EditableLabel({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (v: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const start = () => {
+    setDraft(value);
+    setEditing(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const commit = () => {
+    setEditing(false);
+    if (draft.trim() !== value) onSave(draft);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          else if (e.key === "Escape") setEditing(false);
+        }}
+        maxLength={24}
+        placeholder="e.g. Self, Spouse, HUF"
+        className="h-7 w-32 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      />
+    );
+  }
+
+  if (value) {
+    return (
+      <button
+        type="button"
+        onClick={start}
+        className="group/lbl inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+      >
+        <Tag className="h-3 w-3" />
+        {value}
+        <Pencil className="h-2.5 w-2.5 opacity-0 transition-opacity group-hover/lbl:opacity-70" />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={start}
+      className="inline-flex items-center gap-1 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+    >
+      <Tag className="h-3 w-3" />
+      Label
+    </button>
   );
 }
 
