@@ -94,14 +94,21 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close the mobile menu on Escape; also lock body scroll while it's open.
+  // While the mobile menu is open: close on Escape, close if the viewport grows
+  // to desktop (panel is md:hidden, so it would otherwise leave scroll locked),
+  // and lock body scroll.
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    const onResize = () => {
+      if (window.matchMedia("(min-width: 768px)").matches) setMenuOpen(false);
+    };
     document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
