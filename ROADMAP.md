@@ -56,39 +56,38 @@ A quantitative scoring system that distills IPO data into a 0–100 score + acti
 
 ---
 
-## Phase 4 — Database Migration (Prisma + Postgres)
+## Phase 4 — Database Migration (Prisma + Postgres) ← ✅ Done
 
-**Status:** ⬜ Planned
+**Status:** ✅ Done
 
 Replace in-memory caches with a real database for persistence, history, and queryability.
 
-- [ ] Add Prisma + Postgres dependencies
-- [ ] Design schema: IPOs, GMPHistory, SubscriptionSnapshots, Reports, Alerts, Users
-- [ ] Migrate seed loaders → Prisma queries
-- [ ] Migrate registrar sync → upsert into DB
-- [ ] Add GMP history tracking (daily snapshots)
-- [ ] Add subscription history tracking
-- [ ] Replace `globalThis` caches with DB reads
-- [ ] Data migration script for existing in-memory state
+- [x] Add Prisma + Postgres dependencies (`@prisma/client`, `prisma`, `@prisma/adapter-pg`, `tsx`)
+- [x] Design schema: IPOs, GMPHistory, SubscriptionSnapshots, Reports, Alerts, Users, Watchlist
+- [x] Generate Prisma client with custom output path
+- [x] Create `src/lib/prisma.ts` singleton with async lazy initialization
+- [x] Create `src/services/db.service.ts` with availability check + graceful fallback
+- [x] Create `prisma/seed.ts` — seed data for 5 sample IPOs + GMP history
+- [x] Add `db:migrate`, `db:push`, `db:seed`, `db:studio` npm scripts
+- [x] Auto-persist calendar IPO data + GMP snapshots to DB when available
+- [x] GMP history route reads from DB when available, falls back to demo data
+- [x] `DATABASE_URL` in `.env.example` (optional — app works without DB)
 
 ---
 
-## Phase 5 — Scheduled Alerts
+## Phase 5 — Scheduled Alerts ← ✅ Done
 
-**Status:** ⬜ Planned
+**Status:** ✅ Done
 
 Push and email notifications for key events.
 
-- [ ] Alert triggers:
-  - IPO opens / closes / lists
-  - GMP crosses threshold (e.g. >50%)
-  - Subscription milestone (e.g. >10x)
-  - Allotment result available
-- [ ] Delivery channels:
-  - Browser push notifications (Web Push API)
-  - Email (Resend / SendGrid)
-- [ ] Alert preferences UI (which IPOs, which triggers, which channels)
-- [ ] Rate-limited alert dispatch (avoid spam)
+- [x] Alert triggers: IPO opens, GMP crosses threshold, subscription milestone, allotment declared
+- [x] Client-side `useAlerts` hook (localStorage-based, with server-side API route)
+- [x] `/api/alerts` CRUD endpoint (GET, POST, DELETE)
+- [x] `AlertSettings` popover component on IPO detail page
+- [x] Per-IPO alert configuration (add/remove/toggle alerts)
+- [ ] Delivery channels: browser push notifications, email (needs phase 4 DB + service worker)
+- [ ] Rate-limited alert dispatch
 
 ---
 

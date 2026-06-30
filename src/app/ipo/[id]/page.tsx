@@ -21,6 +21,7 @@ import { Timeline } from "@/features/ipo-detail/components/Timeline";
 import { AddToCalendar } from "@/features/ipo-detail/components/AddToCalendar";
 import { GMPTrendChart } from "@/features/ipo-detail/components/GMPTrendChart";
 import { ResearchReport } from "@/features/ipo-detail/components/ResearchReport";
+import { AlertSettings } from "@/features/ipo-detail/components/AlertSettings";
 import { Header } from "@/components/common/Header";
 
 export const dynamic = "force-dynamic";
@@ -131,6 +132,7 @@ export default async function IPODetailPage({ params }: PageProps) {
               </p>
             </div>
           ) : null}
+          <AlertSettings ipoId={ipo.id} ipoName={ipo.name} />
         </div>
 
         {/* Key stats */}

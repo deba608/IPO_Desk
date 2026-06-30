@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Board {
@@ -125,8 +126,8 @@ model User {
 
 model Alert {
   id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   ipoId     String?
   ipo       Ipo?     @relation(fields: [ipoId], references: [id], onDelete: SetNull)
   trigger   String   // gmp_crossed, subscription_milestone, ipo_opens, allotment_available

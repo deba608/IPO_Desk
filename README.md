@@ -29,9 +29,13 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 - **Key Stats** — price band, lot size, issue size, minimum investment
 - **Subscription Bars** — QIB / NII / Retail / Total subscription multiples
 - **GMP Analysis** — grey-market premium, estimated listing price, gain %
+- **GMP Trend Chart** — Recharts area chart showing GMP history over time
+- **AI Research Report** — algorithmic scoring engine with verdict, radar chart, and expandable sections (financial health, valuation, sentiment, risk)
+- **IPO Score** — 0–100 composite score with per-category breakdown
 - **Timeline** — visual stepper from open to listing
 - **Issue Details** — registrar, lead managers, exchanges
 - **Add to Calendar** — download `.ics` or add to Google Calendar
+- **Alert Settings** — configure push alerts for IPO opens, GMP crossings, subscription milestones, and allotment declarations
 - **Deep-Link to Checker** — one click to check allotment for this IPO
 
 ### Check History
@@ -46,6 +50,7 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 - **Zod Validation** — all API inputs validated with detailed error responses
 - **Structured Logging** — ring-buffer logger viewable at `/api/logs`
 - **Server-Side Only** — all registrar API calls are server-side; client only talks to Next.js
+- **Optional Database** — Prisma + Postgres for persistent IPO data, GMP history, and user alerts (graceful fallback when no DB configured)
 
 ---
 
@@ -85,6 +90,9 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 | `/api/calendar` | GET | IPO calendar data with lifecycle derivation |
 | `/api/export` | POST | Download results as CSV or XLSX |
 | `/api/logs` | GET | Debug event logs (ring buffer) |
+| `/api/alerts` | GET/POST/DELETE | Manage IPO alerts |
+| `/api/ipo/[id]/gmp-history` | GET | GMP time-series data for trend chart |
+| `/api/ipo/[id]/report` | GET | AI research report with scores and verdict |
 | `/api/cron/sync-ipos` | GET | Vercel Cron daily sync |
 
 ---
