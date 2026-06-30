@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { findCalendarIPO } from "@/features/ipo-calendar/lib/calendar.service";
-import { checkDbAvailability, prisma } from "@/services/db.service";
+import { checkDbAvailability, getPrisma } from "@/services/db.service";
 import type { GMPEntry } from "@/types/calendar.types";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +20,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
   if (checkDbAvailability()) {
     try {
+      const prisma = await getPrisma();
       const dbIpo = await prisma.ipo.findUnique({ where: { slug: id } });
       if (dbIpo) {
-        const snapshots = await prisma.gmpSnapshot.findMany({
+        const snapshots = await (await getPrisma()).gmpSnapshot.findMany({
           where: { ipoId: dbIpo.id },
           orderBy: { date: "asc" },
           take: 30,

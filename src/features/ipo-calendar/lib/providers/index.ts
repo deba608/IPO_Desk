@@ -4,7 +4,7 @@ import { seedProvider } from "./seed.provider";
 import { createIpoGuruProvider } from "./ipoguru.provider";
 import { createNseProvider } from "./nse.provider";
 import { createInvestorGainProvider } from "./investorgain.provider";
-import { checkDbAvailability, prisma } from "@/services/db.service";
+import { checkDbAvailability, getPrisma } from "@/services/db.service";
 import type { Board, Registrar } from "@/generated/prisma/enums";
 
 export interface CatalogueResult {
@@ -37,6 +37,7 @@ function mapRegistrar(r: string): Registrar {
 async function persistToDb(ipos: CalendarIPO[], source: DataSource): Promise<void> {
   if (!checkDbAvailability() || source === "sample") return;
   try {
+    const prisma = await getPrisma();
     for (const ipo of ipos) {
       await prisma.ipo.upsert({
         where: { slug: ipo.id },
