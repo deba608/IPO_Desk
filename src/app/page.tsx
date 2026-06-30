@@ -10,24 +10,31 @@ import {
   BarChart3,
   Upload,
   FileSpreadsheet,
+  ScanSearch,
+  Target,
 } from "lucide-react";
 import { IPOSelector } from "@/features/ipo-checker/components/IPOSelector";
 import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
 import { ResultsDashboard } from "@/features/ipo-checker/components/ResultsDashboard";
-import { CheckResponse } from "@/types/allotment.types";
+import { ScanResultsDashboard } from "@/features/ipo-checker/components/ScanResultsDashboard";
+import { CheckResponse, ScanResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
+import { useCheckHistory } from "@/hooks/useCheckHistory";
 
 export default function Home() {
   const [selectedIPO, setSelectedIPO] = useState<IPO | null>(null);
+  const [scanMode, setScanMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<CheckResponse | null>(null);
+  const [scanResults, setScanResults] = useState<ScanResponse | null>(null);
   const [progress, setProgress] = useState(0);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const { add: addHistory } = useCheckHistory();
 
   const handleCheck = useCallback(
     async (pans: string[]) => {
-      if (!selectedIPO) {
+      if (!scanMode && !selectedIPO) {
         toast.error("Please select an IPO first");
         return;
       }
@@ -37,24 +44,33 @@ export default function Home() {
         return;
       }
 
+      if (scanMode && pans.length > 50) {
+        toast.error("Scan mode supports up to 50 PANs at a time.");
+        return;
+      }
+
       setIsLoading(true);
       setProgress(10);
 
       try {
-        // Simulate progress
+        // Simulate progress (scans across many IPOs are slower — ramp gently)
         const progressInterval = setInterval(() => {
-          setProgress((p) => Math.min(p + 5, 85));
+          setProgress((p) => Math.min(p + (scanMode ? 2 : 5), 85));
         }, 300);
 
-        const response = await fetch("/api/check", {
+        const response = await fetch(scanMode ? "/api/scan" : "/api/check", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            pans,
-            // Namespaced id so the backend resolves the right registrar even
-            // when two registrars reuse the same numeric clientId
-            ipoClientId: selectedIPO.id,
-          }),
+          body: JSON.stringify(
+            scanMode
+              ? { pans }
+              : {
+                  pans,
+                  // Namespaced id so the backend resolves the right registrar even
+                  // when two registrars reuse the same numeric clientId
+                  ipoClientId: selectedIPO!.id,
+                }
+          ),
         });
 
         clearInterval(progressInterval);
@@ -65,26 +81,72 @@ export default function Home() {
           throw new Error(err.error ?? "Check failed");
         }
 
-        const data: CheckResponse = await response.json();
-        setResults(data);
+        const data = await response.json();
+
+        if (scanMode) {
+          const scan = data as ScanResponse;
+          setScanResults(scan);
+          setResults(null);
+
+          addHistory({
+            type: "scan",
+            label: `${scan.scanned} IPOs`,
+            pansChecked: scan.pansChecked,
+            allotted: scan.iposWithAllotment,
+            total: scan.scanned,
+            appliedTo: scan.ipos.length,
+          });
+
+          if (scan.iposWithAllotment > 0) {
+            toast.success(
+              `Allotment found in ${scan.iposWithAllotment} IPO${
+                scan.iposWithAllotment === 1 ? "" : "s"
+              }! Scanned ${scan.scanned} active IPOs.`,
+              { duration: 5000 }
+            );
+          } else if (scan.ipos.length > 0) {
+            toast.info(
+              `Applied to ${scan.ipos.length} IPO${
+                scan.ipos.length === 1 ? "" : "s"
+              }, no allotments yet.`,
+              { duration: 4000 }
+            );
+          } else {
+            toast.info(
+              `Scan complete: no applications found across ${scan.scanned} IPOs.`,
+              { duration: 4000 }
+            );
+          }
+        } else {
+          const check = data as CheckResponse;
+          setScanResults(null);
+          setResults(check);
+
+          addHistory({
+            type: "check",
+            label: check.ipoName,
+            registrar: selectedIPO?.registrar,
+            pansChecked: check.summary.total,
+            allotted: check.summary.allotted,
+            total: check.summary.total,
+          });
+
+          if (check.summary.allotted > 0) {
+            toast.success(
+              `Allotment confirmed: ${check.summary.allotted} of ${check.summary.total} PANs were allotted.`,
+              { duration: 5000 }
+            );
+          } else {
+            toast.info(
+              `Check complete: ${check.summary.total} PANs checked. No allotments found.`,
+              { duration: 4000 }
+            );
+          }
+        }
 
         setTimeout(() => {
           resultsRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
-
-        const allotted = data.summary.allotted;
-        const total = data.summary.total;
-
-        if (allotted > 0) {
-          toast.success(
-            `Allotment confirmed: ${allotted} of ${total} PANs were allotted.`,
-            { duration: 5000 }
-          );
-        } else {
-          toast.info(`Check complete: ${total} PANs checked. No allotments found.`, {
-            duration: 4000,
-          });
-        }
       } catch (error: unknown) {
         const msg =
           error instanceof Error ? error.message : "Something went wrong";
@@ -94,7 +156,7 @@ export default function Home() {
         setTimeout(() => setProgress(0), 1000);
       }
     },
-    [selectedIPO]
+    [selectedIPO, scanMode, addHistory]
   );
 
   return (
@@ -182,13 +244,42 @@ export default function Home() {
               </p>
             </div>
 
-            {/* IPO Selector */}
-            <div className="px-8 py-6 border-b border-border">
-              <IPOSelector
-                value={selectedIPO}
-                onChange={setSelectedIPO}
-              />
+            {/* Mode toggle: single IPO vs scan all active IPOs */}
+            <div className="px-8 pt-6">
+              <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/30 p-1">
+                <button
+                  type="button"
+                  onClick={() => setScanMode(false)}
+                  className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    !scanMode
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Target className="h-4 w-4" />
+                  Single IPO
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScanMode(true)}
+                  className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    scanMode
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <ScanSearch className="h-4 w-4" />
+                  Scan All IPOs
+                </button>
+              </div>
             </div>
+
+            {/* IPO Selector — hidden in scan mode */}
+            {!scanMode && (
+              <div className="px-8 py-6 border-b border-border">
+                <IPOSelector value={selectedIPO} onChange={setSelectedIPO} />
+              </div>
+            )}
 
             {/* Input Tabs */}
             <div className="px-8 py-6">
@@ -197,23 +288,28 @@ export default function Home() {
                 isLoading={isLoading}
                 progress={progress}
                 selectedIPO={selectedIPO}
+                scanMode={scanMode}
               />
             </div>
           </div>
         </section>
 
         {/* Results Section */}
-        {results && (
+        {(results || scanResults) && (
           <section
             ref={resultsRef}
             className="container mx-auto max-w-6xl px-4 pb-16"
           >
-            <ResultsDashboard results={results} />
+            {scanResults ? (
+              <ScanResultsDashboard results={scanResults} />
+            ) : (
+              results && <ResultsDashboard results={results} />
+            )}
           </section>
         )}
 
         {/* How It Works */}
-        {!results && (
+        {!results && !scanResults && (
           <section className="container mx-auto max-w-5xl px-4 pb-20">
             <div className="text-center mb-10">
               <h2 className="text-2xl font-bold">How It Works</h2>
