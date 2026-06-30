@@ -140,10 +140,6 @@ export function Header() {
           <span className="text-base font-bold tracking-tight sm:text-lg">
             IPO Desk
           </span>
-          <span className="hidden items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400 sm:inline-flex">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-            Live
-          </span>
         </Link>
 
         {/* Desktop nav */}
