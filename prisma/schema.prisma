@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Board {
+  mainboard
+  sme
+}
+
+enum Lifecycle {
+  upcoming
+  open
+  closed
+  listed
+}
+
+enum Registrar {
+  kfintech
+  linkintime
+  bigshare
+  mufg
+}
+
+enum IPOStatus {
+  pending
+  open
+  closed
+  listed
+  withdrawn
+}
+
+model Ipo {
+  id           String    @id @default(cuid())
+  slug         String    @unique
+  name         String
+  symbol       String?
+  board        Board     @default(mainboard)
+  registrar    Registrar @default(kfintech)
+  status       IPOStatus @default(pending)
+  leadManagers String[]
+
+  issueSizeCr  Float
+  priceBandMin Float
+  priceBandMax Float
+  lotSize      Int
+  minInvestment Int
+
+  openDate      DateTime
+  closeDate     DateTime
+  allotmentDate DateTime?
+  listingDate   DateTime?
+  listingPrice  Float?
+
+  exchanges String[]
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  gmpHistory       GmpSnapshot[]
+  subscriptionSnaps SubSnapshot[]
+  reports          Report[]
+  watchlistEntries WatchlistEntry[]
+  alerts           Alert[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([openDate])
+}
+
+model GmpSnapshot {
+  id      String   @id @default(cuid())
+  ipoId   String
+  ipo     Ipo      @relation(fields: [ipoId], references: [id], onDelete: Cascade)
+  gmp     Float
+  date    DateTime @default(now())
+  source  String   @default("investorgain")
+
+  @@index([ipoId, date])
+  @@index([ipoId])
+}
+
+model SubSnapshot {
+  id        String   @id @default(cuid())
+  ipoId     String
+  ipo       Ipo      @relation(fields: [ipoId], references: [id], onDelete: Cascade)
+  qib       Float?
+  nii       Float?
+  retail    Float?
+  total     Float?
+  date      DateTime @default(now())
+
+  @@index([ipoId, date])
+  @@index([ipoId])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  ipoId       String
+  ipo         Ipo      @relation(fields: [ipoId], references: [id], onDelete: Cascade)
+  overallScore Int
+  verdict     String
+  sections    Json
+  source      String   @default("algorithmic")
+  createdAt   DateTime @default(now())
+
+  @@index([ipoId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  alerts          Alert[]
+  watchlistEntries WatchlistEntry[]
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipoId     String?
+  ipo       Ipo?     @relation(fields: [ipoId], references: [id], onDelete: SetNull)
+  trigger   String   // gmp_crossed, subscription_milestone, ipo_opens, allotment_available
+  threshold Float?
+  channel   String   @default("email") // email, push
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([ipoId])
+}
+
+model WatchlistEntry {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipoId     String
+  ipo       Ipo      @relation(fields: [ipoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, ipoId])
+  @@index([userId])
+  @@index([ipoId])
+}

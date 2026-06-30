@@ -24,6 +24,10 @@ export interface PriceBand {
 export interface Subscription {
   qib?: number;
   nii?: number;
+  /** Small HNI (₹2–10L) subscription multiple, when reported. */
+  shni?: number;
+  /** Big HNI (>₹10L) subscription multiple, when reported. */
+  bhni?: number;
   retail?: number;
   total?: number;
   /** ISO timestamp of the last subscription update */
@@ -71,6 +75,19 @@ export interface CalendarIPO {
   subscription?: Subscription;
   /** Issue price used for listing-day returns, once listed (INR) */
   listingPrice?: number;
+
+  /** GMP as % of upper price band, sourced directly from the provider when given. */
+  gmpPercent?: number;
+  /** Crowd rating, 1–5 ("🔥" count from InvestorGain). */
+  rating?: number;
+  /** Price-to-earnings ratio at the upper band, when published. */
+  peRatio?: number;
+  /** Whether the anchor-investor allotment has been announced. */
+  anchorListed?: boolean;
+  /** InvestorGain numeric id (used to join subscription/detail reports). */
+  igId?: number;
+  /** Canonical detail page on the source site (InvestorGain). */
+  sourceUrl?: string;
 }
 
 export interface CalendarIPOWithStatus extends CalendarIPO {
