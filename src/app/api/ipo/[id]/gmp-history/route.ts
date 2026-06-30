@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { findCalendarIPO } from "@/features/ipo-calendar/lib/calendar.service";
+import { checkDbAvailability, prisma } from "@/services/db.service";
 import type { GMPEntry } from "@/types/calendar.types";
 
 export const dynamic = "force-dynamic";
@@ -11,26 +12,50 @@ interface RouteParams {
 export async function GET(_request: Request, { params }: RouteParams) {
   const { id } = await params;
   const ipo = await findCalendarIPO(id);
-  if (!ipo || ipo.gmp === undefined) {
+  if (!ipo) {
+    return NextResponse.json({ history: [] });
+  }
+
+  const capPrice = ipo.priceBand.max;
+
+  // Try DB first
+  if (checkDbAvailability()) {
+    try {
+      const dbIpo = await prisma.ipo.findUnique({ where: { slug: id } });
+      if (dbIpo) {
+        const snapshots = await prisma.gmpSnapshot.findMany({
+          where: { ipoId: dbIpo.id },
+          orderBy: { date: "asc" },
+          take: 30,
+        });
+        if (snapshots.length >= 2) {
+          const entries: GMPEntry[] = snapshots.map((s) => ({
+            date: s.date.toISOString().split("T")[0],
+            gmp: s.gmp,
+            gainPercent: capPrice > 0 ? Math.round((s.gmp / capPrice) * 1000) / 10 : undefined,
+          }));
+          return NextResponse.json({ history: entries });
+        }
+      }
+    } catch {
+      // Fall through to demo data
+    }
+  }
+
+  // Demo data when no DB or no snapshots
+  if (ipo.gmp === undefined) {
     return NextResponse.json({ history: [] });
   }
 
   const today = new Date();
   const entries: GMPEntry[] = [];
 
-  const capPrice = ipo.priceBand.max;
-
-  // Generate ~14 days of realistic demo history converging to the current GMP.
-  // Replace with a DB query when the data ingestion module ships.
   for (let i = 14; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-
-    // Skip weekends
     const dow = d.getDay();
     if (dow === 0 || dow === 6) continue;
 
-    // Noise: random walk that trends toward the current GMP
     const progress = 1 - i / 14;
     const noise = (Math.random() - 0.5) * 8;
     const gmp = Math.round(Math.max(0, ipo.gmp * progress + noise * (1 - progress)));
