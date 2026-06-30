@@ -12,6 +12,7 @@ import {
   Flame,
   ChevronRight,
   Star,
+  Anchor,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIPOWithStatus, IPOLifecycle } from "@/types/calendar.types";
@@ -178,6 +179,33 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
           value={ipo.listingDate ? formatDate(ipo.listingDate) : "TBA"}
         />
       </div>
+
+      {/* Enrichment chips: crowd rating · P/E · anchor (from InvestorGain) */}
+      {(ipo.rating !== undefined ||
+        ipo.peRatio !== undefined ||
+        ipo.anchorListed !== undefined) && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+          {ipo.rating !== undefined && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-md bg-orange-500/10 px-1.5 py-0.5 font-medium text-orange-400"
+              title={`Crowd rating ${ipo.rating}/5`}
+            >
+              {"🔥".repeat(ipo.rating)}
+            </span>
+          )}
+          {ipo.peRatio !== undefined && (
+            <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">
+              P/E <span className="font-medium text-foreground">{ipo.peRatio}</span>
+            </span>
+          )}
+          {ipo.anchorListed && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 font-medium text-emerald-400">
+              <Anchor className="h-3 w-3" />
+              Anchor
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Subscription (when available) */}
       {subTotal !== undefined && (

@@ -5,7 +5,7 @@ import { createIpoGuruProvider } from "./ipoguru.provider";
 import { createNseProvider } from "./nse.provider";
 import { createInvestorGainProvider } from "./investorgain.provider";
 import { checkDbAvailability, prisma } from "@/services/db.service";
-import type { Board, Registrar } from "@/generated/prisma";
+import type { Board, Registrar } from "@/generated/prisma/enums";
 
 export interface CatalogueResult {
   ipos: CalendarIPO[];

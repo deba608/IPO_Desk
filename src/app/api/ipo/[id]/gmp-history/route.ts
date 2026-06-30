@@ -28,8 +28,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
           take: 30,
         });
         if (snapshots.length >= 2) {
+          const typed = snapshots as Array<{ date: Date; gmp: number }>;
           return NextResponse.json({
-            history: snapshots.map((s: { date: Date; gmp: number }) => ({
+            history: typed.map((s) => ({
               date: s.date.toISOString().split("T")[0],
               gmp: s.gmp,
               gainPercent: capPrice > 0 ? Math.round((s.gmp / capPrice) * 1000) / 10 : undefined,
