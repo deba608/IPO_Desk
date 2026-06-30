@@ -1,32 +1,21 @@
-// src/features/ipo-calendar/lib/providers/index.ts
-// Provider registry: selects the live provider when configured, otherwise the
-// seed provider, and caches results in-memory with a TTL so we stay well under
-// upstream rate limits (IPO Guru: 15/min, 300/day) and serve fast.
-//
-// On a live-provider failure we fall back to the seed catalogue rather than
-// erroring the whole calendar.
-
 import { CalendarIPO, DataSource } from "@/types/calendar.types";
 import { CalendarProvider } from "./types";
 import { seedProvider } from "./seed.provider";
 import { createIpoGuruProvider } from "./ipoguru.provider";
 import { createNseProvider } from "./nse.provider";
 import { createInvestorGainProvider } from "./investorgain.provider";
+import { checkDbAvailability, prisma } from "@/services/db.service";
+import type { Board, Registrar } from "@/generated/prisma";
 
 export interface CatalogueResult {
   ipos: CalendarIPO[];
   source: DataSource;
 }
 
-const TTL_MS = 60 * 1000; // 1 minute — matches client polling interval
+const TTL_MS = 60 * 1000;
 
 let cache: { at: number; result: CatalogueResult } | null = null;
 
-// Live-source priority (first that succeeds wins):
-//   1. IPO Guru     — when IPOGURU_API_KEY is set (official partner feed)
-//   2. InvestorGain — keyless, richest free source (GMP + dates + lot + size)
-//   3. NSE official — keyless fallback (no GMP)
-// Seed sample data is only reached if every live source fails.
 function liveProviders(): CalendarProvider[] {
   const key = process.env.IPOGURU_API_KEY?.trim();
   const chain: CalendarProvider[] = [];
@@ -36,26 +25,91 @@ function liveProviders(): CalendarProvider[] {
   return chain;
 }
 
-/** Returns the IPO catalogue + its source, cached for TTL_MS. */
+function mapBoard(b: string): Board {
+  return b === "sme" ? "sme" : "mainboard";
+}
+
+function mapRegistrar(r: string): Registrar {
+  if (r === "kfintech" || r === "mufg" || r === "bigshare" || r === "linkintime") return r;
+  return "kfintech";
+}
+
+async function persistToDb(ipos: CalendarIPO[], source: DataSource): Promise<void> {
+  if (!checkDbAvailability() || source === "sample") return;
+  try {
+    for (const ipo of ipos) {
+      await prisma.ipo.upsert({
+        where: { slug: ipo.id },
+        update: {
+          name: ipo.name,
+          symbol: ipo.symbol,
+          board: mapBoard(ipo.board),
+          registrar: mapRegistrar(ipo.registrar),
+          issueSizeCr: ipo.issueSizeCr,
+          priceBandMin: ipo.priceBand.min,
+          priceBandMax: ipo.priceBand.max,
+          lotSize: ipo.lotSize,
+          minInvestment: ipo.lotSize * ipo.priceBand.max,
+          openDate: new Date(ipo.openDate + "T00:00:00Z"),
+          closeDate: new Date(ipo.closeDate + "T00:00:00Z"),
+          allotmentDate: ipo.allotmentDate ? new Date(ipo.allotmentDate + "T00:00:00Z") : null,
+          listingDate: ipo.listingDate ? new Date(ipo.listingDate + "T00:00:00Z") : null,
+          exchanges: ipo.exchanges,
+          leadManagers: ipo.leadManagers,
+        },
+        create: {
+          slug: ipo.id,
+          name: ipo.name,
+          symbol: ipo.symbol,
+          board: mapBoard(ipo.board),
+          registrar: mapRegistrar(ipo.registrar),
+          issueSizeCr: ipo.issueSizeCr,
+          priceBandMin: ipo.priceBand.min,
+          priceBandMax: ipo.priceBand.max,
+          lotSize: ipo.lotSize,
+          minInvestment: ipo.lotSize * ipo.priceBand.max,
+          openDate: new Date(ipo.openDate + "T00:00:00Z"),
+          closeDate: new Date(ipo.closeDate + "T00:00:00Z"),
+          allotmentDate: ipo.allotmentDate ? new Date(ipo.allotmentDate + "T00:00:00Z") : null,
+          listingDate: ipo.listingDate ? new Date(ipo.listingDate + "T00:00:00Z") : null,
+          exchanges: ipo.exchanges,
+          leadManagers: ipo.leadManagers,
+          status: "open",
+        },
+      });
+
+      if (ipo.gmp !== undefined) {
+        const dbIpo = await prisma.ipo.findUnique({ where: { slug: ipo.id } });
+        if (dbIpo) {
+          await prisma.gmpSnapshot.create({
+            data: { ipoId: dbIpo.id, gmp: ipo.gmp, source: "investorgain" },
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[calendar] DB persist failed (non-fatal):", err);
+  }
+}
+
 export async function loadCatalogue(forceRefresh = false): Promise<CatalogueResult> {
   if (!forceRefresh && cache && Date.now() - cache.at < TTL_MS) {
     return cache.result;
   }
 
-  // Try each live source in priority order; first non-empty result wins.
   for (const provider of liveProviders()) {
     try {
       const ipos = await provider.fetchCatalogue();
-      if (ipos.length === 0) continue; // empty → try the next source
+      if (ipos.length === 0) continue;
       const result: CatalogueResult = { ipos, source: provider.source };
       cache = { at: Date.now(), result };
+      persistToDb(ipos, provider.source);
       return result;
     } catch (err) {
       console.error("[calendar] live provider failed, trying next source:", err);
     }
   }
 
-  // Every live source failed/empty: prefer last good cache, else sample seed.
   if (cache) return cache.result;
   return { ipos: await seedProvider.fetchCatalogue(), source: "sample" };
 }

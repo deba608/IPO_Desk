@@ -38,8 +38,12 @@ function enrich(ipo: CalendarIPO, today: string): CalendarIPOWithStatus {
   const lifecycle = deriveLifecycle(ipo, today);
   const minInvestment = ipo.lotSize * ipo.priceBand.max;
 
+  // Prefer the provider's published GMP % (InvestorGain `~gmp_percent_calc`);
+  // fall back to computing it from GMP and the upper price band.
   const gmpPercent =
-    ipo.gmp !== undefined
+    ipo.gmpPercent !== undefined
+      ? round1(ipo.gmpPercent)
+      : ipo.gmp !== undefined && ipo.priceBand.max > 0
       ? round1((ipo.gmp / ipo.priceBand.max) * 100)
       : undefined;
 

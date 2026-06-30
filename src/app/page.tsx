@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import {
   Shield,
@@ -14,26 +15,19 @@ import {
 import { IPOSelector } from "@/features/ipo-checker/components/IPOSelector";
 import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
 import { ResultsDashboard } from "@/features/ipo-checker/components/ResultsDashboard";
-import { ScanResultsDashboard } from "@/features/ipo-checker/components/ScanResultsDashboard";
-import { CheckResponse, ScanResponse } from "@/types/allotment.types";
+import { CheckResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
-import { Header } from "@/components/common/Header";
-import { useCheckHistory } from "@/hooks/useCheckHistory";
-import { ScanSearch, Target } from "lucide-react";
 
 export default function Home() {
   const [selectedIPO, setSelectedIPO] = useState<IPO | null>(null);
-  const [scanMode, setScanMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<CheckResponse | null>(null);
-  const [scanResults, setScanResults] = useState<ScanResponse | null>(null);
   const [progress, setProgress] = useState(0);
   const resultsRef = useRef<HTMLDivElement>(null);
-  const { add: addHistory } = useCheckHistory();
 
   const handleCheck = useCallback(
     async (pans: string[]) => {
-      if (!scanMode && !selectedIPO) {
+      if (!selectedIPO) {
         toast.error("Please select an IPO first");
         return;
       }
@@ -43,33 +37,24 @@ export default function Home() {
         return;
       }
 
-      if (scanMode && pans.length > 50) {
-        toast.error("Scan mode supports up to 50 PANs at a time.");
-        return;
-      }
-
       setIsLoading(true);
       setProgress(10);
 
       try {
-        // Simulate progress (scans across many IPOs are slower — ramp gently)
+        // Simulate progress
         const progressInterval = setInterval(() => {
-          setProgress((p) => Math.min(p + (scanMode ? 2 : 5), 85));
+          setProgress((p) => Math.min(p + 5, 85));
         }, 300);
 
-        const response = await fetch(scanMode ? "/api/scan" : "/api/check", {
+        const response = await fetch("/api/check", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            scanMode
-              ? { pans }
-              : {
-                  pans,
-                  // Namespaced id so the backend resolves the right registrar even
-                  // when two registrars reuse the same numeric clientId
-                  ipoClientId: selectedIPO!.id,
-                }
-          ),
+          body: JSON.stringify({
+            pans,
+            // Namespaced id so the backend resolves the right registrar even
+            // when two registrars reuse the same numeric clientId
+            ipoClientId: selectedIPO.id,
+          }),
         });
 
         clearInterval(progressInterval);
@@ -80,71 +65,26 @@ export default function Home() {
           throw new Error(err.error ?? "Check failed");
         }
 
-        const data = await response.json();
-
-        if (scanMode) {
-          const scan = data as ScanResponse;
-          setScanResults(scan);
-          setResults(null);
-
-          addHistory({
-            type: "scan",
-            label: `${scan.scanned} IPOs`,
-            pansChecked: scan.pansChecked,
-            allotted: scan.iposWithAllotment,
-            total: scan.scanned,
-            appliedTo: scan.ipos.length,
-          });
-
-          if (scan.iposWithAllotment > 0) {
-            toast.success(
-              `Allotment found in ${scan.iposWithAllotment} IPO${
-                scan.iposWithAllotment === 1 ? "" : "s"
-              }! Scanned ${scan.scanned} active IPOs.`,
-              { duration: 5000 }
-            );
-          } else if (scan.ipos.length > 0) {
-            toast.info(
-              `Applied to ${scan.ipos.length} IPO${
-                scan.ipos.length === 1 ? "" : "s"
-              }, no allotments yet.`,
-              { duration: 4000 }
-            );
-          } else {
-            toast.info(`Scan complete: no applications found across ${scan.scanned} IPOs.`, {
-              duration: 4000,
-            });
-          }
-        } else {
-          const check = data as CheckResponse;
-          setScanResults(null);
-          setResults(check);
-
-          addHistory({
-            type: "check",
-            label: check.ipoName,
-            registrar: selectedIPO?.registrar,
-            pansChecked: check.summary.total,
-            allotted: check.summary.allotted,
-            total: check.summary.total,
-          });
-
-          if (check.summary.allotted > 0) {
-            toast.success(
-              `Allotment confirmed: ${check.summary.allotted} of ${check.summary.total} PANs were allotted.`,
-              { duration: 5000 }
-            );
-          } else {
-            toast.info(
-              `Check complete: ${check.summary.total} PANs checked. No allotments found.`,
-              { duration: 4000 }
-            );
-          }
-        }
+        const data: CheckResponse = await response.json();
+        setResults(data);
 
         setTimeout(() => {
           resultsRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
+
+        const allotted = data.summary.allotted;
+        const total = data.summary.total;
+
+        if (allotted > 0) {
+          toast.success(
+            `Allotment confirmed: ${allotted} of ${total} PANs were allotted.`,
+            { duration: 5000 }
+          );
+        } else {
+          toast.info(`Check complete: ${total} PANs checked. No allotments found.`, {
+            duration: 4000,
+          });
+        }
       } catch (error: unknown) {
         const msg =
           error instanceof Error ? error.message : "Something went wrong";
@@ -154,7 +94,7 @@ export default function Home() {
         setTimeout(() => setProgress(0), 1000);
       }
     },
-    [selectedIPO, scanMode, addHistory]
+    [selectedIPO]
   );
 
   return (
@@ -186,33 +126,55 @@ export default function Home() {
           }),
         }}
       />
-      <Header />
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="IPO Desk"
+              width={36}
+              height={36}
+              className="rounded-lg"
+              priority
+            />
+            <span className="text-lg font-bold tracking-tight">IPO Desk</span>
+          </div>
+          <nav className="flex items-center gap-2">
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              Powered by KFintech
+            </span>
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="hidden text-xs text-emerald-400 sm:inline">Live</span>
+          </nav>
+        </div>
+      </header>
 
       <main>
         {/* Hero Section */}
-        <section className="relative overflow-hidden px-4 py-16 sm:py-20">
+        <section className="relative overflow-hidden px-4 py-20">
           {/* Background gradient */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
           <div className="absolute inset-0">
-            <div className="absolute -left-32 top-1/4 h-64 w-64 sm:left-1/4 sm:h-96 sm:w-96 rounded-full bg-primary/10 blur-3xl" />
-            <div className="absolute -right-32 bottom-1/4 h-48 w-48 sm:right-1/4 sm:h-64 sm:w-64 rounded-full bg-blue-500/10 blur-3xl" />
+            <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+            <div className="absolute right-1/4 bottom-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
           </div>
 
           <div className="relative container mx-auto max-w-5xl text-center">
-                {/* Title */}
-            <h1 className="mb-6 text-3xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+            {/* Title */}
+            <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
               Check IPO Allotment
               <span className="block gradient-text">in Seconds</span>
             </h1>
 
-            <p className="mx-auto mb-8 sm:mb-10 max-w-2xl text-base sm:text-lg text-muted-foreground">
+            <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground">
               Check allotment status for single or multiple PANs instantly.
               Upload Excel files for bulk checking. Export results to CSV or
               Excel.
             </p>
 
             {/* Feature pills */}
-            <div className="mb-8 sm:mb-12 flex flex-wrap justify-center gap-2 sm:gap-3">
+            <div className="mb-12 flex flex-wrap justify-center gap-3">
               {[
                 { icon: Shield, text: "Secure & Private" },
                 { icon: Zap, text: "Instant Results" },
@@ -227,99 +189,65 @@ export default function Home() {
                   {text}
                 </div>
               ))}
-            </div>            
+            </div>
           </div>
         </section>
 
         {/* Main Checker Card */}
         <section className="container mx-auto max-w-4xl px-4 pb-8">
-            <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
+          <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
             {/* Card Header */}
-            <div className="border-b border-border px-4 sm:px-6 md:px-8 py-5 sm:py-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Check Allotment Status</h2>
-              <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+            <div className="border-b border-border px-8 py-6">
+              <h2 className="text-xl font-semibold">Check Allotment Status</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Select an IPO, enter PAN number(s), and check your allotment status
               </p>
             </div>
 
-            {/* Mode toggle: single IPO vs scan all */}
-            <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6">
-              <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/30 p-1">
-                <button
-                  type="button"
-                  onClick={() => setScanMode(false)}
-                  className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    !scanMode
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Target className="h-4 w-4" />
-                  Single IPO
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScanMode(true)}
-                  className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    scanMode
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <ScanSearch className="h-4 w-4" />
-                  Scan All IPOs
-                </button>
-              </div>
+            {/* IPO Selector */}
+            <div className="px-8 py-6 border-b border-border">
+              <IPOSelector
+                value={selectedIPO}
+                onChange={setSelectedIPO}
+              />
             </div>
 
-            {/* IPO Selector — hidden in scan mode */}
-            {!scanMode && (
-              <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 border-b border-border">
-                <IPOSelector value={selectedIPO} onChange={setSelectedIPO} />
-              </div>
-            )}
-
             {/* Input Tabs */}
-            <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
+            <div className="px-8 py-6">
               <CheckerTabs
                 onCheck={handleCheck}
                 isLoading={isLoading}
                 progress={progress}
                 selectedIPO={selectedIPO}
-                scanMode={scanMode}
               />
             </div>
           </div>
         </section>
 
         {/* Results Section */}
-        {(results || scanResults) && (
+        {results && (
           <section
             ref={resultsRef}
             className="container mx-auto max-w-6xl px-4 pb-16"
           >
-            {scanResults ? (
-              <ScanResultsDashboard results={scanResults} />
-            ) : (
-              results && <ResultsDashboard results={results} />
-            )}
+            <ResultsDashboard results={results} />
           </section>
         )}
 
         {/* How It Works */}
-        {!results && !scanResults && (
-          <section className="container mx-auto max-w-5xl px-4 pb-16 sm:pb-20">
-            <div className="text-center mb-8 sm:mb-10">
-              <h2 className="text-xl sm:text-2xl font-bold">How It Works</h2>
-              <p className="mt-2 text-sm sm:text-base text-muted-foreground">3 simple steps to check your IPO allotment</p>
+        {!results && (
+          <section className="container mx-auto max-w-5xl px-4 pb-20">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl font-bold">How It Works</h2>
+              <p className="mt-2 text-muted-foreground">3 simple steps to check your IPO allotment</p>
             </div>
-            <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-3">
               {[
                 {
                   step: "01",
                   icon: BarChart3,
                   title: "Select IPO",
-                  desc: "Choose from the list of active IPOs in the dropdown",
+                  desc: "Choose from 28 active KFintech IPOs in the dropdown",
                 },
                 {
                   step: "02",
@@ -336,16 +264,16 @@ export default function Home() {
               ].map(({ step, icon: Icon, title, desc }) => (
                 <div
                   key={step}
-                  className="relative rounded-xl border border-border bg-card p-5 sm:p-6 hover:border-primary/50 transition-colors"
+                  className="relative rounded-xl border border-border bg-card p-6 hover:border-primary/50 transition-colors"
                 >
-                  <div className="absolute top-3 sm:top-4 right-3 sm:right-4 text-3xl sm:text-4xl font-bold text-primary/10">
+                  <div className="absolute top-4 right-4 text-4xl font-bold text-primary/10">
                     {step}
                   </div>
-                  <div className="mb-3 sm:mb-4 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="mb-1 sm:mb-2 font-semibold text-sm sm:text-base">{title}</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">{desc}</p>
+                  <h3 className="mb-2 font-semibold">{title}</h3>
+                  <p className="text-sm text-muted-foreground">{desc}</p>
 
                 </div>
               ))}
@@ -354,13 +282,11 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="border-t border-border py-6 sm:py-8">
-        <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center">
-          <div className="hidden sm:block flex-1" />
-          <p className="text-xs sm:text-sm text-muted-foreground">Crafted with ❤️ by Dev</p>
-          <div className="flex-1 text-center sm:text-right">
-            <p className="text-xs sm:text-sm text-muted-foreground">© 2026 IPO Desk. All rights reserved.</p>
-          </div>
+      <footer className="border-t border-border py-8">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            © 2026 IPO Desk. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>

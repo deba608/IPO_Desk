@@ -209,14 +209,29 @@ function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-function normalize(row: RawRow): CalendarIPO | null {
+function normalize(
+  row: RawRow,
+  subMap?: Map<number, import("@/types/calendar.types").Subscription>
+): CalendarIPO | null {
   const name = (row["~ipo_name"] ?? stripTags(row.Name)).trim();
   const openDate = isoDate(row["~Srt_Open"]);
   const closeDate = isoDate(row["~Srt_Close"]);
   if (!name || !openDate || !closeDate) return null; // unusable record
 
   const board = parseBoard(row["~IPO_Category"]);
-  const sub = parseSub(row.Sub);
+  const igId = typeof row["~id"] === "number" ? row["~id"] : undefined;
+
+  // Prefer the richer category breakdown from the subscription report (333);
+  // fall back to the single "Sub" total carried in the GMP report (331).
+  const categorySub = igId !== undefined ? subMap?.get(igId) : undefined;
+  const totalSub = parseSub(row.Sub);
+  const subscription =
+    categorySub ??
+    (totalSub !== undefined
+      ? { total: totalSub, updatedAt: new Date().toISOString() }
+      : undefined);
+
+  const sourcePath = row["~urlrewrite_folder_name"]?.trim();
 
   return {
     id: `${board}-${slugify(name)}`,
@@ -234,30 +249,54 @@ function normalize(row: RawRow): CalendarIPO | null {
     exchanges: parseExchanges(row.Name),
     gmp: parseGmp(row.GMP),
     gmpUpdatedAt: stripTags(row["Updated-On"]) || undefined,
-    subscription: sub !== undefined ? { total: sub, updatedAt: new Date().toISOString() } : undefined,
+    gmpPercent: parseDecimal(row["~gmp_percent_calc"]) || undefined,
+    subscription,
     listingPrice: undefined,
+    rating: parseRating(row.Rating),
+    peRatio: parseDecimal(row["~P/E"]),
+    anchorListed: parseAnchor(row.Anchor),
+    igId,
+    sourceUrl: sourcePath ? `https://www.investorgain.com${sourcePath}` : undefined,
   };
 }
+
+const IG_HEADERS = {
+  "User-Agent": UA,
+  Accept: "application/json",
+  Referer: REFERER,
+};
 
 export function createInvestorGainProvider(): CalendarProvider {
   return {
     source: "live",
     async fetchCatalogue(): Promise<CalendarIPO[]> {
-      const res = await fetch(reportUrl(), {
-        headers: {
-          "User-Agent": UA,
-          Accept: "application/json",
-          Referer: REFERER,
-        },
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        throw new Error(`InvestorGain report responded ${res.status}`);
+      // Primary report (331) is required; the subscription report (333) is a
+      // best-effort enrichment — a failure there must not sink the catalogue.
+      const [gmpRes, subRes] = await Promise.allSettled([
+        fetch(reportUrl(), { headers: IG_HEADERS, cache: "no-store" }),
+        fetch(subscriptionUrl(), { headers: IG_HEADERS, cache: "no-store" }),
+      ]);
+
+      if (gmpRes.status !== "fulfilled" || !gmpRes.value.ok) {
+        const code =
+          gmpRes.status === "fulfilled" ? gmpRes.value.status : "network error";
+        throw new Error(`InvestorGain report responded ${code}`);
       }
-      const json: RawResponse = await res.json();
+
+      let subMap: Map<number, import("@/types/calendar.types").Subscription> | undefined;
+      if (subRes.status === "fulfilled" && subRes.value.ok) {
+        try {
+          const subJson: SubResponse = await subRes.value.json();
+          subMap = buildSubMap(subJson.reportTableData ?? []);
+        } catch {
+          // Malformed subscription payload — proceed without category breakdown.
+        }
+      }
+
+      const json: RawResponse = await gmpRes.value.json();
       const rows = json.reportTableData ?? [];
       return rows
-        .map(normalize)
+        .map((row) => normalize(row, subMap))
         .filter((ipo): ipo is CalendarIPO => ipo !== null);
     },
   };

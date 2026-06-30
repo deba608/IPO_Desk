@@ -35,8 +35,13 @@ export function CommandPalette() {
         setOpen((o) => !o);
       }
     };
+    const openFromUI = () => setOpen(true);
     document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    window.addEventListener("open-command-palette", openFromUI);
+    return () => {
+      document.removeEventListener("keydown", down);
+      window.removeEventListener("open-command-palette", openFromUI);
+    };
   }, []);
 
   // Fetch IPO calendar on mount/open to keep search items fresh
