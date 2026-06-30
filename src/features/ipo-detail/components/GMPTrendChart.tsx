@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   XAxis,
   YAxis,
@@ -28,18 +28,18 @@ export function GMPTrendChart({ ipoId }: GMPTrendChartProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     fetch(`/api/ipo/${encodeURIComponent(ipoId)}/gmp-history`)
       .then((r) => r.json())
       .then((json: { history: GMPEntry[] }) => {
-        setData(json.history.reverse());
+        if (!cancelled) setData(json.history.reverse());
       })
-      .catch(() => setData([]))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!cancelled) setData([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [ipoId]);
 
-  const formatINR = useCallback((n: number) =>
-    `₹${n.toLocaleString("en-IN")}`, []);
+  const formatINR = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
   if (loading) {
     return <Skeleton className="h-64 w-full rounded-xl" />;
@@ -96,19 +96,19 @@ export function GMPTrendChart({ ipoId }: GMPTrendChartProps) {
               fontSize: "13px",
             }}
             labelStyle={{ color: "#f1f5f9", fontWeight: 600 }}
-            formatter={((value: number, name: string) => {
-              if (name === "gmp") return [formatINR(value), "GMP"];
+            formatter={(value, name) => {
+              if (name === "gmp") return [formatINR(value as number), "GMP"];
               return [value, name];
-            }) as any}
-            labelFormatter={((label: string) => {
-              const d = new Date(label + "T00:00:00");
+            }}
+            labelFormatter={(label) => {
+              const d = new Date(String(label) + "T00:00:00");
               return d.toLocaleDateString("en-IN", {
                 weekday: "short",
                 day: "2-digit",
                 month: "short",
                 year: "numeric",
               });
-            }) as any}
+            }}
           />
           <Area
             type="monotone"
