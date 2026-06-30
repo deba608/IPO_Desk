@@ -27,7 +27,8 @@ export function CommandPalette() {
   const { ids: watchedIds, toggle: toggleWatch, isWatched } = useWatchlist();
   const [, startTransition] = useTransition();
 
-  // Toggle palette open/closed with Cmd+K or Ctrl+K
+  // Toggle palette open/closed with Cmd+K or Ctrl+K, or via the header's
+  // "open-command-palette" event (search button on desktop + mobile).
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -35,8 +36,13 @@ export function CommandPalette() {
         setOpen((o) => !o);
       }
     };
+    const openEvent = () => setOpen(true);
     document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    window.addEventListener("open-command-palette", openEvent);
+    return () => {
+      document.removeEventListener("keydown", down);
+      window.removeEventListener("open-command-palette", openEvent);
+    };
   }, []);
 
   // Fetch IPO calendar on mount/open to keep search items fresh

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import Image from "next/image";
 import { toast } from "sonner";
 import {
   Shield,
@@ -17,6 +16,7 @@ import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
 import { ResultsDashboard } from "@/features/ipo-checker/components/ResultsDashboard";
 import { CheckResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
+import { Header } from "@/components/common/Header";
 
 export default function Home() {
   const [selectedIPO, setSelectedIPO] = useState<IPO | null>(null);
@@ -126,29 +126,7 @@ export default function Home() {
           }),
         }}
       />
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/logo.png"
-              alt="IPO Desk"
-              width={36}
-              height={36}
-              className="rounded-lg"
-              priority
-            />
-            <span className="text-lg font-bold tracking-tight">IPO Desk</span>
-          </div>
-          <nav className="flex items-center gap-2">
-            <span className="hidden text-xs text-muted-foreground sm:inline">
-              Powered by KFintech
-            </span>
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="hidden text-xs text-emerald-400 sm:inline">Live</span>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       <main>
         {/* Hero Section */}
