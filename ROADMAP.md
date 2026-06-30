@@ -37,9 +37,9 @@ Scored research reports with expandable sections, verdict banner, and algorithmi
 
 ---
 
-## Phase 3 — IPO Score / Recommendation Engine
+## Phase 3 — IPO Score / Recommendation Engine ← ✅ Done
 
-**Status:** 🟡 In progress
+**Status:** ✅ Done
 
 A quantitative scoring system that distills IPO data into a 0–100 score + actionable verdict.
 
@@ -51,8 +51,8 @@ A quantitative scoring system that distills IPO data into a 0–100 score + acti
 - [x] Verdict: Strong Apply / Apply / Apply for Listing Gains / Neutral / Avoid
 - [x] Score cards on IPO detail page (via ResearchReport component)
 - [x] Replace "coming soon" placeholder with live data
-- [ ] Radar chart visualization for score breakdown
-- [ ] Listing Gain Score + Long-Term Score (needs historical data)
+- [x] Radar chart visualization for score breakdown
+- [ ] Listing Gain Score + Long-Term Score (needs historical data / Phase 4)
 
 ---
 
