@@ -41,8 +41,31 @@ function subscribe(callback: () => void): () => void {
   };
 }
 
+// useSyncExternalStore compares snapshots by reference, so getSnapshot must
+// return a STABLE value between store changes. Re-parse only when the raw
+// localStorage string actually changes — returning a fresh array every call
+// causes an infinite render loop ("Maximum update depth exceeded").
+let cachedRaw: string | null | undefined;
+let cachedProfiles: PanProfile[] = [];
+
 function getSnapshot(): PanProfile[] {
-  return readStore();
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    raw = null;
+  }
+  if (raw !== cachedRaw) {
+    cachedRaw = raw;
+    cachedProfiles = readStore();
+  }
+  return cachedProfiles;
+}
+
+// Server render has no storage; must also be referentially stable.
+const EMPTY_PROFILES: PanProfile[] = [];
+function getServerSnapshot(): PanProfile[] {
+  return EMPTY_PROFILES;
 }
 
 function makeId(): string {
@@ -54,7 +77,7 @@ function makeId(): string {
 }
 
 export function useProfiles() {
-  const profiles = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const profiles = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const add = useCallback((name: string, pans: string[]) => {
     const next = [

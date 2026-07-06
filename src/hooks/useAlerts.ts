@@ -70,12 +70,14 @@ function getSnapshot(): AlertRule[] {
   return cachedSnapshot;
 }
 
+const EMPTY: AlertRule[] = [];
+
 function getServerSnapshot(): AlertRule[] {
-  return [];
+  return EMPTY;
 }
 
 export function useAlerts() {
-  const alerts = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const alerts = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const addAlert = useCallback(
     (ipoId: string, ipoName: string, trigger: AlertTrigger, threshold?: number) => {
