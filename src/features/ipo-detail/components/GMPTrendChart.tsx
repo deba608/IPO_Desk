@@ -78,8 +78,12 @@ export function GMPTrendChart({ ipoId }: GMPTrendChartProps) {
             tickLine={false}
             axisLine={{ stroke: "#334155" }}
             tickFormatter={(v: string) => {
-              const d = new Date(v + "T00:00:00");
-              return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+              const d = new Date(v + "T00:00:00+05:30");
+              return d.toLocaleDateString("en-IN", {
+                timeZone: "Asia/Kolkata",
+                day: "2-digit",
+                month: "short",
+              });
             }}
           />
           <YAxis
@@ -103,8 +107,9 @@ export function GMPTrendChart({ ipoId }: GMPTrendChartProps) {
               return [value, name];
             }}
             labelFormatter={(label) => {
-              const d = new Date(String(label) + "T00:00:00");
+              const d = new Date(String(label) + "T00:00:00+05:30");
               return d.toLocaleDateString("en-IN", {
+                timeZone: "Asia/Kolkata",
                 weekday: "short",
                 day: "2-digit",
                 month: "short",

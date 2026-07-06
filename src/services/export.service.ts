@@ -77,7 +77,8 @@ export function exportToXLSX(
   // Summary sheet
   const summary = [
     ["IPO Name", ipoName],
-    ["Generated At", new Date(checkedAt).toLocaleString("en-IN")],
+    // Runs on the server — pin to IST so a UTC deploy doesn't shift the stamp.
+    ["Generated At", `${new Date(checkedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`],
     ["Total PANs", results.length],
     ["Allotted", results.filter((r) => r.status === "allotted").length],
     ["Not Allotted", results.filter((r) => r.status === "not_allotted").length],
