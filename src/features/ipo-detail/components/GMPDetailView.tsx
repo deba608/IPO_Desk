@@ -46,16 +46,21 @@ interface ChartDataPoint {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+// GMP dates are IST calendar dates — anchor the parse to +05:30 AND format in
+// Asia/Kolkata, otherwise a non-IST server/viewer renders the previous day
+// (this shifted dates on the UTC deploy host).
 function fmtDate(iso: string, style: "short" | "long" = "short") {
-  const d = new Date(iso + "T00:00:00");
+  const d = new Date(iso + "T00:00:00+05:30");
   return style === "long"
     ? d.toLocaleDateString("en-IN", {
+        timeZone: "Asia/Kolkata",
         weekday: "short",
         day: "2-digit",
         month: "short",
         year: "numeric",
       })
     : d.toLocaleDateString("en-IN", {
+        timeZone: "Asia/Kolkata",
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -67,8 +72,9 @@ function fmtINR(n: number) {
 }
 
 function fmtDateFull(iso: string) {
-  const d = new Date(iso + "T00:00:00");
+  const d = new Date(iso + "T00:00:00+05:30");
   return d.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "2-digit",
     month: "short",
     year: "numeric",
