@@ -67,25 +67,25 @@ function fmtINR(n: number) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Trend indicator (▲ ▼ —) — compact circle                          */
+/*  Trend indicator                                                    */
 /* ------------------------------------------------------------------ */
 
 function TrendDot({ change }: { change: number | null }) {
   if (change === null) return null;
   if (change > 0)
     return (
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/20">
+      <span className="inline-flex h-[15px] w-[15px] items-center justify-center rounded-full bg-emerald-500/20">
         <ArrowUpRight className="h-2.5 w-2.5 text-emerald-400" />
       </span>
     );
   if (change < 0)
     return (
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-rose-500/20">
+      <span className="inline-flex h-[15px] w-[15px] items-center justify-center rounded-full bg-rose-500/20">
         <ArrowDownRight className="h-2.5 w-2.5 text-rose-400" />
       </span>
     );
   return (
-    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white/[0.06]">
+    <span className="inline-flex h-[15px] w-[15px] items-center justify-center rounded-full bg-white/[0.06]">
       <Minus className="h-2.5 w-2.5 text-white/30" />
     </span>
   );
@@ -161,22 +161,15 @@ export function GMPDetailView({
     };
   }, [data, lotSize]);
 
-  /* Loading */
   if (loading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-10 rounded-lg" />
-        <Skeleton className="h-52 rounded-xl" />
-      </div>
-    );
+    return <Skeleton className="h-48 w-full rounded-lg" />;
   }
 
-  /* Empty */
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-white/[0.08] py-8">
-        <BarChart3 className="h-5 w-5 text-white/15" />
-        <p className="text-xs text-white/35">
+      <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-white/[0.08] py-6">
+        <BarChart3 className="h-4 w-4 text-white/15" />
+        <p className="text-[11px] text-white/35">
           GMP history not available yet — data appears once snapshots are collected.
         </p>
       </div>
@@ -188,35 +181,38 @@ export function GMPDetailView({
   const yMax = Math.ceil(maxGmp + padding);
 
   const getChange = (idx: number): number | null =>
-    idx >= tableData.length - 1 ? null : tableData[idx].gmp - tableData[idx + 1].gmp;
+    idx >= tableData.length - 1
+      ? null
+      : tableData[idx].gmp - tableData[idx + 1].gmp;
 
   const estListingNow = capPrice + latestGmp;
-  const gainPctNow = capPrice > 0 ? Math.round((latestGmp / capPrice) * 1000) / 10 : 0;
+  const gainPctNow =
+    capPrice > 0 ? Math.round((latestGmp / capPrice) * 1000) / 10 : 0;
 
   return (
-    <div className="space-y-3">
-      {/* ── Top bar: Key numbers inline + view toggle ──── */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        {/* Inline stats — compact horizontal chips */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
-          <span className="text-white/40">
-            Cap{" "}
-            <span className="font-semibold text-white/70">{fmtINR(capPrice)}</span>
+    <div className="space-y-2.5">
+      {/* ── Inline summary bar ────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+          <span className="text-white/35">
+            Cap <span className="font-semibold text-white/65">{fmtINR(capPrice)}</span>
           </span>
-          <span className="text-white/40">
+          <span className="text-white/35">
             GMP{" "}
             <span className="font-bold text-emerald-400">
               +{fmtINR(latestGmp)}
             </span>
           </span>
-          <span className="text-white/40">
-            Est. Listing{" "}
-            <span className="font-semibold text-white/70">
-              {fmtINR(estListingNow)}{" "}
-              <span className="text-emerald-500/60">({gainPctNow}%)</span>
+          <span className="text-white/35">
+            Listing{" "}
+            <span className="font-semibold text-white/65">
+              {fmtINR(estListingNow)}
+              <span className="ml-0.5 text-emerald-500/60">
+                ({gainPctNow}%)
+              </span>
             </span>
           </span>
-          <span className="text-white/40">
+          <span className="text-white/35">
             Profit/Lot{" "}
             <span
               className={`font-bold ${latestEstProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}
@@ -226,29 +222,40 @@ export function GMPDetailView({
           </span>
         </div>
 
-        {/* Right side: day count + view toggle */}
-        <div className="ml-auto flex items-center gap-2">
-          <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-[10px] tabular-nums text-white/30">
+        {/* View toggle + day count */}
+        <div className="flex items-center gap-1.5">
+          {gmpUpdatedAt && (
+            <span className="hidden text-[9px] text-white/20 sm:inline">
+              {new Date(gmpUpdatedAt).toLocaleString("en-IN", {
+                timeZone: "Asia/Kolkata",
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          )}
+          <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-1.5 py-px text-[9px] tabular-nums text-white/25">
             {data.length}d
           </span>
           {data.length >= 2 && (
-            <div className="flex items-center gap-px rounded-lg border border-white/[0.06] bg-white/[0.02] p-0.5">
+            <div className="flex items-center rounded-md border border-white/[0.06] bg-white/[0.02] p-px">
               <button
                 onClick={() => setActiveView("table")}
-                className={`rounded-md px-2 py-1 text-[10px] font-medium transition-all ${
+                className={`rounded-[5px] px-1.5 py-0.5 transition-all ${
                   activeView === "table"
                     ? "bg-primary/15 text-primary"
-                    : "text-white/30 hover:text-white/50"
+                    : "text-white/25 hover:text-white/45"
                 }`}
               >
                 <Calendar className="h-3 w-3" />
               </button>
               <button
                 onClick={() => setActiveView("chart")}
-                className={`rounded-md px-2 py-1 text-[10px] font-medium transition-all ${
+                className={`rounded-[5px] px-1.5 py-0.5 transition-all ${
                   activeView === "chart"
                     ? "bg-primary/15 text-primary"
-                    : "text-white/30 hover:text-white/50"
+                    : "text-white/25 hover:text-white/45"
                 }`}
               >
                 <BarChart3 className="h-3 w-3" />
@@ -260,15 +267,15 @@ export function GMPDetailView({
 
       {/* ── Table view ──────────────────────────────────── */}
       {activeView === "table" && (
-        <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+        <div className="overflow-hidden rounded-lg border border-white/[0.05]">
           <div className="overflow-x-auto">
-            {/* Header row */}
-            <div className="grid min-w-[580px] grid-cols-[1fr_72px_88px_110px_88px_64px] items-center bg-white/[0.03] px-3 py-2">
+            {/* Header */}
+            <div className="grid min-w-[540px] grid-cols-[1fr_68px_80px_100px_80px_56px] items-center bg-white/[0.025] px-3 py-1.5">
               {["Date", "Price", "GMP", "Est. Listing", "Profit*", "Δ"].map(
                 (h) => (
                   <span
                     key={h}
-                    className="text-[9px] font-bold uppercase tracking-[0.1em] text-white/20"
+                    className="text-[8px] font-bold uppercase tracking-[0.12em] text-white/18"
                   >
                     {h}
                   </span>
@@ -276,8 +283,8 @@ export function GMPDetailView({
               )}
             </div>
 
-            {/* Scrollable body — compact enough to fit ~8-10 rows visible */}
-            <div className="max-h-[280px] overflow-y-auto">
+            {/* Rows — tighter vertical rhythm */}
+            <div className="max-h-[240px] overflow-y-auto">
               {tableData.map((entry, idx) => {
                 const change = getChange(idx);
                 const estListing = capPrice + entry.gmp;
@@ -297,23 +304,23 @@ export function GMPDetailView({
                 return (
                   <div
                     key={entry.date}
-                    className={`group grid min-w-[580px] grid-cols-[1fr_72px_88px_110px_88px_64px] items-center border-t border-white/[0.03] px-3 py-[7px] transition-colors hover:bg-white/[0.02] ${
+                    className={`group grid min-w-[540px] grid-cols-[1fr_68px_80px_100px_80px_56px] items-center border-t border-white/[0.03] px-3 py-[6px] transition-colors hover:bg-white/[0.02] ${
                       isLatest ? "bg-emerald-500/[0.03]" : ""
                     }`}
                   >
                     {/* Date */}
                     <div className="flex items-center gap-1">
                       <span
-                        className={`text-[12px] tabular-nums ${
+                        className={`text-[11px] tabular-nums ${
                           isLatest
                             ? "font-semibold text-white"
-                            : "text-white/50"
+                            : "text-white/45"
                         }`}
                       >
                         {fmtDate(entry.date)}
                       </span>
                       {isLatest && (
-                        <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1 text-[7px] font-bold uppercase tracking-wider text-emerald-400">
+                        <span className="flex items-center gap-px rounded-full bg-emerald-500/15 px-1 text-[7px] font-bold uppercase tracking-wider text-emerald-400">
                           <span className="relative flex h-1 w-1">
                             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                             <span className="relative inline-flex h-1 w-1 rounded-full bg-emerald-400" />
@@ -322,31 +329,31 @@ export function GMPDetailView({
                         </span>
                       )}
                       {isHigh && !isLatest && (
-                        <span className="rounded-full bg-emerald-500/10 px-1 text-[7px] font-bold uppercase text-emerald-500/50">
+                        <span className="rounded bg-emerald-500/10 px-0.5 text-[7px] font-bold text-emerald-500/50">
                           H
                         </span>
                       )}
                       {isLow && !isLatest && (
-                        <span className="rounded-full bg-rose-500/10 px-1 text-[7px] font-bold uppercase text-rose-500/50">
+                        <span className="rounded bg-rose-500/10 px-0.5 text-[7px] font-bold text-rose-500/50">
                           L
                         </span>
                       )}
                     </div>
 
                     {/* IPO Price */}
-                    <span className="text-[12px] tabular-nums text-white/30">
+                    <span className="text-[11px] tabular-nums text-white/25">
                       {fmtINR(capPrice)}
                     </span>
 
-                    {/* GMP + trend dot */}
-                    <div className="flex items-center gap-1">
+                    {/* GMP + dot */}
+                    <div className="flex items-center gap-0.5">
                       <span
-                        className={`text-[12px] font-bold tabular-nums ${
+                        className={`text-[11px] font-bold tabular-nums ${
                           entry.gmp > 0
                             ? "text-emerald-400"
                             : entry.gmp < 0
                               ? "text-rose-400"
-                              : "text-white/35"
+                              : "text-white/30"
                         }`}
                       >
                         {fmtINR(entry.gmp)}
@@ -355,9 +362,9 @@ export function GMPDetailView({
                     </div>
 
                     {/* Est. Listing (%) */}
-                    <div className="flex items-baseline gap-1">
+                    <div className="flex items-baseline gap-0.5">
                       <span
-                        className={`text-[12px] font-semibold tabular-nums ${
+                        className={`text-[11px] font-semibold tabular-nums ${
                           entry.gmp >= 0
                             ? "text-emerald-400"
                             : "text-rose-400"
@@ -366,20 +373,20 @@ export function GMPDetailView({
                         {fmtINR(estListing)}
                       </span>
                       {gainPct !== undefined && (
-                        <span className="text-[9px] tabular-nums text-white/20">
+                        <span className="text-[8px] tabular-nums text-white/18">
                           ({gainPct.toFixed(1)}%)
                         </span>
                       )}
                     </div>
 
-                    {/* Est. Profit */}
+                    {/* Profit */}
                     <span
-                      className={`text-[12px] font-semibold tabular-nums ${
+                      className={`text-[11px] font-semibold tabular-nums ${
                         estProfit > 0
                           ? "text-emerald-400"
                           : estProfit < 0
                             ? "text-rose-400"
-                            : "text-white/35"
+                            : "text-white/30"
                       }`}
                     >
                       {fmtINR(estProfit)}
@@ -387,14 +394,14 @@ export function GMPDetailView({
 
                     {/* Change */}
                     <span
-                      className={`text-[11px] tabular-nums ${
+                      className={`text-[10px] tabular-nums ${
                         change === null
-                          ? "text-white/15"
+                          ? "text-white/12"
                           : change > 0
                             ? "text-emerald-400"
                             : change < 0
                               ? "text-rose-400"
-                              : "text-white/25"
+                              : "text-white/20"
                       }`}
                     >
                       {change === null
@@ -408,26 +415,22 @@ export function GMPDetailView({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-2 border-t border-white/[0.05] bg-white/[0.015] px-3 py-1.5">
+          <div className="flex items-center justify-between gap-2 border-t border-white/[0.04] bg-white/[0.01] px-3 py-1">
             <div className="flex items-center gap-1">
-              <Info className="h-2.5 w-2.5 text-white/15" />
-              <span className="text-[9px] text-white/25">
-                * Profit = GMP × {lotSize} shares. GMP is unofficial — not investment advice.
+              <Info className="h-2.5 w-2.5 text-white/12" />
+              <span className="text-[8px] text-white/20">
+                * Profit = GMP × {lotSize} shares · Not investment advice
               </span>
             </div>
-            <div className="flex items-center gap-3 text-[9px] text-white/20">
-              <span>
-                H: {fmtINR(maxGmp)}
-              </span>
-              <span>
-                L: {fmtINR(minGmp)}
-              </span>
+            <div className="flex items-center gap-2 text-[8px] text-white/18">
+              <span>H:{fmtINR(maxGmp)}</span>
+              <span>L:{fmtINR(minGmp)}</span>
               <span
                 className={
-                  netChange >= 0 ? "text-emerald-500/50" : "text-rose-500/50"
+                  netChange >= 0 ? "text-emerald-500/40" : "text-rose-500/40"
                 }
               >
-                Net: {netChange >= 0 ? "+" : ""}
+                Δ{netChange >= 0 ? "+" : ""}
                 {netChange}
               </span>
             </div>
@@ -437,12 +440,12 @@ export function GMPDetailView({
 
       {/* ── Chart view ──────────────────────────────────── */}
       {activeView === "chart" && data.length >= 2 && (
-        <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-br from-white/[0.02] to-transparent">
-          <div className="h-52 p-3 pb-1">
+        <div className="overflow-hidden rounded-lg border border-white/[0.05] bg-gradient-to-br from-white/[0.015] to-transparent">
+          <div className="h-48 p-2.5 pb-0.5">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={data}
-                margin={{ top: 5, right: 8, left: -8, bottom: 2 }}
+                margin={{ top: 4, right: 6, left: -10, bottom: 0 }}
               >
                 <defs>
                   <linearGradient
@@ -453,11 +456,7 @@ export function GMPDetailView({
                     y2="1"
                   >
                     <stop offset="0%" stopColor="#34d399" stopOpacity={0.2} />
-                    <stop
-                      offset="100%"
-                      stopColor="#34d399"
-                      stopOpacity={0}
-                    />
+                    <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -467,7 +466,7 @@ export function GMPDetailView({
                 />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 9, fill: "rgba(255,255,255,0.2)" }}
+                  tick={{ fontSize: 8, fill: "rgba(255,255,255,0.18)" }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v: string) => {
@@ -480,12 +479,12 @@ export function GMPDetailView({
                   }}
                 />
                 <YAxis
-                  tick={{ fontSize: 9, fill: "rgba(255,255,255,0.2)" }}
+                  tick={{ fontSize: 8, fill: "rgba(255,255,255,0.18)" }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v: number) => `₹${v}`}
                   domain={[yMin, yMax]}
-                  width={38}
+                  width={36}
                 />
                 <Tooltip
                   contentStyle={{
@@ -493,16 +492,16 @@ export function GMPDetailView({
                     backdropFilter: "blur(12px)",
                     border: "1px solid rgba(255,255,255,0.08)",
                     borderRadius: "8px",
-                    fontSize: "11px",
-                    padding: "6px 10px",
-                    boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                    fontSize: "10px",
+                    padding: "5px 8px",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
                   }}
                   itemStyle={{ color: "#34d399" }}
                   labelStyle={{
                     color: "rgba(255,255,255,0.8)",
                     fontWeight: 600,
                     marginBottom: "2px",
-                    fontSize: "10px",
+                    fontSize: "9px",
                   }}
                   formatter={(value, name) => {
                     if (name === "gmp") {
@@ -516,7 +515,7 @@ export function GMPDetailView({
                   }}
                   labelFormatter={(label) => fmtDate(String(label), "long")}
                   cursor={{
-                    stroke: "rgba(255,255,255,0.06)",
+                    stroke: "rgba(255,255,255,0.05)",
                     strokeWidth: 1,
                   }}
                 />
@@ -524,11 +523,11 @@ export function GMPDetailView({
                   type="monotone"
                   dataKey="gmp"
                   stroke="#34d399"
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                   fill="url(#gmpGradientV2)"
                   dot={false}
                   activeDot={{
-                    r: 4,
+                    r: 3.5,
                     fill: "#34d399",
                     stroke: "#0f172a",
                     strokeWidth: 2,
@@ -538,35 +537,20 @@ export function GMPDetailView({
             </ResponsiveContainer>
           </div>
 
-          <div className="flex items-center justify-between border-t border-white/[0.03] px-3 py-1.5 text-[9px] text-white/20">
-            <div className="flex gap-3">
+          <div className="flex items-center justify-between border-t border-white/[0.03] px-2.5 py-1 text-[8px] text-white/18">
+            <div className="flex gap-2.5">
               <span className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="h-1 w-1 rounded-full bg-emerald-400" />
                 Peak {fmtINR(maxGmp)}
               </span>
               <span className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-400/60" />
+                <span className="h-1 w-1 rounded-full bg-rose-400/60" />
                 Low {fmtINR(minGmp)}
               </span>
             </div>
-            <span>Lot: {lotSize} shares</span>
+            <span>Lot: {lotSize}</span>
           </div>
         </div>
-      )}
-
-      {/* ── Updated timestamp ──────────────────────────── */}
-      {gmpUpdatedAt && (
-        <p className="text-[10px] text-white/20">
-          GMP updated{" "}
-          {new Date(gmpUpdatedAt).toLocaleString("en-IN", {
-            timeZone: "Asia/Kolkata",
-            day: "2-digit",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}{" "}
-          IST
-        </p>
       )}
     </div>
   );
