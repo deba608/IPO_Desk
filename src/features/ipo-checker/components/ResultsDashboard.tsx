@@ -142,10 +142,10 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
     [labels, setLabel]
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredData,
     columns,
-    // eslint-disable-next-line react-hooks/incompatible-library
     state: { sorting, globalFilter },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
