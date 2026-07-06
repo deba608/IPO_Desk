@@ -27,9 +27,27 @@ function load(): AlertRule[] {
   }
 }
 
+// Cached snapshot — useSyncExternalStore requires getSnapshot to return the
+// same reference when nothing has changed, otherwise it loops infinitely.
+let cachedSnapshot: AlertRule[] = [];
+let cachedRaw: string | null = null;
+
+function refreshCache(): void {
+  if (typeof window === "undefined") return;
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw !== cachedRaw) {
+    cachedRaw = raw;
+    cachedSnapshot = raw ? (JSON.parse(raw) as AlertRule[]) : [];
+  }
+}
+
 function save(alerts: AlertRule[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
+    const json = JSON.stringify(alerts);
+    localStorage.setItem(STORAGE_KEY, json);
+    // Update cache immediately so the next getSnapshot() is consistent.
+    cachedRaw = json;
+    cachedSnapshot = alerts;
     window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
   } catch {
     // quota exceeded — silently ignore
@@ -37,6 +55,8 @@ function save(alerts: AlertRule[]): void {
 }
 
 function subscribe(callback: () => void): () => void {
+  // Seed the cache on first subscribe (component mount).
+  refreshCache();
   window.addEventListener("storage", callback);
   window.addEventListener(CHANGE_EVENT, callback);
   return () => {
@@ -46,7 +66,12 @@ function subscribe(callback: () => void): () => void {
 }
 
 function getSnapshot(): AlertRule[] {
-  return load();
+  refreshCache();
+  return cachedSnapshot;
+}
+
+function getServerSnapshot(): AlertRule[] {
+  return [];
 }
 
 export function useAlerts() {
