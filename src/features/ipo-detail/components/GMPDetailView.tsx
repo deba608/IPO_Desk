@@ -539,8 +539,9 @@ export function GMPDetailView({
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v: string) => {
-                    const d = new Date(v + "T00:00:00");
+                    const d = new Date(v + "T00:00:00+05:30");
                     return d.toLocaleDateString("en-IN", {
+                      timeZone: "Asia/Kolkata",
                       day: "2-digit",
                       month: "short",
                     });

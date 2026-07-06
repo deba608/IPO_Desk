@@ -145,6 +145,7 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
   const table = useReactTable({
     data: filteredData,
     columns,
+    // eslint-disable-next-line react-hooks/incompatible-library
     state: { sorting, globalFilter },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
