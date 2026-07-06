@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     let contentType: string;
 
     if (format === "csv") {
-      buffer = exportToCSV(results, ipoName);
+      buffer = exportToCSV(results);
       contentType = "text/csv; charset=utf-8";
     } else {
       buffer = exportToXLSX(results, ipoName, checkedAt);

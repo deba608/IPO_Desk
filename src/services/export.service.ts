@@ -35,7 +35,6 @@ function buildRows(results: AllotmentResult[]): ExportRow[] {
 
 export function exportToCSV(
   results: AllotmentResult[],
-  _ipoName: string
 ): Buffer {
   const rows = buildRows(results);
   const ws = XLSX.utils.json_to_sheet(rows);
