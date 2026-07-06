@@ -213,12 +213,8 @@ export default async function IPODetailPage({ params }: PageProps) {
                   </p>
                 )}
                 <div className="mt-5">
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">Date-wise GMP History</p>
-                  <GMPDetailView ipoId={ipo.id} capPrice={ipo.priceBand.max} />
+                  <GMPDetailView ipoId={ipo.id} ipoName={ipo.name} capPrice={ipo.priceBand.max} lotSize={ipo.lotSize} />
                 </div>
-                <p className="mt-3 text-[11px] text-muted-foreground">
-                  Grey-market premium is unofficial and volatile — for reference only, not investment advice.
-                </p>
               </SectionCard>
             )}
 
