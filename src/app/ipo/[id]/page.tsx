@@ -179,42 +179,7 @@ export default async function IPODetailPage({ params }: PageProps) {
             {/* GMP analysis */}
             {estListing !== undefined && ipo.lifecycle !== "listed" && (
               <SectionCard title="GMP Analysis">
-                <div className="flex flex-wrap items-center gap-6">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Cap Price</p>
-                    <p className="text-lg font-semibold">₹{ipo.priceBand.max}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">GMP</p>
-                    <p className="text-lg font-semibold text-emerald-400">+₹{ipo.gmp}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Est. Listing</p>
-                    <p className="text-lg font-semibold">₹{estListing}</p>
-                  </div>
-                  {ipo.gmpPercent !== undefined && (
-                    <div>
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Est. Gain</p>
-                      <p className="text-lg font-semibold text-emerald-400">{ipo.gmpPercent}%</p>
-                    </div>
-                  )}
-                </div>
-                {ipo.gmpUpdatedAt && (
-                  <p className="mt-2 text-[11px] text-muted-foreground">
-                    GMP updated{" "}
-                    {new Date(ipo.gmpUpdatedAt).toLocaleString("en-IN", {
-                      timeZone: "Asia/Kolkata",
-                      day: "2-digit",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    IST
-                  </p>
-                )}
-                <div className="mt-5">
-                  <GMPDetailView ipoId={ipo.id} ipoName={ipo.name} capPrice={ipo.priceBand.max} lotSize={ipo.lotSize} />
-                </div>
+                <GMPDetailView ipoId={ipo.id} ipoName={ipo.name} capPrice={ipo.priceBand.max} lotSize={ipo.lotSize} gmpUpdatedAt={ipo.gmpUpdatedAt} />
               </SectionCard>
             )}
 
