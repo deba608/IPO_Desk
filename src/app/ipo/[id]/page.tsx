@@ -186,6 +186,19 @@ export default async function IPODetailPage({ params }: PageProps) {
                     </div>
                   )}
                 </div>
+                {ipo.gmpUpdatedAt && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    GMP updated{" "}
+                    {new Date(ipo.gmpUpdatedAt).toLocaleString("en-IN", {
+                      timeZone: "Asia/Kolkata",
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    IST
+                  </p>
+                )}
                 <div className="mt-5">
                   <p className="mb-2 text-xs font-medium text-muted-foreground">GMP Trend</p>
                   <GMPTrendChart ipoId={ipo.id} />
