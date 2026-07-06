@@ -32,7 +32,9 @@ export function GMPTrendChart({ ipoId }: GMPTrendChartProps) {
     fetch(`/api/ipo/${encodeURIComponent(ipoId)}/gmp-history`)
       .then((r) => r.json())
       .then((json: { history: GMPEntry[] }) => {
-        if (!cancelled) setData(json.history.reverse());
+        // API returns entries oldest→newest — already the correct left→right
+        // order for a time axis.
+        if (!cancelled) setData(json.history);
       })
       .catch(() => { if (!cancelled) setData([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
