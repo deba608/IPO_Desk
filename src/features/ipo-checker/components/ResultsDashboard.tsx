@@ -22,7 +22,6 @@ import {
   XCircle,
   HelpCircle,
   AlertCircle,
-  FileSpreadsheet,
   FileText,
   Loader2,
   Tag,
@@ -33,7 +32,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { AllotmentResult, CheckResponse } from "@/types/allotment.types";
 import { usePanLabels } from "@/hooks/usePanLabels";
 import { shareResultCard } from "../lib/shareCard";
@@ -42,13 +40,6 @@ import { toast } from "sonner";
 interface ResultsDashboardProps {
   results: CheckResponse;
 }
-
-const STATUS_ICON = {
-  allotted: <CheckCircle2 className="h-4 w-4 text-emerald-400" />,
-  not_allotted: <XCircle className="h-4 w-4 text-rose-400" />,
-  not_found: <HelpCircle className="h-4 w-4 text-amber-400" />,
-  error: <AlertCircle className="h-4 w-4 text-red-400" />,
-};
 
 const STATUS_BADGE = {
   allotted: <Badge variant="success" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Allotted</Badge>,
@@ -202,7 +193,7 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
     }
   };
 
-  const { total, allotted, notAllotted, notFound, errors } = results.summary;
+  const { total, allotted, notAllotted, notFound } = results.summary;
 
   const handleShare = async () => {
     setIsSharing(true);
@@ -281,18 +272,9 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
             {isExporting === "xlsx" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <FileSpreadsheet className="h-4 w-4" />
+              <Download className="h-4 w-4" />
             )}
-            Excel
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => handleExport("xlsx")}
-            disabled={isExporting !== null}
-            className="gap-2 flex-1 sm:flex-none"
-          >
-            <Download className="h-4 w-4" />
-            Export All
+            Export Excel
           </Button>
         </div>
       </div>
