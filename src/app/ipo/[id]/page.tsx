@@ -156,7 +156,15 @@ export default async function IPODetailPage({ params }: PageProps) {
                 <SubscriptionBars subscription={ipo.subscription} />
                 {ipo.subscription.updatedAt && (
                   <p className="mt-3 text-[11px] text-muted-foreground">
-                    Updated {new Date(ipo.subscription.updatedAt).toLocaleString("en-IN")}
+                    Updated{" "}
+                    {new Date(ipo.subscription.updatedAt).toLocaleString("en-IN", {
+                      timeZone: "Asia/Kolkata",
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    IST
                   </p>
                 )}
               </SectionCard>

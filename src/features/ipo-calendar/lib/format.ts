@@ -12,10 +12,17 @@ export function formatINR(amount: number): string {
   return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
+// IPO milestone dates are IST calendar dates. Every formatter both anchors the
+// parse to IST (+05:30) AND formats in Asia/Kolkata — otherwise a server (or
+// viewer) in another timezone renders the previous/next day. This bit us in
+// production: the deploy host runs UTC, so server-rendered dates were a day off.
+const IST = "Asia/Kolkata";
+
 /** "22 Jun 2026" */
 export function formatDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00+05:30`);
   return new Intl.DateTimeFormat("en-IN", {
+    timeZone: IST,
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -26,14 +33,18 @@ export function formatDate(iso: string): string {
 export function formatDateRange(startISO: string, endISO: string): string {
   const start = new Date(`${startISO}T00:00:00+05:30`);
   const end = new Date(`${endISO}T00:00:00+05:30`);
-  const sameMonth =
-    start.getMonth() === end.getMonth() &&
-    start.getFullYear() === end.getFullYear();
+  // Compare calendar months from the ISO strings directly — Date part getters
+  // would be timezone-dependent.
+  const sameMonth = startISO.slice(0, 7) === endISO.slice(0, 7);
 
   const day = (d: Date) =>
-    new Intl.DateTimeFormat("en-IN", { day: "2-digit" }).format(d);
+    new Intl.DateTimeFormat("en-IN", { timeZone: IST, day: "2-digit" }).format(d);
   const dayMonth = (d: Date) =>
-    new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short" }).format(d);
+    new Intl.DateTimeFormat("en-IN", {
+      timeZone: IST,
+      day: "2-digit",
+      month: "short",
+    }).format(d);
 
   return sameMonth
     ? `${day(start)}–${dayMonth(end)}`
