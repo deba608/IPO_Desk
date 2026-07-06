@@ -141,7 +141,7 @@ export function Header() {
             width={34}
             height={34}
             className="rounded-lg shrink-0 transition-transform duration-300 ease-out group-hover:scale-105 group-hover:rotate-3 group-active:scale-95 motion-reduce:transform-none"
-            style={{ height: "auto" }}
+            style={{ width: 34, height: "auto" }}
             priority
           />
           <span className="text-base font-bold tracking-tight sm:text-lg">
