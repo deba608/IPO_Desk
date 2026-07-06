@@ -103,6 +103,35 @@ function isoDate(s?: string): string | undefined {
   return m ? m[0] : undefined;
 }
 
+const MONTHS: Record<string, number> = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+};
+
+/**
+ * "Updated-On" display text like "30-Jun 5:55" → real ISO timestamp in IST
+ * (+05:30). The report omits the year, so use the current IST year and roll
+ * back one year if that would put the update in the future (Dec/Jan boundary).
+ */
+function parseUpdatedOn(raw?: string): string | undefined {
+  const text = stripTags(raw);
+  const m = text.match(/(\d{1,2})-([A-Za-z]{3})\s+(\d{1,2}):(\d{2})/);
+  if (!m) return undefined;
+  const [, dd, mon, hh, mi] = m;
+  const month = MONTHS[mon.toLowerCase()];
+  if (!month) return undefined;
+
+  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000); // wall clock in IST
+  let year = nowIST.getUTCFullYear();
+  const build = (y: number) =>
+    `${y}-${String(month).padStart(2, "0")}-${String(Number(dd)).padStart(2, "0")}` +
+    `T${String(Number(hh)).padStart(2, "0")}:${mi}:00+05:30`;
+  // An "update" can't be in the future — if it is, it belongs to last year.
+  if (new Date(build(year)).getTime() > Date.now() + 60_000) year -= 1;
+  const iso = build(year);
+  return Number.isNaN(new Date(iso).getTime()) ? undefined : iso;
+}
+
 /** "Rs 28 (28.28%) ..." → 28. "Rs -- (0.00%)" / "" → undefined. */
 function parseGmp(raw?: string): number | undefined {
   const text = stripTags(raw);
@@ -248,7 +277,7 @@ function normalize(
     listingDate: isoDate(row["~Str_Listing"]),
     exchanges: parseExchanges(row.Name),
     gmp: parseGmp(row.GMP),
-    gmpUpdatedAt: stripTags(row["Updated-On"]) || undefined,
+    gmpUpdatedAt: parseUpdatedOn(row["Updated-On"]),
     gmpPercent: parseDecimal(row["~gmp_percent_calc"]) || undefined,
     subscription,
     listingPrice: undefined,
@@ -265,6 +294,84 @@ const IG_HEADERS = {
   Accept: "application/json",
   Referer: REFERER,
 };
+
+/** Raw row of the `gmpData` array embedded in an InvestorGain detail page. */
+interface RawGmpHistoryRow {
+  gmp_date?: string; // "06-07-2026" (dd-mm-yyyy)
+  gmp?: string; // "8" | "" | "--"
+  gmp_percent_calc?: string; // "13.33"
+  estimated_listing_price?: string;
+  create_date?: string; // full ISO timestamp
+}
+
+/** "06-07-2026" (dd-mm-yyyy) → "2026-07-06". */
+function ddmmyyyyToISO(s?: string): string | undefined {
+  const m = (s ?? "").trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : undefined;
+}
+
+/**
+ * Date-wise GMP history for one IPO, scraped from the server-rendered
+ * `gmpData` array on its InvestorGain detail page (no JSON endpoint exists).
+ * Returns entries sorted oldest→newest, deduped by date. Throws on fetch
+ * failure so callers can decide their own fallback.
+ */
+export async function fetchGmpHistory(
+  sourceUrl: string
+): Promise<import("@/types/calendar.types").GMPEntry[]> {
+  const res = await fetch(sourceUrl, {
+    headers: { "User-Agent": UA, Accept: "text/html" },
+    // Detail pages are heavy (~130KB); let Next cache them briefly.
+    next: { revalidate: 600 },
+  });
+  if (!res.ok) throw new Error(`InvestorGain detail page responded ${res.status}`);
+
+  // The array lives inside a Next.js flight payload with escaped quotes.
+  const html = (await res.text()).replace(/\\"/g, '"');
+  const start = html.indexOf('"gmpData":[');
+  if (start === -1) return [];
+
+  // Balanced-bracket scan from the opening `[` — the payload after the array
+  // is arbitrary, so a regex can't safely find the end.
+  const open = html.indexOf("[", start);
+  let depth = 0;
+  let end = -1;
+  for (let i = open; i < html.length; i++) {
+    const ch = html[i];
+    if (ch === "[") depth++;
+    else if (ch === "]" && --depth === 0) {
+      end = i;
+      break;
+    }
+  }
+  if (end === -1) return [];
+
+  let rows: RawGmpHistoryRow[];
+  try {
+    rows = JSON.parse(html.slice(open, end + 1));
+  } catch {
+    return [];
+  }
+
+  const byDate = new Map<string, { gmp: number; gainPercent?: number }>();
+  for (const row of rows) {
+    const date = ddmmyyyyToISO(row.gmp_date);
+    const gmp = Number(row.gmp);
+    if (!date || !Number.isFinite(gmp)) continue;
+    const pct = Number(row.gmp_percent_calc);
+    // Rows arrive newest-first; keep the first (latest) record per date.
+    if (!byDate.has(date)) {
+      byDate.set(date, {
+        gmp,
+        gainPercent: Number.isFinite(pct) ? pct : undefined,
+      });
+    }
+  }
+
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, v]) => ({ date, gmp: v.gmp, gainPercent: v.gainPercent }));
+}
 
 export function createInvestorGainProvider(): CalendarProvider {
   return {

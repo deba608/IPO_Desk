@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { findCalendarIPO } from "@/features/ipo-calendar/lib/calendar.service";
+import { fetchGmpHistory } from "@/features/ipo-calendar/lib/providers/investorgain.provider";
 import { checkDbAvailability, getPrisma } from "@/services/db.service";
 import type { GMPEntry } from "@/types/calendar.types";
 
@@ -8,6 +9,11 @@ export const dynamic = "force-dynamic";
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
+
+// Per-IPO in-memory cache: IG detail pages are ~130KB HTML, so don't re-scrape
+// on every chart render. GMP updates a few times a day; 10 minutes is plenty.
+const TTL_MS = 10 * 60 * 1000;
+const cache = new Map<string, { at: number; history: GMPEntry[] }>();
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const { id } = await params;
@@ -18,12 +24,13 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
   const capPrice = ipo.priceBand.max;
 
+  // 1) Our own DB snapshots, when a database is configured and has depth.
   if (checkDbAvailability()) {
     try {
       const prisma = await getPrisma();
       const dbIpo = await prisma.ipo.findUnique({ where: { slug: id } });
       if (dbIpo) {
-        const snapshots = await (await getPrisma()).gmpSnapshot.findMany({
+        const snapshots = await prisma.gmpSnapshot.findMany({
           where: { ipoId: dbIpo.id },
           orderBy: { date: "asc" },
           take: 30,
@@ -34,39 +41,41 @@ export async function GET(_request: Request, { params }: RouteParams) {
             history: typed.map((s) => ({
               date: s.date.toISOString().split("T")[0],
               gmp: s.gmp,
-              gainPercent: capPrice > 0 ? Math.round((s.gmp / capPrice) * 1000) / 10 : undefined,
+              gainPercent:
+                capPrice > 0
+                  ? Math.round((s.gmp / capPrice) * 1000) / 10
+                  : undefined,
             })),
+            source: "db",
           });
         }
       }
     } catch {
-      // Fall through to demo data
+      // Fall through to the live source below.
     }
   }
 
-  if (ipo.gmp === undefined) {
-    return NextResponse.json({ history: [] });
+  // 2) Live date-wise history from the IPO's InvestorGain detail page.
+  if (ipo.sourceUrl) {
+    const cached = cache.get(id);
+    if (cached && Date.now() - cached.at < TTL_MS) {
+      return NextResponse.json({ history: cached.history, source: "investorgain" });
+    }
+    try {
+      const history = await fetchGmpHistory(ipo.sourceUrl);
+      if (history.length > 0) {
+        cache.set(id, { at: Date.now(), history });
+        return NextResponse.json({ history, source: "investorgain" });
+      }
+    } catch (err) {
+      console.error(`[gmp-history] live fetch failed for ${id}:`, err);
+      // Serve a stale cache over nothing.
+      if (cached) {
+        return NextResponse.json({ history: cached.history, source: "investorgain" });
+      }
+    }
   }
 
-  const today = new Date();
-  const entries: GMPEntry[] = [];
-
-  for (let i = 14; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dow = d.getDay();
-    if (dow === 0 || dow === 6) continue;
-
-    const progress = 1 - i / 14;
-    const noise = (Math.random() - 0.5) * 8;
-    const gmp = Math.round(Math.max(0, ipo.gmp * progress + noise * (1 - progress)));
-
-    entries.push({
-      date: d.toISOString().split("T")[0],
-      gmp,
-      gainPercent: capPrice > 0 ? Math.round((gmp / capPrice) * 1000) / 10 : undefined,
-    });
-  }
-
-  return NextResponse.json({ history: entries });
+  // 3) No real data available — return empty rather than synthesizing points.
+  return NextResponse.json({ history: [] });
 }
