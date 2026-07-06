@@ -40,6 +40,11 @@ const LIFECYCLE_LABEL: Record<string, string> = {
   listed: "Listed",
 };
 
+/** "₹398–419" for a real band, "₹84" for fixed-price issues (min === max). */
+function bandLabel(band: { min: number; max: number }): string {
+  return band.min === band.max ? `₹${band.max}` : `₹${band.min}–${band.max}`;
+}
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -50,7 +55,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!ipo) return { title: "IPO not found" };
   return {
     title: `${ipo.name} IPO — Price Band, GMP, Subscription & Dates`,
-    description: `${ipo.name} IPO details: price band ₹${ipo.priceBand.min}–${ipo.priceBand.max}, lot size ${ipo.lotSize}, issue size ${formatCrore(ipo.issueSizeCr)}, subscription, GMP and listing dates.`,
+    description: `${ipo.name} IPO details: price band ${bandLabel(ipo.priceBand)}, lot size ${ipo.lotSize}, issue size ${formatCrore(ipo.issueSizeCr)}, subscription, GMP and listing dates.`,
   };
 }
 
@@ -137,7 +142,7 @@ export default async function IPODetailPage({ params }: PageProps) {
 
         {/* Key stats */}
         <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Price Band" value={`₹${ipo.priceBand.min}–${ipo.priceBand.max}`} />
+          <Stat label="Price Band" value={bandLabel(ipo.priceBand)} />
           <Stat label="Lot Size" value={`${ipo.lotSize.toLocaleString("en-IN")}`} hint="shares / lot" />
           <Stat label="Issue Size" value={formatCrore(ipo.issueSizeCr)} />
           <Stat label="Min. Investment" value={formatINR(ipo.minInvestment)} hint="retail, at cut-off" />
@@ -229,7 +234,7 @@ export default async function IPODetailPage({ params }: PageProps) {
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="flex items-center gap-2 text-muted-foreground"><IndianRupee className="h-4 w-4" /> Price Band</dt>
-                  <dd className="font-medium">₹{ipo.priceBand.min}–{ipo.priceBand.max}</dd>
+                  <dd className="font-medium">{bandLabel(ipo.priceBand)}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="flex items-center gap-2 text-muted-foreground"><Layers className="h-4 w-4" /> Lot Size</dt>

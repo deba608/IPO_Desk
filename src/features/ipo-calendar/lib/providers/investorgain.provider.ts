@@ -316,18 +316,43 @@ function ddmmyyyyToISO(s?: string): string | undefined {
  * Returns entries sorted oldest→newest, deduped by date. Throws on fetch
  * failure so callers can decide their own fallback.
  */
-export async function fetchGmpHistory(
-  sourceUrl: string
-): Promise<import("@/types/calendar.types").GMPEntry[]> {
+/**
+ * Fetches an IG detail page and returns its HTML with flight-payload quote
+ * escaping undone. Same URL+options everywhere, so Next's data cache dedupes
+ * concurrent band/history reads of the same page.
+ */
+async function fetchDetailHtml(sourceUrl: string): Promise<string> {
   const res = await fetch(sourceUrl, {
     headers: { "User-Agent": UA, Accept: "text/html" },
     // Detail pages are heavy (~130KB); let Next cache them briefly.
     next: { revalidate: 600 },
   });
   if (!res.ok) throw new Error(`InvestorGain detail page responded ${res.status}`);
+  return (await res.text()).replace(/\\"/g, '"');
+}
 
+/**
+ * Real price band from the detail page (`issue_price_lower/upper`). The list
+ * report only carries the cap price, so book-built bands (e.g. ₹398–419) come
+ * out flat there. Returns undefined when the page doesn't expose both bounds.
+ */
+export async function fetchLivePriceBand(
+  sourceUrl: string
+): Promise<PriceBand | undefined> {
+  const html = await fetchDetailHtml(sourceUrl);
+  const lo = Number(html.match(/"issue_price_lower":"?([\d.]+)/)?.[1]);
+  const hi = Number(html.match(/"issue_price_upper":"?([\d.]+)/)?.[1]);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo <= 0 || hi <= 0) {
+    return undefined;
+  }
+  return { min: Math.min(lo, hi), max: Math.max(lo, hi) };
+}
+
+export async function fetchGmpHistory(
+  sourceUrl: string
+): Promise<import("@/types/calendar.types").GMPEntry[]> {
   // The array lives inside a Next.js flight payload with escaped quotes.
-  const html = (await res.text()).replace(/\\"/g, '"');
+  const html = await fetchDetailHtml(sourceUrl);
   const start = html.indexOf('"gmpData":[');
   if (start === -1) return [];
 

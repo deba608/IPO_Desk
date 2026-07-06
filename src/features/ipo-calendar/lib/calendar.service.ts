@@ -11,6 +11,7 @@ import {
   IPOLifecycle,
 } from "@/types/calendar.types";
 import { loadCatalogue } from "./providers";
+import { fetchLivePriceBand } from "./providers/investorgain.provider";
 
 /** yyyy-mm-dd in IST, used as the reference "today" for lifecycle derivation. */
 export function todayISO(): string {
@@ -99,6 +100,24 @@ export async function findCalendarIPO(
 ): Promise<CalendarIPOWithStatus | undefined> {
   const today = todayISO();
   const { ipos } = await loadCatalogue();
-  const match = ipos.find((ipo) => ipo.id === id);
-  return match ? enrich(match, today) : undefined;
+  let match = ipos.find((ipo) => ipo.id === id);
+  if (!match) return undefined;
+
+  // The list report only carries the cap price, so a flat band (min === max)
+  // is usually a book-built range collapsed to its upper bound. The detail
+  // page has the real bounds — enrich from there, best-effort.
+  if (
+    match.sourceUrl &&
+    match.priceBand.max > 0 &&
+    match.priceBand.min === match.priceBand.max
+  ) {
+    try {
+      const band = await fetchLivePriceBand(match.sourceUrl);
+      if (band) match = { ...match, priceBand: band };
+    } catch {
+      // Keep the report's cap-only band.
+    }
+  }
+
+  return enrich(match, today);
 }

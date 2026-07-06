@@ -155,7 +155,11 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
         <Metric
           icon={IndianRupee}
           label="Price Band"
-          value={`₹${ipo.priceBand.min}–${ipo.priceBand.max}`}
+          value={
+            ipo.priceBand.min === ipo.priceBand.max
+              ? `₹${ipo.priceBand.max}`
+              : `₹${ipo.priceBand.min}–${ipo.priceBand.max}`
+          }
         />
         <Metric icon={Building2} label="Issue Size" value={formatCrore(ipo.issueSizeCr)} />
         <Metric
