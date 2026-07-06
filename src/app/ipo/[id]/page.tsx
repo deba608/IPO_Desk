@@ -19,7 +19,7 @@ import { formatCrore, formatINR } from "@/features/ipo-calendar/lib/format";
 import { SubscriptionBars } from "@/features/ipo-detail/components/SubscriptionBars";
 import { Timeline } from "@/features/ipo-detail/components/Timeline";
 import { AddToCalendar } from "@/features/ipo-detail/components/AddToCalendar";
-import { GMPTrendChart } from "@/features/ipo-detail/components/GMPTrendChart";
+import { GMPDetailView } from "@/features/ipo-detail/components/GMPDetailView";
 import { ResearchReport } from "@/features/ipo-detail/components/ResearchReport";
 import { AlertSettings } from "@/features/ipo-detail/components/AlertSettings";
 import { Header } from "@/components/common/Header";
@@ -205,8 +205,8 @@ export default async function IPODetailPage({ params }: PageProps) {
                   </p>
                 )}
                 <div className="mt-5">
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">GMP Trend</p>
-                  <GMPTrendChart ipoId={ipo.id} />
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Date-wise GMP History</p>
+                  <GMPDetailView ipoId={ipo.id} capPrice={ipo.priceBand.max} />
                 </div>
                 <p className="mt-3 text-[11px] text-muted-foreground">
                   Grey-market premium is unofficial and volatile — for reference only, not investment advice.
