@@ -41,11 +41,13 @@ interface ChartDataPoint {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+// GMP dates are IST calendar dates — anchor the parse to +05:30 and format in
+// Asia/Kolkata so they don't shift a day for non-IST servers/viewers.
 function fmtDate(iso: string, style: "short" | "long" = "short") {
-  const d = new Date(iso + "T00:00:00");
+  const d = new Date(iso + "T00:00:00+05:30");
   return style === "long"
-    ? d.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })
-    : d.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" });
+    ? d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "2-digit", month: "short", year: "numeric" })
+    : d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "2-digit", month: "short" });
 }
 
 function fmtINR(n: number) {
@@ -410,8 +412,9 @@ export function GMPDetailView({ ipoId, capPrice }: GMPDetailViewProps) {
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v: string) => {
-                    const d = new Date(v + "T00:00:00");
+                    const d = new Date(v + "T00:00:00+05:30");
                     return d.toLocaleDateString("en-IN", {
+                      timeZone: "Asia/Kolkata",
                       day: "2-digit",
                       month: "short",
                     });

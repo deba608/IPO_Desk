@@ -38,13 +38,14 @@ export async function POST(request: Request) {
     }
 
     const prisma = await getPrisma();
-    const data: Record<string, unknown> = {
-      ipoId: validated.data.ipoId,
-      trigger: validated.data.trigger,
-      threshold: validated.data.threshold,
-      channel: "push",
-    };
-    const alert = await (prisma.alert.create as any)({ data });
+    const alert = await prisma.alert.create({
+      data: {
+        ipoId: validated.data.ipoId,
+        trigger: validated.data.trigger,
+        threshold: validated.data.threshold,
+        channel: "push",
+      },
+    });
 
     return NextResponse.json({ alert });
   } catch {

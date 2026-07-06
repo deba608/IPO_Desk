@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellOff, BellPlus, TrendingUp, BarChart3, Calendar, ClipboardCheck, X } from "lucide-react";
+import { Bell, BellOff, TrendingUp, BarChart3, Calendar, ClipboardCheck, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +30,7 @@ interface AlertSettingsProps {
 }
 
 export function AlertSettings({ ipoId, ipoName }: AlertSettingsProps) {
-  const { alerts, alertsForIpo, addAlert, removeAlert, toggleAlert } = useAlerts();
+  const { alertsForIpo, addAlert, removeAlert, toggleAlert } = useAlerts();
   const ipoAlerts = alertsForIpo(ipoId);
 
   const hasTrigger = (trigger: AlertTrigger) =>

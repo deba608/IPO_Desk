@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,13 +71,6 @@ export function CheckerTabs({
   const [profileError, setProfileError] = useState("");
 
   const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-
-  // Auto-select the first profile when loaded
-  useEffect(() => {
-    if (profilesHydrated && profiles.length > 0 && !selectedProfileId) {
-      setSelectedProfileId(profiles[0].id);
-    }
-  }, [profilesHydrated, profiles, selectedProfileId]);
 
   const handleSingleCheck = async () => {
     const pan = singlePAN.toUpperCase().trim();

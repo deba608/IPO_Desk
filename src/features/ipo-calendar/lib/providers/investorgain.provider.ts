@@ -65,11 +65,15 @@ interface SubResponse {
   reportTableData?: SubRow[];
 }
 
-/** Calendar year + Indian fiscal year for "today" (FY runs Apr→Mar). */
+/**
+ * Calendar year + Indian fiscal year for "today" in IST (FY runs Apr→Mar).
+ * Derived from the IST wall clock, not server-local time — a UTC host would
+ * otherwise request the wrong year around midnight IST boundaries.
+ */
 function fyParts(): { cy: number; fy: string } {
-  const now = new Date();
-  const cy = now.getFullYear();
-  const month = now.getMonth() + 1; // 1-12
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const cy = ist.getUTCFullYear();
+  const month = ist.getUTCMonth() + 1; // 1-12
   const fyStart = month >= 4 ? cy : cy - 1;
   const fy = `${fyStart}-${String((fyStart + 1) % 100).padStart(2, "0")}`;
   return { cy, fy };

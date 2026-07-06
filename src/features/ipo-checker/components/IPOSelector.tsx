@@ -153,11 +153,6 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
     [onChange, closeDropdown]
   );
 
-  // Keep the active option in view + clamp it whenever the result set changes.
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [search, registrarFilter, open]);
-
   useEffect(() => {
     if (!open) return;
     optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });

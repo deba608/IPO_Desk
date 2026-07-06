@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 export type AlertTrigger = "ipo_opens" | "gmp_crossed" | "subscription_milestone" | "allotment_available";
 
@@ -15,6 +15,7 @@ export interface AlertRule {
 }
 
 const STORAGE_KEY = "ipodesk:alerts";
+const CHANGE_EVENT = "ipodesk:alerts-change";
 
 function load(): AlertRule[] {
   if (typeof window === "undefined") return [];
@@ -29,24 +30,33 @@ function load(): AlertRule[] {
 function save(alerts: AlertRule[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
+    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
   } catch {
     // quota exceeded — silently ignore
   }
 }
 
-export function useAlerts() {
-  const [alerts, setAlerts] = useState<AlertRule[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+function subscribe(callback: () => void): () => void {
+  window.addEventListener("storage", callback);
+  window.addEventListener(CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(CHANGE_EVENT, callback);
+  };
+}
 
-  useEffect(() => {
-    setAlerts(load());
-    setHydrated(true);
-  }, []);
+function getSnapshot(): AlertRule[] {
+  return load();
+}
+
+export function useAlerts() {
+  const alerts = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const addAlert = useCallback(
     (ipoId: string, ipoName: string, trigger: AlertTrigger, threshold?: number) => {
+      const current = load();
       const updated = [
-        ...alerts,
+        ...current,
         {
           id: crypto.randomUUID(),
           ipoId,
@@ -57,36 +67,29 @@ export function useAlerts() {
           createdAt: new Date().toISOString(),
         },
       ];
-      setAlerts(updated);
       save(updated);
     },
-    [alerts]
+    []
   );
 
-  const removeAlert = useCallback(
-    (id: string) => {
-      const updated = alerts.filter((a) => a.id !== id);
-      setAlerts(updated);
-      save(updated);
-    },
-    [alerts]
-  );
+  const removeAlert = useCallback((id: string) => {
+    const current = load();
+    const updated = current.filter((a) => a.id !== id);
+    save(updated);
+  }, []);
 
-  const toggleAlert = useCallback(
-    (id: string) => {
-      const updated = alerts.map((a) =>
-        a.id === id ? { ...a, enabled: !a.enabled } : a
-      );
-      setAlerts(updated);
-      save(updated);
-    },
-    [alerts]
-  );
+  const toggleAlert = useCallback((id: string) => {
+    const current = load();
+    const updated = current.map((a) =>
+      a.id === id ? { ...a, enabled: !a.enabled } : a
+    );
+    save(updated);
+  }, []);
 
   const alertsForIpo = useCallback(
     (ipoId: string) => alerts.filter((a) => a.ipoId === ipoId),
     [alerts]
   );
 
-  return { alerts, hydrated, addAlert, removeAlert, toggleAlert, alertsForIpo };
+  return { alerts, hydrated: true, addAlert, removeAlert, toggleAlert, alertsForIpo };
 }

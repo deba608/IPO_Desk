@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "ipodesk:profiles";
 const CHANGE_EVENT = "ipodesk:profiles-change";
@@ -32,6 +32,19 @@ function writeStore(profiles: PanProfile[]): void {
   }
 }
 
+function subscribe(callback: () => void): () => void {
+  window.addEventListener(CHANGE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getSnapshot(): PanProfile[] {
+  return readStore();
+}
+
 function makeId(): string {
   try {
     return crypto.randomUUID();
@@ -41,21 +54,7 @@ function makeId(): string {
 }
 
 export function useProfiles() {
-  const [profiles, setProfiles] = useState<PanProfile[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setProfiles(readStore());
-    setHydrated(true);
-
-    const sync = () => setProfiles(readStore());
-    window.addEventListener(CHANGE_EVENT, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener(CHANGE_EVENT, sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
+  const profiles = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const add = useCallback((name: string, pans: string[]) => {
     const next = [
@@ -67,7 +66,6 @@ export function useProfiles() {
       },
     ];
     writeStore(next);
-    setProfiles(next);
   }, []);
 
   const update = useCallback((id: string, name: string, pans: string[]) => {
@@ -81,13 +79,11 @@ export function useProfiles() {
         : p
     );
     writeStore(next);
-    setProfiles(next);
   }, []);
 
   const remove = useCallback((id: string) => {
     const next = readStore().filter((p) => p.id !== id);
     writeStore(next);
-    setProfiles(next);
   }, []);
 
   return {
@@ -96,6 +92,6 @@ export function useProfiles() {
     update,
     remove,
     count: profiles.length,
-    hydrated,
+    hydrated: true,
   };
 }
