@@ -34,25 +34,25 @@ const LIFECYCLE_CONFIG: Record<
   listed: { label: "Listed", variant: "secondary", dot: "bg-slate-400" },
 };
 
-// One column template shared by the header and every row so columns line up
-// perfectly. The name track flexes; the rest are fixed. The whole table sits in
-// an overflow-x-auto wrapper (see IPOCalendarView), so on narrow screens it
-// scrolls horizontally instead of crushing the name column down to "L…".
+// Desktop (lg+) column template shared by the header and every row so columns
+// line up perfectly. The name track flexes; the rest are fixed. Below lg the
+// row switches to a stacked card (no horizontal scroll) — see the mobile block.
 const GRID_COLS =
-  "grid grid-cols-[auto_minmax(180px,1.5fr)_4.5rem_6rem_6.5rem_6rem_6rem_6.5rem_5.5rem_6.5rem_6rem_1rem] items-center gap-x-3";
+  "lg:grid lg:grid-cols-[auto_minmax(180px,1.5fr)_4.5rem_6rem_6.5rem_6rem_6rem_6.5rem_5.5rem_6.5rem_6rem_1rem] lg:items-center lg:gap-x-3";
 
-/** Minimum table width; the wrapper scrolls horizontally below this. */
-export const LIST_MIN_WIDTH = "min-w-[1180px]";
+/** Minimum table width on desktop; the wrapper scrolls if the window is narrow. */
+export const LIST_MIN_WIDTH = "lg:min-w-[1120px]";
 
-/** Column header row for the list view (aligned to the same GRID_COLS). */
+/** Column header row for the list view — desktop only (mobile rows are cards). */
 export function IPOCalendarListHeader() {
   const cell = "text-[10px] font-medium uppercase tracking-wide text-muted-foreground";
   return (
     <div
       className={cn(
+        "hidden",
         GRID_COLS,
         LIST_MIN_WIDTH,
-        "rounded-lg border border-border/60 bg-muted/40 px-4 py-2"
+        "rounded-lg border border-border/60 bg-muted/40 px-4 py-2 lg:grid"
       )}
     >
       <span />
@@ -71,6 +71,16 @@ export function IPOCalendarListHeader() {
   );
 }
 
+/** Compact "label: value" chip used in the mobile stacked layout. */
+function MobileStat({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <div className="truncate text-xs font-medium text-foreground">{children}</div>
+    </div>
+  );
+}
+
 export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
   const status = LIFECYCLE_CONFIG[ipo.lifecycle];
   const gain = ipo.listingGainPercent;
@@ -85,160 +95,202 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
 
   const val = "truncate text-xs font-medium text-foreground";
 
+  const starButton = (
+    <button
+      type="button"
+      aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
+      aria-pressed={watched}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggle(ipo.id);
+      }}
+      className={cn(
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors lg:h-6 lg:w-6",
+        hydrated && watched
+          ? "text-amber-400 hover:text-amber-300"
+          : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      <Star className={cn("h-4 w-4 lg:h-3.5 lg:w-3.5", hydrated && watched && "fill-current")} />
+    </button>
+  );
+
+  const statusBadge = (
+    <Badge variant={status.variant} className="gap-1 px-1.5">
+      <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
+      <span className="text-[10px]">{status.label}</span>
+    </Badge>
+  );
+
+  const gmpNode =
+    ipo.lifecycle === "listed" && gain !== undefined ? (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold",
+          gain >= 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"
+        )}
+      >
+        {gain >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+        {gain >= 0 ? "+" : ""}
+        {gain}%
+      </span>
+    ) : ipo.gmp !== undefined ? (
+      <span className="text-xs font-semibold text-emerald-400">
+        ₹{ipo.gmp}
+        {ipo.gmpPercent !== undefined && (
+          <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">
+            ({ipo.gmpPercent}%)
+          </span>
+        )}
+      </span>
+    ) : (
+      <span className="text-xs text-muted-foreground">—</span>
+    );
+
+  const subscriptionNode =
+    subTotal === undefined ? (
+      <span className="text-xs text-muted-foreground">—</span>
+    ) : ipo.subscription ? (
+      <SubscriptionDetailsPopover
+        subscription={ipo.subscription}
+        trigger={
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-indigo-400">
+            <Flame className="h-3 w-3 shrink-0 text-orange-400" />
+            {subTotal}×
+          </span>
+        }
+      />
+    ) : (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+        <Flame className="h-3 w-3 shrink-0 text-orange-400" />
+        {subTotal}×
+      </span>
+    );
+
+  const signals = (
+    <>
+      {ipo.anchorListed && (
+        <span
+          title="Anchor allotment announced"
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-500/10 text-emerald-400"
+        >
+          <Anchor className="h-2.5 w-2.5" />
+        </span>
+      )}
+      {ipo.rating !== undefined && (
+        <span className="shrink-0 text-[11px]" title={`Crowd rating ${ipo.rating}/5`}>
+          {"\u{1F525}".repeat(ipo.rating)}
+        </span>
+      )}
+    </>
+  );
+
   return (
     <Link
       href={`/ipo/${ipo.id}`}
       className={cn(
+        "group block rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/50 hover:bg-card/80 lg:px-4",
         GRID_COLS,
-        LIST_MIN_WIDTH,
-        "group rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/50 hover:bg-card/80"
+        LIST_MIN_WIDTH
       )}
     >
-      {/* Actions: watchlist + calendar reminder */}
-      <div className="flex items-center gap-0.5">
-        <button
-          type="button"
-          aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
-          aria-pressed={watched}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggle(ipo.id);
-          }}
-          className={cn(
-            "flex h-6 w-6 items-center justify-center rounded-md transition-colors",
-            hydrated && watched
-              ? "text-amber-400 hover:text-amber-300"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Star className={cn("h-3.5 w-3.5", hydrated && watched && "fill-current")} />
-        </button>
-        <AddToCalendarButton ipo={ipo} variant="icon" />
-      </div>
+      {/* ── MOBILE / TABLET stacked card (below lg) ─────────────── */}
+      <div className="space-y-2.5 lg:hidden">
+        <div className="flex items-start gap-2">
+          <div className="flex items-center gap-0.5">
+            {starButton}
+            <AddToCalendarButton ipo={ipo} variant="icon" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold text-foreground group-hover:text-primary">
+              {ipo.name}
+            </p>
+            <div className="mt-0.5 flex items-center gap-1.5">
+              <Badge
+                variant={ipo.board === "mainboard" ? "default" : "outline"}
+                className="shrink-0 text-[9px]"
+              >
+                {ipo.board === "mainboard" ? "Main" : "SME"}
+              </Badge>
+              <span className="truncate text-[11px] text-muted-foreground">
+                {ipo.exchanges.join(" · ")} · {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
+              </span>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {statusBadge}
+            {gmpNode}
+          </div>
+        </div>
 
-      {/* Name + symbol + exchanges/registrar */}
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate font-semibold text-foreground transition-colors group-hover:text-primary">
-            {ipo.name}
-          </span>
-          {ipo.symbol && (
-            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-              {ipo.symbol}
-            </span>
+        <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-lg bg-muted/30 px-3 py-2">
+          <MobileStat label="Price">{priceBand}</MobileStat>
+          <MobileStat label="Dates">{formatDateRange(ipo.openDate, ipo.closeDate)}</MobileStat>
+          <MobileStat label={ipo.lifecycle === "listed" ? "Listed" : "Listing"}>
+            {ipo.listingDate ? formatDate(ipo.listingDate) : "TBA"}
+          </MobileStat>
+          <MobileStat label="Min. Invest">
+            {ipo.minInvestment > 0 ? formatINR(ipo.minInvestment) : "TBA"}
+          </MobileStat>
+          <MobileStat label="Subscr.">{subscriptionNode}</MobileStat>
+          <MobileStat label="Issue">{formatCrore(ipo.issueSizeCr)}</MobileStat>
+          {(ipo.anchorListed || ipo.rating !== undefined) && (
+            <div className="col-span-1 flex items-end gap-1.5">{signals}</div>
           )}
         </div>
-        <p className="truncate text-[11px] text-muted-foreground">
-          {ipo.exchanges.join(" · ")} · {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
+      </div>
+
+      {/* ── DESKTOP grid cells (lg+) — display:contents so the parent grid lays them out ── */}
+      <div className="hidden lg:contents">
+        {/* Actions */}
+        <div className="flex items-center gap-0.5">
+          {starButton}
+          <AddToCalendarButton ipo={ipo} variant="icon" />
+        </div>
+
+        {/* Name */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate font-semibold text-foreground transition-colors group-hover:text-primary">
+              {ipo.name}
+            </span>
+            {ipo.symbol && (
+              <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                {ipo.symbol}
+              </span>
+            )}
+          </div>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {ipo.exchanges.join(" · ")} · {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
+          </p>
+        </div>
+
+        {/* Board */}
+        <div className="min-w-0">
+          <Badge
+            variant={ipo.board === "mainboard" ? "default" : "outline"}
+            className="text-[10px]"
+          >
+            {ipo.board === "mainboard" ? "Main" : "SME"}
+          </Badge>
+        </div>
+
+        <p className={val}>{priceBand}</p>
+        <p className={val}>{formatDateRange(ipo.openDate, ipo.closeDate)}</p>
+        <p className={val}>{ipo.listingDate ? formatDate(ipo.listingDate) : "TBA"}</p>
+        <p className={val}>{formatCrore(ipo.issueSizeCr)}</p>
+        <p className={val}>
+          {ipo.minInvestment > 0 ? formatINR(ipo.minInvestment) : "TBA"}
         </p>
+        <div className="min-w-0">{subscriptionNode}</div>
+        <div className="text-right">{gmpNode}</div>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {statusBadge}
+          {signals}
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
-
-      {/* Board */}
-      <div className="min-w-0">
-        <Badge
-          variant={ipo.board === "mainboard" ? "default" : "outline"}
-          className="text-[10px]"
-        >
-          {ipo.board === "mainboard" ? "Main" : "SME"}
-        </Badge>
-      </div>
-
-      {/* Price band */}
-      <p className={val}>{priceBand}</p>
-
-      {/* Dates */}
-      <p className={val}>{formatDateRange(ipo.openDate, ipo.closeDate)}</p>
-
-      {/* Listing */}
-      <p className={val}>{ipo.listingDate ? formatDate(ipo.listingDate) : "TBA"}</p>
-
-      {/* Issue size */}
-      <p className={val}>{formatCrore(ipo.issueSizeCr)}</p>
-
-      {/* Min. investment */}
-      <p className={val}>
-        {ipo.minInvestment > 0 ? formatINR(ipo.minInvestment) : "TBA"}
-      </p>
-
-      {/* Subscription (popover when detail available) */}
-      <div className="min-w-0">
-        {subTotal === undefined ? (
-          <span className="text-xs text-muted-foreground">—</span>
-        ) : ipo.subscription ? (
-          <SubscriptionDetailsPopover
-            subscription={ipo.subscription}
-            trigger={
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-indigo-400">
-                <Flame className="h-3 w-3 shrink-0 text-orange-400" />
-                {subTotal}×
-              </span>
-            }
-          />
-        ) : (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
-            <Flame className="h-3 w-3 shrink-0 text-orange-400" />
-            {subTotal}×
-          </span>
-        )}
-      </div>
-
-      {/* GMP / listing gain */}
-      <div className="text-right">
-        {ipo.lifecycle === "listed" && gain !== undefined ? (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold",
-              gain >= 0
-                ? "bg-emerald-500/15 text-emerald-400"
-                : "bg-rose-500/15 text-rose-400"
-            )}
-          >
-            {gain >= 0 ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : (
-              <TrendingDown className="h-3 w-3" />
-            )}
-            {gain >= 0 ? "+" : ""}
-            {gain}%
-          </span>
-        ) : ipo.gmp !== undefined ? (
-          <span className="text-xs font-semibold text-emerald-400">
-            ₹{ipo.gmp}
-            {ipo.gmpPercent !== undefined && (
-              <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">
-                ({ipo.gmpPercent}%)
-              </span>
-            )}
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">—</span>
-        )}
-      </div>
-
-      {/* Signals: status, anchor, crowd rating */}
-      <div className="flex min-w-0 items-center gap-1.5">
-        <Badge variant={status.variant} className="gap-1 px-1.5">
-          <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
-          <span className="text-[10px]">{status.label}</span>
-        </Badge>
-        {ipo.anchorListed && (
-          <span
-            title="Anchor allotment announced"
-            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-500/10 text-emerald-400"
-          >
-            <Anchor className="h-2.5 w-2.5" />
-          </span>
-        )}
-        {ipo.rating !== undefined && (
-          <span className="shrink-0 text-[11px]" title={`Crowd rating ${ipo.rating}/5`}>
-            {"🔥".repeat(ipo.rating)}
-          </span>
-        )}
-      </div>
-      {/* Chevron */}
-      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
     </Link>
   );
 }
-

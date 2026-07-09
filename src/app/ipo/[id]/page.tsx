@@ -156,9 +156,12 @@ export default async function IPODetailPage({ params }: PageProps) {
         </div>
 
         {/* ── Two-column layout ───────────────────────────── */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        {/* min-w-0 on the grid + columns lets inner overflow-x-auto tables
+            (e.g. the GMP date table) actually scroll instead of forcing the
+            whole page wider than the mobile viewport. */}
+        <div className="grid min-w-0 gap-4 lg:grid-cols-3">
           {/* Left column */}
-          <div className="space-y-4 lg:col-span-2">
+          <div className="min-w-0 space-y-4 lg:col-span-2">
             {ipo.subscription ? (
               <SectionCard title="Subscription Status" compact>
                 <SubscriptionBars subscription={ipo.subscription} />
@@ -208,7 +211,7 @@ export default async function IPODetailPage({ params }: PageProps) {
           </div>
 
           {/* Right column */}
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             <SectionCard title="Timeline" compact>
               <Timeline ipo={ipo} today={today} />
             </SectionCard>
