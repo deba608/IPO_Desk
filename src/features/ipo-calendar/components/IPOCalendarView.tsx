@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CalendarRange, Clock, Search, Star, X } from "lucide-react";
+import { AlertCircle, CalendarRange, Clock, LayoutGrid, List, Search, Star, X } from "lucide-react";
 import {
   CalendarIPOWithStatus,
   CalendarResponse,
@@ -11,7 +11,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { IPOCalendarCard } from "./IPOCalendarCard";
+import { IPOCalendarListRow } from "./IPOCalendarListRow";
 import { CalendarHighlights } from "./CalendarHighlights";
+
+type ViewMode = "grid" | "list";
 
 type LifecycleTab = IPOLifecycle | "all" | "watchlist";
 type BoardFilter = IPOBoard | "all";
@@ -100,8 +103,20 @@ export function IPOCalendarView() {
   const [sortKey, setSortKey] = useState<SortKey>("openDate_desc");
   const [query, setQuery] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const didInit = useRef(false);
   const { ids: watchedIds, isWatched } = useWatchlist();
+
+  // Restore view mode preference from localStorage.
+  useEffect(() => {
+    const saved = localStorage.getItem("ipo-calendar-view") as ViewMode | null;
+    if (saved === "grid" || saved === "list") setViewMode(saved);
+  }, []);
+
+  const switchView = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem("ipo-calendar-view", mode);
+  };
 
   // Tick every second so the live IST clock and "updated Xs ago" stay current.
   useEffect(() => {
@@ -318,7 +333,7 @@ export function IPOCalendarView() {
           ))}
         </div>
 
-        {/* Search + Sort */}
+        {/* Search + Sort + View Toggle */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 focus-within:border-primary">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -362,16 +377,56 @@ export function IPOCalendarView() {
               </option>
             ))}
           </select>
+
+          {/* Grid / List view toggle */}
+          <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
+            <button
+              type="button"
+              aria-label="Grid view"
+              title="Grid view"
+              onClick={() => switchView("grid")}
+              className={cn(
+                "flex items-center justify-center rounded-md p-1.5 transition-colors",
+                viewMode === "grid"
+                  ? "bg-primary/20 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="List view"
+              title="List view"
+              onClick={() => switchView("list")}
+              className={cn(
+                "flex items-center justify-center rounded-md p-1.5 transition-colors",
+                viewMode === "list"
+                  ? "bg-primary/20 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Content */}
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
+        viewMode === "list" ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-16 animate-pulse rounded-xl border border-border bg-card" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        )
       ) : error ? (
         <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-6 text-sm text-destructive">
           <AlertCircle className="h-5 w-5 shrink-0" />
@@ -390,7 +445,7 @@ export function IPOCalendarView() {
             <>
               <Search className="h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                No IPOs match “{query}”.
+                No IPOs match "{query}".
               </p>
             </>
           ) : (
@@ -401,6 +456,12 @@ export function IPOCalendarView() {
               </p>
             </>
           )}
+        </div>
+      ) : viewMode === "list" ? (
+        <div className="flex flex-col gap-2">
+          {visible.map((ipo) => (
+            <IPOCalendarListRow key={ipo.id} ipo={ipo} />
+          ))}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
