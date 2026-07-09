@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CalendarRange, Clock, LayoutGrid, List, Search, Star, X } from "lucide-react";
+import { AlertCircle, CalendarRange, Clock, LayoutGrid, List, Search, SlidersHorizontal, Star, X } from "lucide-react";
 import {
   CalendarIPOWithStatus,
   CalendarResponse,
@@ -15,6 +15,13 @@ import { IPOCalendarListRow } from "./IPOCalendarListRow";
 import { CalendarHighlights } from "./CalendarHighlights";
 
 type ViewMode = "grid" | "list";
+
+const REGISTRAR_LABELS: Record<string, string> = {
+  kfintech: "KFintech",
+  mufg: "MUFG Intime",
+  linkintime: "Link Intime",
+  bigshare: "Bigshare",
+};
 
 type LifecycleTab = IPOLifecycle | "all" | "watchlist";
 type BoardFilter = IPOBoard | "all";
@@ -104,8 +111,32 @@ export function IPOCalendarView() {
   const [query, setQuery] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  const [gmpFilter, setGmpFilter] = useState("all");
+  const [sizeFilter, setSizeFilter] = useState("all");
+  const [registrarFilter, setRegistrarFilter] = useState("all");
   const didInit = useRef(false);
   const { ids: watchedIds, isWatched } = useWatchlist();
+
+  const uniqueRegistrars = useMemo(() => {
+    if (!data) return [];
+    const set = new Set(data.ipos.map((ipo) => ipo.registrar));
+    return Array.from(set).filter(Boolean);
+  }, [data]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (gmpFilter !== "all") count++;
+    if (sizeFilter !== "all") count++;
+    if (registrarFilter !== "all") count++;
+    return count;
+  }, [gmpFilter, sizeFilter, registrarFilter]);
+
+  const resetFilters = () => {
+    setGmpFilter("all");
+    setSizeFilter("all");
+    setRegistrarFilter("all");
+  };
 
   // Restore view mode preference from localStorage.
   useEffect(() => {
@@ -199,10 +230,34 @@ export function IPOCalendarView() {
         q === "" ||
         ipo.name.toLowerCase().includes(q) ||
         (ipo.symbol?.toLowerCase().includes(q) ?? false);
-      return matchesTab && matchesBoard && matchesQuery;
+      
+      // GMP filter
+      let matchesGmp = true;
+      if (gmpFilter === "positive") {
+        matchesGmp = ipo.gmpPercent !== undefined && ipo.gmpPercent >= 0;
+      } else if (gmpFilter === "strong") {
+        matchesGmp = ipo.gmpPercent !== undefined && ipo.gmpPercent >= 20;
+      } else if (gmpFilter === "discount") {
+        matchesGmp = ipo.gmpPercent !== undefined && ipo.gmpPercent < 0;
+      }
+
+      // Issue size filter
+      let matchesSize = true;
+      if (sizeFilter === "large") {
+        matchesSize = ipo.issueSizeCr >= 1000;
+      } else if (sizeFilter === "mid") {
+        matchesSize = ipo.issueSizeCr >= 100 && ipo.issueSizeCr < 1000;
+      } else if (sizeFilter === "small") {
+        matchesSize = ipo.issueSizeCr < 100;
+      }
+
+      // Registrar filter
+      const matchesRegistrar = registrarFilter === "all" || ipo.registrar === registrarFilter;
+
+      return matchesTab && matchesBoard && matchesQuery && matchesGmp && matchesSize && matchesRegistrar;
     });
     return sortIPOs(filtered, sortKey);
-  }, [data, tab, board, sortKey, query, isWatched]);
+  }, [data, tab, board, sortKey, query, isWatched, gmpFilter, sizeFilter, registrarFilter]);
 
   // Live IST wall-clock, re-rendered every second via `now`.
   const istClock = useMemo(
@@ -335,15 +390,18 @@ export function IPOCalendarView() {
 
         {/* Search + Sort + View Toggle */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 focus-within:border-primary">
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 focus-within:border-primary relative">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search IPOs..."
-              className="w-28 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground sm:w-40"
+              placeholder="Search..."
+              className="w-20 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground sm:w-36"
             />
+            <kbd className="hidden sm:inline-flex h-4 select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[9px] font-medium text-muted-foreground">
+              <span className="text-[10px]">⌘</span>K
+            </kbd>
             {query && (
               <button
                 type="button"
@@ -355,6 +413,27 @@ export function IPOCalendarView() {
               </button>
             )}
           </div>
+          
+          {/* Advanced filters toggle */}
+          <button
+            type="button"
+            onClick={() => setShowFiltersPanel(!showFiltersPanel)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+              showFiltersPanel || activeFiltersCount > 0
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+            )}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Filters</span>
+            {activeFiltersCount > 0 && (
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-white">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+
           <label
             htmlFor="ipo-sort"
             className="hidden text-xs text-muted-foreground whitespace-nowrap sm:inline"
@@ -411,6 +490,75 @@ export function IPOCalendarView() {
           </div>
         </div>
       </div>
+
+      {/* Collapsible filters panel */}
+      {showFiltersPanel && (
+        <div className="grid gap-3 rounded-xl border border-border bg-muted/10 p-4 sm:grid-cols-4 items-end animate-in fade-in-50 duration-200">
+          {/* GMP Filter */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GMP Premium</label>
+            <select
+              value={gmpFilter}
+              onChange={(e) => setGmpFilter(e.target.value)}
+              className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+            >
+              <option value="all">All IPOs</option>
+              <option value="positive">Positive GMP (≥ 0%)</option>
+              <option value="strong">Strong GMP (≥ 20%)</option>
+              <option value="discount">Discount/Negative (&lt; 0%)</option>
+            </select>
+          </div>
+
+          {/* Issue Size Filter */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Issue Size</label>
+            <select
+              value={sizeFilter}
+              onChange={(e) => setSizeFilter(e.target.value)}
+              className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+            >
+              <option value="all">All Sizes</option>
+              <option value="large">Large Cap (≥ 1,000 Cr)</option>
+              <option value="mid">Mid Cap (100 - 1,000 Cr)</option>
+              <option value="small">Small Cap (&lt; 100 Cr)</option>
+            </select>
+          </div>
+
+          {/* Registrar Filter */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Registrar</label>
+            <select
+              value={registrarFilter}
+              onChange={(e) => setRegistrarFilter(e.target.value)}
+              className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+            >
+              <option value="all">All Registrars</option>
+              {uniqueRegistrars.map((reg) => (
+                <option key={reg} value={reg}>
+                  {REGISTRAR_LABELS[reg] ?? reg}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Reset Filters button */}
+          <div>
+            <button
+              type="button"
+              disabled={activeFiltersCount === 0}
+              onClick={resetFilters}
+              className={cn(
+                "w-full rounded-lg border py-1.5 text-xs font-semibold transition-colors",
+                activeFiltersCount > 0
+                  ? "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 cursor-pointer"
+                  : "border-border bg-muted/40 text-muted-foreground cursor-not-allowed"
+              )}
+            >
+              Clear All Filters
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (

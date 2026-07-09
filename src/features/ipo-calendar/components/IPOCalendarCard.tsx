@@ -19,6 +19,8 @@ import { CalendarIPOWithStatus, IPOLifecycle } from "@/types/calendar.types";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { formatCrore, formatINR, formatDate, formatDateRange } from "../lib/format";
+import { AddToCalendarButton } from "./AddToCalendarButton";
+import { SubscriptionDetailsPopover } from "./SubscriptionDetailsPopover";
 
 /** "Closes in 2d" / "Opens today" / "Lists in 5d" relative to now (IST dates). */
 function relativeChip(ipo: CalendarIPOWithStatus): string | null {
@@ -119,7 +121,7 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
             </span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
@@ -138,6 +140,9 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
           >
             <Star className={cn("h-4 w-4", hydrated && watched && "fill-current")} />
           </button>
+          
+          <AddToCalendarButton ipo={ipo} variant="icon" />
+
           <div className="flex flex-col items-end gap-1">
             <Badge variant={status.variant} className="gap-1.5">
               <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
@@ -212,26 +217,27 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
       )}
 
       {/* Subscription (when available) */}
-      {subTotal !== undefined && (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-            <Flame className="h-3.5 w-3.5 text-orange-400" />
-            Subscribed
-          </span>
-          <div className="flex items-center gap-3 text-xs">
-            {ipo.subscription?.qib !== undefined && (
-              <span className="text-muted-foreground">
-                QIB <span className="font-medium text-foreground">{ipo.subscription.qib}×</span>
+      {ipo.subscription && subTotal !== undefined && (
+        <SubscriptionDetailsPopover
+          subscription={ipo.subscription}
+          trigger={
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 hover:bg-muted/60 transition-colors w-full text-left">
+              <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                <Flame className="h-3.5 w-3.5 text-orange-400 animate-pulse" />
+                Subscribed
               </span>
-            )}
-            {ipo.subscription?.retail !== undefined && (
-              <span className="text-muted-foreground">
-                Retail <span className="font-medium text-foreground">{ipo.subscription.retail}×</span>
-              </span>
-            )}
-            <span className="font-semibold text-primary">{subTotal}× total</span>
-          </div>
-        </div>
+              <div className="flex items-center gap-2 text-xs">
+                {ipo.subscription?.retail !== undefined && (
+                  <span className="text-muted-foreground">
+                    Retail <span className="font-medium text-foreground">{ipo.subscription.retail}×</span>
+                  </span>
+                )}
+                <span className="font-semibold text-primary">{subTotal}× total</span>
+                <span className="text-[10px] text-slate-500">ℹ️</span>
+              </div>
+            </div>
+          }
+        />
       )}
 
       {/* Footer */}
@@ -284,3 +290,4 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
     </Link>
   );
 }
+

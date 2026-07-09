@@ -14,6 +14,8 @@ import { CalendarIPOWithStatus, IPOLifecycle } from "@/types/calendar.types";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { formatCrore, formatINR, formatDate, formatDateRange } from "../lib/format";
+import { AddToCalendarButton } from "./AddToCalendarButton";
+import { SubscriptionDetailsPopover } from "./SubscriptionDetailsPopover";
 
 const REGISTRAR_LABELS: Record<string, string> = {
   kfintech: "KFintech",
@@ -68,6 +70,9 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
       >
         <Star className={cn("h-3.5 w-3.5", hydrated && watched && "fill-current")} />
       </button>
+
+      {/* Calendar reminder button */}
+      <AddToCalendarButton ipo={ipo} variant="icon" />
 
       {/* Name + badges */}
       <div className="min-w-0 flex-1">
@@ -139,10 +144,22 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
       {subTotal !== undefined && (
         <div className="hidden w-20 shrink-0 lg:block">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Subscr.</p>
-          <p className="flex items-center gap-1 text-xs font-semibold text-primary">
-            <Flame className="h-3 w-3 text-orange-400" />
-            {subTotal}×
-          </p>
+          {ipo.subscription ? (
+            <SubscriptionDetailsPopover
+              subscription={ipo.subscription}
+              trigger={
+                <p className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-indigo-400 transition-colors">
+                  <Flame className="h-3 w-3 text-orange-400 animate-pulse" />
+                  {subTotal}× ℹ️
+                </p>
+              }
+            />
+          ) : (
+            <p className="flex items-center gap-1 text-xs font-semibold text-primary">
+              <Flame className="h-3 w-3 text-orange-400" />
+              {subTotal}×
+            </p>
+          )}
         </div>
       )}
 
