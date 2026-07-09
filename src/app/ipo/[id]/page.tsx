@@ -17,6 +17,7 @@ import {
 } from "@/features/ipo-calendar/lib/calendar.service";
 import { formatCrore, formatINR } from "@/features/ipo-calendar/lib/format";
 import { SubscriptionBars } from "@/features/ipo-detail/components/SubscriptionBars";
+import { AllotmentOdds } from "@/features/ipo-detail/components/AllotmentOdds";
 import { Timeline } from "@/features/ipo-detail/components/Timeline";
 import { AddToCalendar } from "@/features/ipo-detail/components/AddToCalendar";
 import { GMPDetailView } from "@/features/ipo-detail/components/GMPDetailView";
@@ -180,6 +181,16 @@ export default async function IPODetailPage({ params }: PageProps) {
                 <p className="text-xs text-muted-foreground">
                   Subscription data appears once the issue opens.
                 </p>
+              </SectionCard>
+            )}
+
+            {/* Retail allotment odds — driven by the retail subscription × */}
+            {ipo.subscription?.retail !== undefined && (
+              <SectionCard title="Allotment Odds (Retail)" compact>
+                <AllotmentOdds
+                  retailSubscription={ipo.subscription.retail}
+                  minInvestment={ipo.minInvestment}
+                />
               </SectionCard>
             )}
 
