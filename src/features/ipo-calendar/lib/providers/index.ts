@@ -18,6 +18,11 @@ const TTL_MS = 60 * 1000;
 
 let cache: { at: number; result: CatalogueResult } | null = null;
 
+/** yyyy-mm-dd for "today" in UTC (snapshot dates are stored in UTC). */
+function todayUtcDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function liveProviders(): CalendarProvider[] {
   const key = process.env.IPOGURU_API_KEY?.trim();
   const chain: CalendarProvider[] = [];
@@ -41,7 +46,7 @@ async function persistToDb(ipos: CalendarIPO[], source: DataSource): Promise<voi
   try {
     const prisma = await getPrisma();
     for (const ipo of ipos) {
-      await prisma.ipo.upsert({
+      const dbIpo = await prisma.ipo.upsert({
         where: { slug: ipo.id },
         update: {
           name: ipo.name,
@@ -81,9 +86,20 @@ async function persistToDb(ipos: CalendarIPO[], source: DataSource): Promise<voi
         },
       });
 
+      // Record at most ONE GMP snapshot per IPO per calendar day, and only when
+      // the value actually moved. Without this, the calendar's 60s refresh (and
+      // every serverless cold start) would insert a duplicate row on each load —
+      // exploding the table and collapsing the "daily history" chart into dozens
+      // of same-hour points.
       if (ipo.gmp !== undefined) {
-        const dbIpo = await (await getPrisma()).ipo.findUnique({ where: { slug: ipo.id } });
-        if (dbIpo) {
+        const latest = await prisma.gmpSnapshot.findFirst({
+          where: { ipoId: dbIpo.id },
+          orderBy: { date: "desc" },
+        });
+        const sameDay =
+          latest && latest.date.toISOString().slice(0, 10) === todayUtcDate();
+        const unchanged = latest && latest.gmp === ipo.gmp;
+        if (!sameDay && !unchanged) {
           await prisma.gmpSnapshot.create({
             data: { ipoId: dbIpo.id, gmp: ipo.gmp, source: "investorgain" },
           });
