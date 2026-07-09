@@ -25,6 +25,12 @@ const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+const IG_HEADERS = {
+  "User-Agent": UA,
+  Accept: "application/json",
+  Referer: REFERER,
+};
+
 interface RawRow {
   Name?: string;
   GMP?: string;
@@ -48,6 +54,8 @@ interface RawRow {
 }
 
 interface RawResponse {
+  msg?: string | number;
+  error?: string;
   reportTableData?: RawRow[];
 }
 
@@ -62,8 +70,25 @@ interface SubRow {
   "~id"?: number;
 }
 interface SubResponse {
+  msg?: string | number;
+  error?: string;
   reportTableData?: SubRow[];
 }
+
+/**
+ * Report data-read path prefixes, newest first. InvestorGain versions this
+ * path (it moved `/cloud/report/…` → `/cloud/v2/report/…` in Jul 2026, which
+ * silently zeroed our catalogue). We try each in order and use the first that
+ * returns a valid table, so a future bump only needs a new entry here.
+ */
+const REPORT_PATH_PREFIXES = [
+  "/cloud/v2/report/data-read",
+  "/cloud/report/data-read",
+];
+
+// Report ids on InvestorGain.
+const REPORT_GMP = 331; // "Live IPO GMP" — GMP, price band, dates, rating
+const REPORT_SUBSCRIPTION = 333; // category-wise subscription multiples
 
 /**
  * Calendar year + Indian fiscal year for "today" in IST (FY runs Apr→Mar).
@@ -79,16 +104,42 @@ function fyParts(): { cy: number; fy: string } {
   return { cy, fy };
 }
 
-/** Report 331 = "Live IPO GMP" (GMP, price band, dates, rating). */
-function reportUrl(): string {
+/** Build a report URL for a given path prefix + report id, scoped to "today". */
+function reportUrlFor(prefix: string, reportId: number): string {
   const { cy, fy } = fyParts();
-  return `${HOST}/cloud/report/data-read/331/1/5/${cy}/${fy}/0/all`;
+  return `${HOST}${prefix}/${reportId}/1/5/${cy}/${fy}/0/all`;
 }
 
-/** Report 333 = "IPO Subscription" (category-wise multiples while open). */
-function subscriptionUrl(): string {
-  const { cy, fy } = fyParts();
-  return `${HOST}/cloud/report/data-read/333/1/5/${cy}/${fy}/0/all`;
+/**
+ * Fetch a versioned InvestorGain report, trying each path prefix until one
+ * returns a real `reportTableData` array. Throws (with the last error seen) if
+ * every candidate fails, so the caller can fall through to another provider
+ * instead of silently serving an empty catalogue.
+ */
+async function fetchReport<T extends { reportTableData?: unknown[] }>(
+  reportId: number
+): Promise<T> {
+  let lastError = "no candidate paths";
+  for (const prefix of REPORT_PATH_PREFIXES) {
+    try {
+      const res = await fetch(reportUrlFor(prefix, reportId), {
+        headers: IG_HEADERS,
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        lastError = `${prefix} → HTTP ${res.status}`;
+        continue;
+      }
+      const json = (await res.json()) as T & { msg?: unknown; error?: unknown };
+      if (Array.isArray(json.reportTableData)) return json;
+      lastError = `${prefix} → ${String(json.error ?? json.msg ?? "no table")}`;
+    } catch (err) {
+      lastError = `${prefix} → ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+  throw new Error(
+    `InvestorGain report ${reportId} unavailable on all paths (${lastError})`
+  );
 }
 
 function stripTags(s?: string): string {
@@ -293,12 +344,6 @@ function normalize(
   };
 }
 
-const IG_HEADERS = {
-  "User-Agent": UA,
-  Accept: "application/json",
-  Referer: REFERER,
-};
-
 /** Raw row of the `gmpData` array embedded in an InvestorGain detail page. */
 interface RawGmpHistoryRow {
   gmp_date?: string; // "06-07-2026" (dd-mm-yyyy)
@@ -406,31 +451,26 @@ export function createInvestorGainProvider(): CalendarProvider {
   return {
     source: "live",
     async fetchCatalogue(): Promise<CalendarIPO[]> {
-      // Primary report (331) is required; the subscription report (333) is a
-      // best-effort enrichment — a failure there must not sink the catalogue.
-      const [gmpRes, subRes] = await Promise.allSettled([
-        fetch(reportUrl(), { headers: IG_HEADERS, cache: "no-store" }),
-        fetch(subscriptionUrl(), { headers: IG_HEADERS, cache: "no-store" }),
+      // Primary report (331) is required — fetchReport throws if every path
+      // candidate fails, so loadCatalogue falls through to NSE. The
+      // subscription report (333) is best-effort enrichment.
+      const [gmpResult, subResult] = await Promise.allSettled([
+        fetchReport<RawResponse>(REPORT_GMP),
+        fetchReport<SubResponse>(REPORT_SUBSCRIPTION),
       ]);
 
-      if (gmpRes.status !== "fulfilled" || !gmpRes.value.ok) {
-        const code =
-          gmpRes.status === "fulfilled" ? gmpRes.value.status : "network error";
-        throw new Error(`InvestorGain report responded ${code}`);
+      if (gmpResult.status !== "fulfilled") {
+        throw gmpResult.reason instanceof Error
+          ? gmpResult.reason
+          : new Error(String(gmpResult.reason));
       }
 
-      let subMap: Map<number, import("@/types/calendar.types").Subscription> | undefined;
-      if (subRes.status === "fulfilled" && subRes.value.ok) {
-        try {
-          const subJson: SubResponse = await subRes.value.json();
-          subMap = buildSubMap(subJson.reportTableData ?? []);
-        } catch {
-          // Malformed subscription payload — proceed without category breakdown.
-        }
-      }
+      const subMap =
+        subResult.status === "fulfilled"
+          ? buildSubMap(subResult.value.reportTableData ?? [])
+          : undefined;
 
-      const json: RawResponse = await gmpRes.value.json();
-      const rows = json.reportTableData ?? [];
+      const rows = gmpResult.value.reportTableData ?? [];
       return rows
         .map((row) => normalize(row, subMap))
         .filter((ipo): ipo is CalendarIPO => ipo !== null);
