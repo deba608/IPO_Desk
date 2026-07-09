@@ -216,7 +216,7 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
         )}
       </div>
 
-      {/* Signals: status · anchor · rating */}
+      {/* Signals: status, anchor, crowd rating */}
       <div className="flex min-w-0 items-center gap-1.5">
         <Badge variant={status.variant} className="gap-1 px-1.5">
           <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
