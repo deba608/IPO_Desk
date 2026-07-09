@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { IPOCalendarCard } from "./IPOCalendarCard";
-import { IPOCalendarListRow } from "./IPOCalendarListRow";
+import { IPOCalendarListRow, IPOCalendarListHeader } from "./IPOCalendarListRow";
 import { CalendarHighlights } from "./CalendarHighlights";
 
 type ViewMode = "grid" | "list";
@@ -606,10 +606,13 @@ export function IPOCalendarView() {
           )}
         </div>
       ) : viewMode === "list" ? (
-        <div className="flex flex-col gap-2">
-          {visible.map((ipo) => (
-            <IPOCalendarListRow key={ipo.id} ipo={ipo} />
-          ))}
+        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+          <div className="flex flex-col gap-2">
+            <IPOCalendarListHeader />
+            {visible.map((ipo) => (
+              <IPOCalendarListRow key={ipo.id} ipo={ipo} />
+            ))}
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
