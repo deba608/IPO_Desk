@@ -236,9 +236,9 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
           </span>
         )}
       </div>
-
       {/* Chevron */}
       <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
     </Link>
   );
 }
+

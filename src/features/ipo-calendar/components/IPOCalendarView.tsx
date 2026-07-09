@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CalendarRange, Clock, LayoutGrid, List, Search, SlidersHorizontal, Star, X } from "lucide-react";
+import { AlertCircle, CalendarRange, Clock, Download, LayoutGrid, List, Search, SlidersHorizontal, Star, X } from "lucide-react";
 import {
   CalendarIPOWithStatus,
   CalendarResponse,
@@ -13,6 +13,8 @@ import { useWatchlist } from "@/hooks/useWatchlist";
 import { IPOCalendarCard } from "./IPOCalendarCard";
 import { IPOCalendarListRow, IPOCalendarListHeader } from "./IPOCalendarListRow";
 import { CalendarHighlights } from "./CalendarHighlights";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { exportIPOs } from "../lib/export";
 
 type ViewMode = "grid" | "list";
 
@@ -116,6 +118,7 @@ export function IPOCalendarView() {
   const [sizeFilter, setSizeFilter] = useState("all");
   const [registrarFilter, setRegistrarFilter] = useState("all");
   const didInit = useRef(false);
+  const urlHydrated = useRef(false);
   const { ids: watchedIds, isWatched } = useWatchlist();
 
   const uniqueRegistrars = useMemo(() => {
@@ -148,6 +151,70 @@ export function IPOCalendarView() {
     setViewMode(mode);
     localStorage.setItem("ipo-calendar-view", mode);
   };
+
+  // Hydrate filters from URL search params on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    
+    const urlTab = params.get("tab") as LifecycleTab | null;
+    if (urlTab && ["all", "open", "upcoming", "closed", "listed", "watchlist"].includes(urlTab)) {
+      setTab(urlTab);
+    }
+    
+    const urlBoard = params.get("board") as BoardFilter | null;
+    if (urlBoard && ["all", "mainboard", "sme"].includes(urlBoard)) {
+      setBoard(urlBoard);
+    }
+    
+    const urlQuery = params.get("q");
+    if (urlQuery) {
+      setQuery(urlQuery);
+    }
+    
+    const urlGmp = params.get("gmp");
+    if (urlGmp && ["all", "positive", "strong", "discount"].includes(urlGmp)) {
+      setGmpFilter(urlGmp);
+    }
+    
+    const urlSize = params.get("size");
+    if (urlSize && ["all", "large", "mid", "small"].includes(urlSize)) {
+      setSizeFilter(urlSize);
+    }
+    
+    const urlReg = params.get("registrar");
+    if (urlReg) {
+      setRegistrarFilter(urlReg);
+    }
+
+    const hasActiveFilters = 
+      (urlGmp && urlGmp !== "all") || 
+      (urlSize && urlSize !== "all") || 
+      (urlReg && urlReg !== "all");
+    if (hasActiveFilters) {
+      setShowFiltersPanel(true);
+    }
+
+    urlHydrated.current = true;
+  }, []);
+
+  // Update URL search parameters when filters change
+  useEffect(() => {
+    if (typeof window === "undefined" || !urlHydrated.current) return;
+    
+    const params = new URLSearchParams();
+    if (tab !== "open") params.set("tab", tab);
+    if (board !== "all") params.set("board", board);
+    if (query.trim() !== "") params.set("q", query.trim());
+    if (gmpFilter !== "all") params.set("gmp", gmpFilter);
+    if (sizeFilter !== "all") params.set("size", sizeFilter);
+    if (registrarFilter !== "all") params.set("registrar", registrarFilter);
+    
+    const queryString = params.toString();
+    const newUrl = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+    
+    window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, "", newUrl);
+  }, [tab, board, query, gmpFilter, sizeFilter, registrarFilter]);
 
   // Tick every second so the live IST clock and "updated Xs ago" stay current.
   useEffect(() => {
@@ -456,6 +523,40 @@ export function IPOCalendarView() {
               </option>
             ))}
           </select>
+
+          {/* Export dropdown */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-40 bg-slate-900 border-slate-800 text-slate-100 p-2 shadow-xl"
+              align="end"
+            >
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => exportIPOs(visible, "xlsx")}
+                  className="rounded-lg px-2 py-1.5 text-xs text-left text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors w-full"
+                >
+                  Download Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportIPOs(visible, "csv")}
+                  className="rounded-lg px-2 py-1.5 text-xs text-left text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors w-full"
+                >
+                  Download CSV
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Grid / List view toggle */}
           <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
