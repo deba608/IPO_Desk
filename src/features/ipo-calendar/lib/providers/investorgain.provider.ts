@@ -120,7 +120,8 @@ async function fetchReport<T extends { reportTableData?: unknown[] }>(
   reportId: number
 ): Promise<T> {
   let lastError = "no candidate paths";
-  for (const prefix of REPORT_PATH_PREFIXES) {
+  for (let i = 0; i < REPORT_PATH_PREFIXES.length; i++) {
+    const prefix = REPORT_PATH_PREFIXES[i];
     try {
       const res = await fetch(reportUrlFor(prefix, reportId), {
         headers: IG_HEADERS,
@@ -131,7 +132,16 @@ async function fetchReport<T extends { reportTableData?: unknown[] }>(
         continue;
       }
       const json = (await res.json()) as T & { msg?: unknown; error?: unknown };
-      if (Array.isArray(json.reportTableData)) return json;
+      if (Array.isArray(json.reportTableData)) {
+        // Falling past the preferred prefix means IG changed its path again —
+        // surface it so we notice before the fallback also breaks.
+        if (i > 0) {
+          console.warn(
+            `[investorgain] report ${reportId}: primary path failed (${lastError}), using fallback "${prefix}"`
+          );
+        }
+        return json;
+      }
       lastError = `${prefix} → ${String(json.error ?? json.msg ?? "no table")}`;
     } catch (err) {
       lastError = `${prefix} → ${err instanceof Error ? err.message : String(err)}`;
@@ -471,9 +481,24 @@ export function createInvestorGainProvider(): CalendarProvider {
           : undefined;
 
       const rows = gmpResult.value.reportTableData ?? [];
-      return rows
+      const catalogue = rows
         .map((row) => normalize(row, subMap))
         .filter((ipo): ipo is CalendarIPO => ipo !== null);
+
+      // Rows that lack confirmed open/close dates can't be placed on a
+      // date-based calendar, so normalize() drops them. Log the names once so
+      // pre-announcement IPOs missing from the calendar are explainable.
+      const dropped = rows.length - catalogue.length;
+      if (dropped > 0) {
+        const names = rows
+          .filter((r) => !isoDate(r["~Srt_Open"]) || !isoDate(r["~Srt_Close"]))
+          .map((r) => (r["~ipo_name"] ?? "").trim())
+          .filter(Boolean);
+        console.info(
+          `[investorgain] ${dropped} IPO(s) without confirmed dates skipped: ${names.join(", ")}`
+        );
+      }
+      return catalogue;
     },
   };
 }

@@ -166,7 +166,12 @@ export function createNseProvider(): CalendarProvider {
       const [mainboard, sme, current] = await Promise.all([
         getJson("/api/all-upcoming-issues?category=ipo"),
         getJson("/api/all-upcoming-issues?category=sme"),
-        getJson("/api/ipo-current-issue").catch(() => []), // optional enrichment
+        getJson("/api/ipo-current-issue").catch((err) => {
+          // Optional enrichment — degrade to no subscription data, but log it
+          // so a persistent outage isn't invisible.
+          console.warn("[nse] current-issue subscription fetch failed:", err);
+          return [];
+        }),
       ]);
 
       const ipos = [
