@@ -1,20 +1,15 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
   Shield,
   Zap,
   Users,
-  CheckCircle2,
-  BarChart3,
   Upload,
   FileSpreadsheet,
   ScanSearch,
   Target,
-  TrendingUp,
-  Activity,
-  Calendar,
 } from "lucide-react";
 import { IPOSelector } from "@/features/ipo-checker/components/IPOSelector";
 import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
@@ -24,64 +19,6 @@ import { CheckResponse, ScanResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
 import { useCheckHistory } from "@/hooks/useCheckHistory";
-import type { CalendarIPOWithStatus } from "@/types/calendar.types";
-
-/* ------------------------------------------------------------------ */
-/*  Stats Bar                                                           */
-/* ------------------------------------------------------------------ */
-
-function StatsBar({ ipos }: { ipos: CalendarIPOWithStatus[] }) {
-  const openCount = ipos.filter((i) => i.lifecycle === "open").length;
-  const upcomingCount = ipos.filter((i) => i.lifecycle === "upcoming").length;
-  const withGmp = ipos.filter((i) => i.gmp !== undefined && i.gmp !== null);
-  const topGmp =
-    withGmp.length > 0
-      ? withGmp.reduce((best, cur) =>
-          (cur.gmp as number) > (best.gmp as number) ? cur : best
-        )
-      : null;
-
-  const stats = [
-    {
-      icon: Activity,
-      label: "IPOs Open Now",
-      value: openCount,
-      color: "text-emerald-400",
-    },
-    {
-      icon: Calendar,
-      label: "Upcoming",
-      value: upcomingCount,
-      color: "text-blue-400",
-    },
-    {
-      icon: TrendingUp,
-      label: "Top GMP",
-      value: topGmp ? `+₹${topGmp.gmp}` : "—",
-      sub: topGmp ? topGmp.name.split(" ").slice(0, 2).join(" ") : "",
-      color: "text-amber-400",
-    },
-  ];
-
-  return (
-    <div className="animate-fade-up delay-300 container mx-auto max-w-4xl px-4 pb-2">
-      <div className="grid grid-cols-3 divide-x divide-border/40 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm">
-        {stats.map(({ icon: Icon, label, value, sub, color }) => (
-          <div key={label} className="flex items-center gap-3 px-5 py-3">
-            <div className={`shrink-0 rounded-lg bg-primary/10 p-1.5`}>
-              <Icon className={`h-3.5 w-3.5 ${color}`} />
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground">{label}</p>
-              <p className={`text-sm font-bold tabular-nums ${color}`}>{value}</p>
-              {sub && <p className="truncate text-[9px] text-muted-foreground/70">{sub}</p>}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Home Page                                                           */
@@ -97,17 +34,6 @@ export default function Home() {
   const resultsRef = useRef<HTMLDivElement>(null);
   const checkerRef = useRef<HTMLDivElement>(null);
   const { add: addHistory } = useCheckHistory();
-
-  // Live calendar data for the ticker + stats bar
-  const [calendarIPOs, setCalendarIPOs] = useState<CalendarIPOWithStatus[]>([]);
-  useEffect(() => {
-    fetch("/api/calendar")
-      .then((r) => r.json())
-      .then((json: { ipos?: CalendarIPOWithStatus[] }) => {
-        if (Array.isArray(json.ipos)) setCalendarIPOs(json.ipos);
-      })
-      .catch(() => {});
-  }, []);
 
   const handleCheck = useCallback(
     async (pans: string[]) => {
@@ -318,9 +244,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Stats bar */}
-        {calendarIPOs.length > 0 && <StatsBar ipos={calendarIPOs} />}
-
         {/* Main Checker Card */}
         <section
           ref={checkerRef}
@@ -399,51 +322,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* How It Works */}
-        {!results && !scanResults && (
-          <section className="container mx-auto max-w-5xl px-4 pb-20">
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-bold">How It Works</h2>
-              <p className="mt-2 text-muted-foreground">3 simple steps to check your IPO allotment</p>
-            </div>
-            <div className="grid gap-6 md:grid-cols-3">
-              {[
-                {
-                  step: "01",
-                  icon: BarChart3,
-                  title: "Select IPO",
-                  desc: "Choose from active IPOs across KFintech, MUFG, and Bigshare registrars",
-                },
-                {
-                  step: "02",
-                  icon: Upload,
-                  title: "Enter PAN(s)",
-                  desc: "Enter a single PAN, paste multiple, or upload an Excel file",
-                },
-                {
-                  step: "03",
-                  icon: CheckCircle2,
-                  title: "Get Results",
-                  desc: "Instantly see allotment status with export options",
-                },
-              ].map(({ step, icon: Icon, title, desc }) => (
-                <div
-                  key={step}
-                  className="relative rounded-xl border border-border bg-card p-6 hover:border-primary/50 transition-colors"
-                >
-                  <div className="absolute top-4 right-4 text-4xl font-bold text-primary/10">
-                    {step}
-                  </div>
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <h3 className="mb-2 font-semibold">{title}</h3>
-                  <p className="text-sm text-muted-foreground">{desc}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+
       </main>
 
       <footer className="border-t border-border py-8">
