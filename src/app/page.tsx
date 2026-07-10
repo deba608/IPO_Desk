@@ -27,55 +27,6 @@ import { useCheckHistory } from "@/hooks/useCheckHistory";
 import type { CalendarIPOWithStatus } from "@/types/calendar.types";
 
 /* ------------------------------------------------------------------ */
-/*  Live Ticker Strip                                                   */
-/* ------------------------------------------------------------------ */
-
-function LiveTicker({ ipos }: { ipos: CalendarIPOWithStatus[] }) {
-  const open = ipos.filter((i) => i.lifecycle === "open");
-  if (open.length === 0) return null;
-
-  // Duplicate the list so the CSS marquee loops seamlessly
-  const items = [...open, ...open];
-
-  return (
-    <div className="relative overflow-hidden border-y border-primary/10 bg-primary/[0.03] py-2">
-      <div className="flex" style={{ width: "max-content" }}>
-        <div
-          className="animate-ticker flex shrink-0 items-center gap-6 pr-6"
-          style={{ animationDuration: `${Math.max(open.length * 6, 24)}s` }}
-        >
-          {items.map((ipo, idx) => {
-            const hasGmp = ipo.gmp !== undefined && ipo.gmp !== null;
-            const gmpPositive = hasGmp && (ipo.gmp as number) >= 0;
-            return (
-              <a
-                key={`${ipo.id}-${idx}`}
-                href={`/ipo/${ipo.id}`}
-                className="flex items-center gap-2 whitespace-nowrap text-[11px] hover:opacity-80 transition-opacity"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span className="font-medium text-foreground/80">{ipo.name}</span>
-                {hasGmp && (
-                  <span
-                    className={`font-bold tabular-nums ${gmpPositive ? "text-emerald-400" : "text-rose-400"}`}
-                  >
-                    GMP {gmpPositive ? "+" : ""}₹{ipo.gmp}
-                  </span>
-                )}
-                <span className="text-muted-foreground/50">·</span>
-              </a>
-            );
-          })}
-        </div>
-      </div>
-      {/* Fade edges */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-background to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-background to-transparent" />
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  Stats Bar                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -113,7 +64,7 @@ function StatsBar({ ipos }: { ipos: CalendarIPOWithStatus[] }) {
   ];
 
   return (
-    <div className="animate-fade-up delay-300 container mx-auto max-w-4xl px-4 pb-4">
+    <div className="animate-fade-up delay-300 container mx-auto max-w-4xl px-4 pb-2">
       <div className="grid grid-cols-3 divide-x divide-border/40 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm">
         {stats.map(({ icon: Icon, label, value, sub, color }) => (
           <div key={label} className="flex items-center gap-3 px-5 py-3">
@@ -322,7 +273,7 @@ export default function Home() {
 
       <main>
         {/* Hero Section */}
-        <section className="relative overflow-hidden px-4 py-20">
+        <section className="relative overflow-hidden px-4 py-14">
           {/* Animated background blobs */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
           <div className="absolute inset-0 pointer-events-none">
@@ -348,7 +299,7 @@ export default function Home() {
             </p>
 
             {/* Feature pills — staggered entrance */}
-            <div className="mb-12 flex flex-wrap justify-center gap-3">
+            <div className="mb-6 flex flex-wrap justify-center gap-3">
               {[
                 { icon: Shield, text: "Secure & Private", delay: "delay-150" },
                 { icon: Zap, text: "Instant Results", delay: "delay-200" },
@@ -367,15 +318,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Live ticker strip */}
-        {calendarIPOs.length > 0 && <LiveTicker ipos={calendarIPOs} />}
-
         {/* Stats bar */}
-        {calendarIPOs.length > 0 && (
-          <div className="pt-4">
-            <StatsBar ipos={calendarIPOs} />
-          </div>
-        )}
+        {calendarIPOs.length > 0 && <StatsBar ipos={calendarIPOs} />}
 
         {/* Main Checker Card */}
         <section
