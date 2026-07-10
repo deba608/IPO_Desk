@@ -169,6 +169,13 @@ export function GMPDetailView({
     };
   }, [data, lotSize, rangeFilter]);
 
+  // Chart data respects range filter (oldest-first for Recharts).
+  // Must be declared here (before any early returns) to satisfy the Rules of Hooks.
+  const chartData = useMemo(() => {
+    if (!data) return [];
+    return rangeFilter === "all" ? data : data.slice(-rangeFilter);
+  }, [data, rangeFilter]);
+
   if (loading) {
     return <Skeleton className="h-48 w-full rounded-lg" />;
   }
@@ -187,12 +194,6 @@ export function GMPDetailView({
   const padding = Math.max((maxGmp - minGmp) * 0.15, 10);
   const yMin = Math.max(0, Math.floor(minGmp - padding));
   const yMax = Math.ceil(maxGmp + padding);
-
-  // Chart data respects range filter (oldest-first for Recharts)
-  const chartData = useMemo(() => {
-    if (!data) return [];
-    return rangeFilter === "all" ? data : data.slice(-rangeFilter);
-  }, [data, rangeFilter]);
 
   const getChange = (idx: number): number | null =>
     idx >= tableData.length - 1
