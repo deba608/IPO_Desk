@@ -39,7 +39,7 @@ const LIFECYCLE_CONFIG: Record<
 // and the chevron column is gone to keep every column comfortably wide. Below
 // lg the row switches to a stacked card — see the mobile block.
 const GRID_COLS =
-  "lg:grid lg:grid-cols-[auto_minmax(140px,1.6fr)_minmax(58px,0.7fr)_minmax(74px,0.9fr)_minmax(78px,0.9fr)_minmax(68px,0.8fr)_minmax(82px,0.9fr)_minmax(62px,0.75fr)_minmax(88px,1fr)_minmax(140px,1.2fr)] lg:items-center lg:gap-x-3";
+  "lg:grid lg:grid-cols-[auto_minmax(160px,1.9fr)_minmax(58px,0.7fr)_minmax(76px,0.9fr)_minmax(80px,0.9fr)_minmax(70px,0.8fr)_minmax(84px,0.9fr)_minmax(64px,0.75fr)_minmax(90px,1fr)_minmax(88px,0.95fr)] lg:items-center lg:gap-x-3";
 
 /** No forced min-width — the grid fits its container so nothing scrolls sideways. */
 export const LIST_MIN_WIDTH = "";
@@ -261,9 +261,15 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
               {ipo.name}
             </span>
           </div>
-          <p className="truncate text-[11px] text-muted-foreground">
-            {ipo.exchanges.join(" · ")} · {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
-          </p>
+          {/* 2nd line: exchange · registrar, with signals (anchor/flames) */}
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            <p className="truncate text-[11px] text-muted-foreground">
+              {ipo.exchanges.join(" · ")} · {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
+            </p>
+            {(ipo.anchorListed || ipo.rating !== undefined) && (
+              <span className="flex shrink-0 items-center gap-1">{signals}</span>
+            )}
+          </div>
         </div>
 
         <p className={val}>{priceBand}</p>
@@ -275,10 +281,7 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
         </p>
         <div className="flex min-w-0 items-center">{subscriptionNode}</div>
         <div className="flex min-w-0 items-center">{gmpNode}</div>
-        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-          {statusBadge}
-          {signals}
-        </div>
+        <div className="flex min-w-0 items-center">{statusBadge}</div>
       </div>
     </Link>
   );
