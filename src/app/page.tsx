@@ -267,10 +267,10 @@ export default function Home() {
                     scanMode ? "translate-x-full" : "translate-x-0"
                   }`}
                 />
-                <button
+                 <button
                   type="button"
                   onClick={() => setScanMode(false)}
-                  className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
+                  className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
                     !scanMode
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -286,7 +286,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setScanMode(true)}
-                  className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
+                  className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
                     scanMode
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
