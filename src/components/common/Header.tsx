@@ -204,7 +204,7 @@ export function Header() {
           <button
             type="button"
             onClick={openCommandPalette}
-            aria-label="Open search (Ctrl or Cmd + K)"
+            aria-label="Open search (Ctrl + K)"
             className="group ml-1 flex h-10 items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground outline-none transition-all duration-200 hover:border-primary/40 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95 motion-reduce:active:scale-100"
           >
             <Search className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 motion-reduce:transform-none" />
