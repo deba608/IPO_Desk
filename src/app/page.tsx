@@ -258,47 +258,35 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Mode toggle: single IPO vs scan all active IPOs */}
-              <div className="relative flex w-full rounded-full border border-border bg-muted/30 p-1 sm:w-auto shrink-0">
-                {/* Sliding indicator — springy bounce on switch */}
+              {/* Mode toggle: single IPO vs scan all — one control, swiping highlight */}
+              <div className="relative grid w-full grid-cols-2 rounded-xl border border-border bg-muted/30 p-1 sm:w-auto shrink-0">
+                {/* Swiping highlight */}
                 <span
                   aria-hidden
-                  className={`absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-card shadow-sm transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] ${
+                  className={`absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg border border-primary/60 bg-primary/10 shadow-md shadow-primary/10 transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] ${
                     scanMode ? "translate-x-full" : "translate-x-0"
                   }`}
                 />
-                 <button
-                  type="button"
-                  onClick={() => setScanMode(false)}
-                  className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
-                    !scanMode
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Target
-                    className={`h-4 w-4 transition-transform duration-300 ${
-                      !scanMode ? "scale-110" : "scale-100"
+                {[
+                  { active: !scanMode, onClick: () => setScanMode(false), Icon: Target, label: "Single IPO" },
+                  { active: scanMode, onClick: () => setScanMode(true), Icon: ScanSearch, label: "Scan All IPOs" },
+                ].map(({ active, onClick, Icon, label }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={onClick}
+                    className={`relative z-10 flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-300 sm:px-5 ${
+                      active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     }`}
-                  />
-                  Single IPO
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScanMode(true)}
-                  className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
-                    scanMode
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <ScanSearch
-                    className={`h-4 w-4 transition-transform duration-300 ${
-                      scanMode ? "scale-110" : "scale-100"
-                    }`}
-                  />
-                  Scan All IPOs
-                </button>
+                  >
+                    <Icon
+                      className={`h-4 w-4 shrink-0 transition-transform duration-300 ${
+                        active ? "scale-110" : "scale-100"
+                      }`}
+                    />
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 

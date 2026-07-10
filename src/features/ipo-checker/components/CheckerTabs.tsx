@@ -159,28 +159,32 @@ export function CheckerTabs({
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-4">
-          <TabsTrigger value="single" className="gap-1 sm:gap-2 px-1 sm:px-3">
-            <UserIcon className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] sm:text-xs md:text-sm">Single</span>
-          </TabsTrigger>
-          <TabsTrigger value="bulk" className="gap-1 sm:gap-2 px-1 sm:px-3">
-            <Users className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] sm:text-xs md:text-sm">Bulk</span>
-          </TabsTrigger>
-          <TabsTrigger value="upload" className="gap-1 sm:gap-2 px-1 sm:px-3">
-            <Upload className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] sm:text-xs md:text-sm">Upload</span>
-          </TabsTrigger>
-          <TabsTrigger value="profiles" className="gap-1 sm:gap-2 px-1 sm:px-3">
-            <UserCheck className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] sm:text-xs md:text-sm">Profiles</span>
-            {profiles.length > 0 && (
-              <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/20 px-1 text-[9px] font-bold text-primary">
-                {profiles.length}
-              </span>
-            )}
-          </TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-4 gap-1.5 bg-transparent p-0">
+          {[
+            { value: "single", Icon: UserIcon, label: "Single" },
+            { value: "bulk", Icon: Users, label: "Bulk" },
+            { value: "upload", Icon: Upload, label: "Upload" },
+            { value: "profiles", Icon: UserCheck, label: "Profiles" },
+          ].map(({ value, Icon, label }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className={cn(
+                "group flex-col gap-1 rounded-xl border border-border bg-muted/30 px-1 py-2.5 sm:flex-row sm:gap-2 sm:py-2",
+                "transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted/60",
+                "active:translate-y-0 active:scale-[0.97]",
+                "data-[state=active]:border-primary/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:shadow-primary/10"
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-data-[state=active]:scale-110" />
+              <span className="text-[11px] sm:text-xs md:text-sm">{label}</span>
+              {value === "profiles" && profiles.length > 0 && (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/20 px-1 text-[9px] font-bold text-primary sm:ml-0.5">
+                  {profiles.length}
+                </span>
+              )}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {/* Single PAN Tab */}
