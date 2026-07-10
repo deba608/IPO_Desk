@@ -19,6 +19,7 @@ import { CheckResponse, ScanResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
 import { useCheckHistory } from "@/hooks/useCheckHistory";
+import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
 /*  Home Page                                                           */
@@ -251,38 +252,42 @@ export default function Home() {
         >
           <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
             {/* Card Header */}
-            <div className="border-b border-border px-8 py-6">
-              <h2 className="text-xl font-semibold">Check Allotment Status</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Select an IPO, enter PAN number(s), and check your allotment status
-              </p>
-            </div>
+            <div className="border-b border-border px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold">Check Allotment Status</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Select an IPO, enter PAN number(s), and check your allotment status
+                </p>
+              </div>
 
-            {/* Mode toggle: single IPO vs scan all active IPOs */}
-            <div className="px-8 pt-6">
-              <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/30 p-1">
+              {/* Mode toggle: single IPO vs scan all active IPOs */}
+              <div className="relative flex rounded-lg border border-border bg-muted/30 p-1 w-fit self-start md:self-auto shrink-0 select-none">
+                <div
+                  className={cn(
+                    "absolute top-1 bottom-1 rounded-md bg-card shadow-sm transition-all duration-300 ease-out",
+                    scanMode ? "left-[calc(50%+2px)] right-1" : "left-1 right-[calc(50%+2px)]"
+                  )}
+                />
                 <button
                   type="button"
                   onClick={() => setScanMode(false)}
-                  className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    !scanMode
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={cn(
+                    "relative z-10 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-200",
+                    !scanMode ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <Target className="h-4 w-4" />
+                  <Target className="h-3.5 w-3.5" />
                   Single IPO
                 </button>
                 <button
                   type="button"
                   onClick={() => setScanMode(true)}
-                  className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    scanMode
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={cn(
+                    "relative z-10 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-200",
+                    scanMode ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <ScanSearch className="h-4 w-4" />
+                  <ScanSearch className="h-3.5 w-3.5" />
                   Scan All IPOs
                 </button>
               </div>
