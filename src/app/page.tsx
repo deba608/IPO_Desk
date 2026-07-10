@@ -259,36 +259,44 @@ export default function Home() {
               </div>
 
               {/* Mode toggle: single IPO vs scan all active IPOs */}
-              <div className="relative inline-flex self-start rounded-full border border-border bg-muted/30 p-0.5 sm:self-auto shrink-0">
-                {/* Sliding indicator */}
+              <div className="relative flex w-full rounded-full border border-border bg-muted/30 p-0.5 sm:w-auto shrink-0">
+                {/* Sliding indicator — springy bounce on switch */}
                 <span
                   aria-hidden
-                  className={`absolute inset-y-0.5 w-1/2 rounded-full bg-card shadow-sm transition-transform duration-300 ease-out ${
+                  className={`absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-card shadow-sm transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] ${
                     scanMode ? "translate-x-full" : "translate-x-0"
                   }`}
                 />
                 <button
                   type="button"
                   onClick={() => setScanMode(false)}
-                  className={`relative z-10 flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                  className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
                     !scanMode
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <Target className="h-3.5 w-3.5" />
+                  <Target
+                    className={`h-3.5 w-3.5 transition-transform duration-300 ${
+                      !scanMode ? "scale-110" : "scale-100"
+                    }`}
+                  />
                   Single IPO
                 </button>
                 <button
                   type="button"
                   onClick={() => setScanMode(true)}
-                  className={`relative z-10 flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                  className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
                     scanMode
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <ScanSearch className="h-3.5 w-3.5" />
+                  <ScanSearch
+                    className={`h-3.5 w-3.5 transition-transform duration-300 ${
+                      scanMode ? "scale-110" : "scale-100"
+                    }`}
+                  />
                   Scan All IPOs
                 </button>
               </div>
