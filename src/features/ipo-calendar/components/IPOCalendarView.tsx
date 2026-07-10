@@ -467,7 +467,7 @@ export function IPOCalendarView() {
               className="w-20 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground sm:w-36"
             />
             <kbd className="hidden sm:inline-flex h-4 select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[9px] font-medium text-muted-foreground">
-              <span className="text-[10px]">⌘</span>K
+              Ctrl + K
             </kbd>
             {query && (
               <button
