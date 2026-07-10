@@ -6,7 +6,6 @@ import {
   Shield,
   Zap,
   Users,
-  Upload,
   FileSpreadsheet,
   ScanSearch,
   Target,
