@@ -64,7 +64,7 @@ export function IPOCalendarListHeader() {
       <span className={cell}>Issue Size</span>
       <span className={cell}>Min. Invest</span>
       <span className={cell}>Subscr.</span>
-      <span className={cn(cell, "text-right")}>GMP</span>
+      <span className={cell}>GMP</span>
       <span className={cell}>Signals</span>
       <span />
     </div>
@@ -283,8 +283,8 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
         <p className={val}>
           {ipo.minInvestment > 0 ? formatINR(ipo.minInvestment) : "TBA"}
         </p>
-        <div className="min-w-0">{subscriptionNode}</div>
-        <div className="text-right">{gmpNode}</div>
+        <div className="flex min-w-0 items-center">{subscriptionNode}</div>
+        <div className="flex min-w-0 items-center">{gmpNode}</div>
         <div className="flex min-w-0 items-center gap-1.5">
           {statusBadge}
           {signals}
