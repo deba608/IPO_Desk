@@ -251,16 +251,16 @@ export default function Home() {
         >
           <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
             {/* Card Header */}
-            <div className="border-b border-border px-8 py-6">
-              <h2 className="text-xl font-semibold">Check Allotment Status</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Select an IPO, enter PAN number(s), and check your allotment status
-              </p>
-            </div>
+            <div className="flex flex-col gap-4 border-b border-border px-8 py-6 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Check Allotment Status</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Select an IPO, enter PAN number(s), and check your allotment status
+                </p>
+              </div>
 
-            {/* Mode toggle: single IPO vs scan all active IPOs */}
-            <div className="flex justify-end px-8 pt-6">
-              <div className="relative inline-flex rounded-full border border-border bg-muted/30 p-0.5">
+              {/* Mode toggle: single IPO vs scan all active IPOs */}
+              <div className="relative inline-flex self-start rounded-full border border-border bg-muted/30 p-0.5 sm:self-auto shrink-0">
                 {/* Sliding indicator */}
                 <span
                   aria-hidden
