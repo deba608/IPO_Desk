@@ -7,7 +7,6 @@ import {
   Star,
   Flame,
   Anchor,
-  ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIPOWithStatus, IPOLifecycle } from "@/types/calendar.types";
@@ -35,13 +34,15 @@ const LIFECYCLE_CONFIG: Record<
 };
 
 // Desktop (lg+) column template shared by the header and every row so columns
-// line up perfectly. The name track flexes; the rest are fixed. Below lg the
-// row switches to a stacked card (no horizontal scroll) — see the mobile block.
+// line up perfectly. Tracks use minmax(min,fr) so the whole table fits the
+// available width — no horizontal scroll. Board badge folds into the name cell
+// and the chevron column is gone to keep every column comfortably wide. Below
+// lg the row switches to a stacked card — see the mobile block.
 const GRID_COLS =
-  "lg:grid lg:grid-cols-[auto_minmax(180px,1.5fr)_4.5rem_6rem_6.5rem_6rem_6rem_6.5rem_5.5rem_6.5rem_6rem_1rem] lg:items-center lg:gap-x-3";
+  "lg:grid lg:grid-cols-[auto_minmax(150px,1.7fr)_minmax(60px,0.8fr)_minmax(76px,0.95fr)_minmax(80px,0.95fr)_minmax(70px,0.85fr)_minmax(84px,0.95fr)_minmax(64px,0.8fr)_minmax(92px,1.1fr)_minmax(96px,1.15fr)] lg:items-center lg:gap-x-3";
 
-/** Minimum table width on desktop; the wrapper scrolls if the window is narrow. */
-export const LIST_MIN_WIDTH = "lg:min-w-[1120px]";
+/** No forced min-width — the grid fits its container so nothing scrolls sideways. */
+export const LIST_MIN_WIDTH = "";
 
 /** Column header row for the list view — desktop only (mobile rows are cards). */
 export function IPOCalendarListHeader() {
@@ -57,7 +58,6 @@ export function IPOCalendarListHeader() {
     >
       <span />
       <span className={cell}>IPO</span>
-      <span className={cell}>Board</span>
       <span className={cell}>Price Band</span>
       <span className={cell}>Dates</span>
       <span className={cell}>Listing</span>
@@ -66,7 +66,6 @@ export function IPOCalendarListHeader() {
       <span className={cell}>Subscr.</span>
       <span className={cell}>GMP</span>
       <span className={cell}>Signals</span>
-      <span />
     </div>
   );
 }
@@ -249,31 +248,22 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
           <AddToCalendarButton ipo={ipo} variant="icon" />
         </div>
 
-        {/* Name */}
+        {/* Name (board badge folded in) */}
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
+            <Badge
+              variant={ipo.board === "mainboard" ? "default" : "outline"}
+              className="shrink-0 text-[10px]"
+            >
+              {ipo.board === "mainboard" ? "Main" : "SME"}
+            </Badge>
             <span className="truncate font-semibold text-foreground transition-colors group-hover:text-primary">
               {ipo.name}
             </span>
-            {ipo.symbol && (
-              <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                {ipo.symbol}
-              </span>
-            )}
           </div>
           <p className="truncate text-[11px] text-muted-foreground">
             {ipo.exchanges.join(" · ")} · {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
           </p>
-        </div>
-
-        {/* Board */}
-        <div className="min-w-0">
-          <Badge
-            variant={ipo.board === "mainboard" ? "default" : "outline"}
-            className="text-[10px]"
-          >
-            {ipo.board === "mainboard" ? "Main" : "SME"}
-          </Badge>
         </div>
 
         <p className={val}>{priceBand}</p>
@@ -289,7 +279,6 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
           {statusBadge}
           {signals}
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
     </Link>
   );

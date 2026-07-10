@@ -707,17 +707,11 @@ export function IPOCalendarView() {
           )}
         </div>
       ) : viewMode === "list" ? (
-        <div className="-mx-1 overflow-x-auto px-1 pb-1">
-          <div className="lg:min-w-[1120px]">
-            <div className="flex max-h-[65vh] flex-col gap-2 overflow-y-auto pb-1 pr-1 scrollbar">
-              <div className="sticky top-0 z-10 bg-background pb-1">
-                <IPOCalendarListHeader />
-              </div>
-              {visible.map((ipo) => (
-                <IPOCalendarListRow key={ipo.id} ipo={ipo} />
-              ))}
-            </div>
-          </div>
+        <div className="flex flex-col gap-2">
+          <IPOCalendarListHeader />
+          {visible.map((ipo) => (
+            <IPOCalendarListRow key={ipo.id} ipo={ipo} />
+          ))}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
