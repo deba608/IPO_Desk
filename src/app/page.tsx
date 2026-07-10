@@ -325,14 +325,17 @@ export default function Home() {
 
       </main>
 
-      <footer className="border-t border-border py-8">
-        <div className="container mx-auto px-4 text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            © 2026 IPO Desk. All rights reserved.
-          </p>
-          <p className="text-xs text-muted-foreground/60">
+      <footer className="border-t border-border py-6 sm:py-8">
+        <div className="container mx-auto flex flex-col items-center px-4 sm:flex-row">
+          <div className="hidden flex-1 sm:block" />
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Crafted with ❤️ by Dev
           </p>
+          <div className="flex-1 text-center sm:text-right">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              © 2026 IPO Desk. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
