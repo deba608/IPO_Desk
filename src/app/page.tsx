@@ -19,7 +19,6 @@ import { CheckResponse, ScanResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
 import { useCheckHistory } from "@/hooks/useCheckHistory";
-import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
 /*  Home Page                                                           */
@@ -252,29 +251,31 @@ export default function Home() {
         >
           <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
             {/* Card Header */}
-            <div className="border-b border-border px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold">Check Allotment Status</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Select an IPO, enter PAN number(s), and check your allotment status
-                </p>
-              </div>
+            <div className="border-b border-border px-8 py-6">
+              <h2 className="text-xl font-semibold">Check Allotment Status</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Select an IPO, enter PAN number(s), and check your allotment status
+              </p>
+            </div>
 
-              {/* Mode toggle: single IPO vs scan all active IPOs */}
-              <div className="relative flex rounded-lg border border-border bg-muted/30 p-1 w-fit self-start md:self-auto shrink-0 select-none">
-                <div
-                  className={cn(
-                    "absolute top-1 bottom-1 rounded-md bg-card shadow-sm transition-all duration-300 ease-out",
-                    scanMode ? "left-[calc(50%+2px)] right-1" : "left-1 right-[calc(50%+2px)]"
-                  )}
+            {/* Mode toggle: single IPO vs scan all active IPOs */}
+            <div className="flex justify-end px-8 pt-6">
+              <div className="relative inline-flex rounded-full border border-border bg-muted/30 p-0.5">
+                {/* Sliding indicator */}
+                <span
+                  aria-hidden
+                  className={`absolute inset-y-0.5 w-1/2 rounded-full bg-card shadow-sm transition-transform duration-300 ease-out ${
+                    scanMode ? "translate-x-full" : "translate-x-0"
+                  }`}
                 />
                 <button
                   type="button"
                   onClick={() => setScanMode(false)}
-                  className={cn(
-                    "relative z-10 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-200",
-                    !scanMode ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
+                  className={`relative z-10 flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                    !scanMode
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
                   <Target className="h-3.5 w-3.5" />
                   Single IPO
@@ -282,10 +283,11 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setScanMode(true)}
-                  className={cn(
-                    "relative z-10 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-200",
-                    scanMode ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
+                  className={`relative z-10 flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                    scanMode
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
                   <ScanSearch className="h-3.5 w-3.5" />
                   Scan All IPOs
