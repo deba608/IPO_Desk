@@ -259,25 +259,25 @@ export default function Home() {
               </div>
 
               {/* Mode toggle: single IPO vs scan all active IPOs */}
-              <div className="relative flex w-full rounded-full border border-border bg-muted/30 p-0.5 sm:w-auto shrink-0">
+              <div className="relative flex w-full rounded-full border border-border bg-muted/30 p-1 sm:w-auto shrink-0">
                 {/* Sliding indicator — springy bounce on switch */}
                 <span
                   aria-hidden
-                  className={`absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-card shadow-sm transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] ${
+                  className={`absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-card shadow-sm transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] ${
                     scanMode ? "translate-x-full" : "translate-x-0"
                   }`}
                 />
                  <button
                   type="button"
                   onClick={() => setScanMode(false)}
-                  className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                  className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
                     !scanMode
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <Target
-                    className={`h-3.5 w-3.5 transition-transform duration-300 ${
+                    className={`h-4 w-4 transition-transform duration-300 ${
                       !scanMode ? "scale-110" : "scale-100"
                     }`}
                   />
@@ -286,14 +286,14 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setScanMode(true)}
-                  className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                  className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
                     scanMode
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <ScanSearch
-                    className={`h-3.5 w-3.5 transition-transform duration-300 ${
+                    className={`h-4 w-4 transition-transform duration-300 ${
                       scanMode ? "scale-110" : "scale-100"
                     }`}
                   />
