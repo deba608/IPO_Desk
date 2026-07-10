@@ -203,85 +203,122 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
       </label>
 
       <div className="relative">
-        {/* Trigger Button */}
-        <button
-          id="ipo-selector-trigger"
-          type="button"
-          role="combobox"
-          aria-expanded={open}
-          aria-haspopup="listbox"
-          aria-controls="ipo-selector-list"
-          disabled={loading || !!error}
-          onClick={() => setOpen((o) => !o)}
-          className={cn(
-            "flex w-full items-center justify-between gap-2 rounded-lg border bg-background px-4 py-3 text-sm transition-all",
-            "hover:border-primary/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            open ? "border-primary ring-2 ring-ring" : "border-input",
-            !value && "text-muted-foreground"
-          )}
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
-                <span>Loading IPOs...</span>
-              </>
-            ) : error ? (
-              <>
-                <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
-                <span className="text-destructive">{error}</span>
-              </>
-            ) : value ? (
-              <>
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Building2 className="h-4 w-4" />
-                </span>
-                <span className="truncate font-medium text-foreground">
-                  {value.name}
-                </span>
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span>Select an active IPO...</span>
-              </>
+        {/* Trigger Button / Search Input */}
+        {open && !loading && !error ? (
+          <div
+            className={cn(
+              "flex w-full items-center justify-between gap-2 rounded-lg border bg-background px-4 py-2.5 text-sm transition-all",
+              "border-primary ring-2 ring-ring"
             )}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {value && !loading && !error && (
-              <span
-                role="button"
-                tabIndex={0}
-                aria-label="Clear selection"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onChange(null);
-                  }
-                }}
+          >
+            <div className="flex min-w-0 items-center gap-3 flex-grow">
+              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <input
+                id="ipo-selector-trigger"
+                type="text"
+                placeholder={value ? value.name : "Search by company name..."}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={onSearchKeyDown}
+                className="w-full bg-transparent border-0 outline-none text-foreground text-sm p-0 placeholder:text-muted-foreground focus:ring-0"
+                autoFocus
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={open}
+                aria-controls="ipo-selector-list"
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={closeDropdown}
+                aria-label="Close selector"
                 className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <X className="h-4 w-4" />
-              </span>
-            )}
-            {!loading && !error && !value && (
-              <span className="hidden text-xs text-muted-foreground sm:inline">
-                {ipos.length} active
-              </span>
-            )}
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                open && "rotate-180"
-              )}
-            />
+              </button>
+            </div>
           </div>
-        </button>
+        ) : (
+          <button
+            id="ipo-selector-trigger"
+            type="button"
+            role="combobox"
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            aria-controls="ipo-selector-list"
+            disabled={loading || !!error}
+            onClick={() => setOpen((o) => !o)}
+            className={cn(
+              "flex w-full items-center justify-between gap-2 rounded-lg border bg-background px-4 py-3 text-sm transition-all",
+              "hover:border-primary/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "border-input",
+              !value && "text-muted-foreground"
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                  <span>Loading IPOs...</span>
+                </>
+              ) : error ? (
+                <>
+                  <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+                  <span className="text-destructive">{error}</span>
+                </>
+              ) : value ? (
+                <>
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <Building2 className="h-4 w-4" />
+                  </span>
+                  <span className="truncate font-medium text-foreground">
+                    {value.name}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span>Select an active IPO...</span>
+                </>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {value && !loading && !error && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Clear selection"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onChange(null);
+                    }
+                  }}
+                  className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </span>
+              )}
+              {!loading && !error && !value && (
+                <span className="hidden text-xs text-muted-foreground sm:inline">
+                  {ipos.length} active
+                </span>
+              )}
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                  open && "rotate-180"
+                )}
+              />
+            </div>
+          </button>
+        )}
 
         {/* Dropdown */}
         {open && !loading && !error && (
@@ -293,64 +330,36 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
               "animate-in fade-in-0 zoom-in-95 duration-150"
             )}
           >
-            {/* Search */}
-            <div className="border-b border-border p-2">
-              <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-ring">
-                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search by company name..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onKeyDown={onSearchKeyDown}
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  autoFocus
-                  role="searchbox"
-                  aria-controls="ipo-selector-list"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    aria-label="Clear search"
-                    className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
+            {/* Registrar Filter */}
+            {registrars.length > 1 && (
+              <div className="border-b border-border p-2 flex flex-wrap gap-1.5">
+                {["all", ...registrars].map((registrar) => {
+                  const count =
+                    registrar === "all"
+                      ? ipos.length
+                      : ipos.filter((i) => i.registrar === registrar).length;
+                  const active = registrarFilter === registrar;
+                  return (
+                    <button
+                      key={registrar}
+                      type="button"
+                      onClick={() => setRegistrarFilter(registrar)}
+                      aria-pressed={active}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        active
+                          ? "border-primary bg-primary/10 font-medium text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                      )}
+                    >
+                      {registrar === "all"
+                        ? `All ${count}`
+                        : `${REGISTRAR_LABELS[registrar] ?? registrar} ${count}`}
+                    </button>
+                  );
+                })}
               </div>
-
-              {/* Registrar Filter */}
-              {registrars.length > 1 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {["all", ...registrars].map((registrar) => {
-                    const count =
-                      registrar === "all"
-                        ? ipos.length
-                        : ipos.filter((i) => i.registrar === registrar).length;
-                    const active = registrarFilter === registrar;
-                    return (
-                      <button
-                        key={registrar}
-                        type="button"
-                        onClick={() => setRegistrarFilter(registrar)}
-                        aria-pressed={active}
-                        className={cn(
-                          "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                          active
-                            ? "border-primary bg-primary/10 font-medium text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                        )}
-                      >
-                        {registrar === "all"
-                          ? `All ${count}`
-                          : `${REGISTRAR_LABELS[registrar] ?? registrar} ${count}`}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            )}
 
             {/* IPO List */}
             <div
