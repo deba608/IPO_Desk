@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Shield,
@@ -12,6 +12,9 @@ import {
   FileSpreadsheet,
   ScanSearch,
   Target,
+  TrendingUp,
+  Activity,
+  Calendar,
 } from "lucide-react";
 import { IPOSelector } from "@/features/ipo-checker/components/IPOSelector";
 import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
@@ -21,6 +24,117 @@ import { CheckResponse, ScanResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
 import { useCheckHistory } from "@/hooks/useCheckHistory";
+import type { CalendarIPOWithStatus } from "@/types/calendar.types";
+
+/* ------------------------------------------------------------------ */
+/*  Live Ticker Strip                                                   */
+/* ------------------------------------------------------------------ */
+
+function LiveTicker({ ipos }: { ipos: CalendarIPOWithStatus[] }) {
+  const open = ipos.filter((i) => i.lifecycle === "open");
+  if (open.length === 0) return null;
+
+  // Duplicate the list so the CSS marquee loops seamlessly
+  const items = [...open, ...open];
+
+  return (
+    <div className="relative overflow-hidden border-y border-primary/10 bg-primary/[0.03] py-2">
+      <div className="flex" style={{ width: "max-content" }}>
+        <div
+          className="animate-ticker flex shrink-0 items-center gap-6 pr-6"
+          style={{ animationDuration: `${Math.max(open.length * 6, 24)}s` }}
+        >
+          {items.map((ipo, idx) => {
+            const hasGmp = ipo.gmp !== undefined && ipo.gmp !== null;
+            const gmpPositive = hasGmp && (ipo.gmp as number) >= 0;
+            return (
+              <a
+                key={`${ipo.id}-${idx}`}
+                href={`/ipo/${ipo.id}`}
+                className="flex items-center gap-2 whitespace-nowrap text-[11px] hover:opacity-80 transition-opacity"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="font-medium text-foreground/80">{ipo.name}</span>
+                {hasGmp && (
+                  <span
+                    className={`font-bold tabular-nums ${gmpPositive ? "text-emerald-400" : "text-rose-400"}`}
+                  >
+                    GMP {gmpPositive ? "+" : ""}₹{ipo.gmp}
+                  </span>
+                )}
+                <span className="text-muted-foreground/50">·</span>
+              </a>
+            );
+          })}
+        </div>
+      </div>
+      {/* Fade edges */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-background to-transparent" />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Stats Bar                                                           */
+/* ------------------------------------------------------------------ */
+
+function StatsBar({ ipos }: { ipos: CalendarIPOWithStatus[] }) {
+  const openCount = ipos.filter((i) => i.lifecycle === "open").length;
+  const upcomingCount = ipos.filter((i) => i.lifecycle === "upcoming").length;
+  const withGmp = ipos.filter((i) => i.gmp !== undefined && i.gmp !== null);
+  const topGmp =
+    withGmp.length > 0
+      ? withGmp.reduce((best, cur) =>
+          (cur.gmp as number) > (best.gmp as number) ? cur : best
+        )
+      : null;
+
+  const stats = [
+    {
+      icon: Activity,
+      label: "IPOs Open Now",
+      value: openCount,
+      color: "text-emerald-400",
+    },
+    {
+      icon: Calendar,
+      label: "Upcoming",
+      value: upcomingCount,
+      color: "text-blue-400",
+    },
+    {
+      icon: TrendingUp,
+      label: "Top GMP",
+      value: topGmp ? `+₹${topGmp.gmp}` : "—",
+      sub: topGmp ? topGmp.name.split(" ").slice(0, 2).join(" ") : "",
+      color: "text-amber-400",
+    },
+  ];
+
+  return (
+    <div className="animate-fade-up delay-300 container mx-auto max-w-4xl px-4 pb-4">
+      <div className="grid grid-cols-3 divide-x divide-border/40 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm">
+        {stats.map(({ icon: Icon, label, value, sub, color }) => (
+          <div key={label} className="flex items-center gap-3 px-5 py-3">
+            <div className={`shrink-0 rounded-lg bg-primary/10 p-1.5`}>
+              <Icon className={`h-3.5 w-3.5 ${color}`} />
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">{label}</p>
+              <p className={`text-sm font-bold tabular-nums ${color}`}>{value}</p>
+              {sub && <p className="truncate text-[9px] text-muted-foreground/70">{sub}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Home Page                                                           */
+/* ------------------------------------------------------------------ */
 
 export default function Home() {
   const [selectedIPO, setSelectedIPO] = useState<IPO | null>(null);
@@ -30,7 +144,19 @@ export default function Home() {
   const [scanResults, setScanResults] = useState<ScanResponse | null>(null);
   const [progress, setProgress] = useState(0);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const checkerRef = useRef<HTMLDivElement>(null);
   const { add: addHistory } = useCheckHistory();
+
+  // Live calendar data for the ticker + stats bar
+  const [calendarIPOs, setCalendarIPOs] = useState<CalendarIPOWithStatus[]>([]);
+  useEffect(() => {
+    fetch("/api/calendar")
+      .then((r) => r.json())
+      .then((json: { ipos?: CalendarIPOWithStatus[] }) => {
+        if (Array.isArray(json.ipos)) setCalendarIPOs(json.ipos);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleCheck = useCallback(
     async (pans: string[]) => {
@@ -159,6 +285,10 @@ export default function Home() {
     [selectedIPO, scanMode, addHistory]
   );
 
+  const scrollToChecker = useCallback(() => {
+    checkerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <script
@@ -193,37 +323,41 @@ export default function Home() {
       <main>
         {/* Hero Section */}
         <section className="relative overflow-hidden px-4 py-20">
-          {/* Background gradient */}
+          {/* Animated background blobs */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
-          <div className="absolute inset-0">
-            <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-            <div className="absolute right-1/4 bottom-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="animate-blob absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+            <div className="animate-blob-2 absolute right-1/4 bottom-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+            <div
+              className="animate-blob absolute left-1/2 bottom-10 h-48 w-48 rounded-full bg-violet-500/8 blur-3xl"
+              style={{ animationDelay: "-8s" }}
+            />
           </div>
 
           <div className="relative container mx-auto max-w-5xl text-center">
             {/* Title */}
-            <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="animate-fade-up mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
               Check IPO Allotment
               <span className="block gradient-text">in Seconds</span>
             </h1>
 
-            <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground">
+            <p className="animate-fade-up delay-100 mx-auto mb-10 max-w-2xl text-lg text-muted-foreground">
               Check allotment status for single or multiple PANs instantly.
               Upload Excel files for bulk checking. Export results to CSV or
               Excel.
             </p>
 
-            {/* Feature pills */}
+            {/* Feature pills — staggered entrance */}
             <div className="mb-12 flex flex-wrap justify-center gap-3">
               {[
-                { icon: Shield, text: "Secure & Private" },
-                { icon: Zap, text: "Instant Results" },
-                { icon: Users, text: "Bulk Processing" },
-                { icon: FileSpreadsheet, text: "Excel Upload" },
-              ].map(({ icon: Icon, text }) => (
+                { icon: Shield, text: "Secure & Private", delay: "delay-150" },
+                { icon: Zap, text: "Instant Results", delay: "delay-200" },
+                { icon: Users, text: "Bulk Processing", delay: "delay-250" },
+                { icon: FileSpreadsheet, text: "Excel Upload", delay: "delay-300" },
+              ].map(({ icon: Icon, text, delay }) => (
                 <div
                   key={text}
-                  className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm"
+                  className={`animate-fade-up ${delay} flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm`}
                 >
                   <Icon className="h-3.5 w-3.5 text-primary" />
                   {text}
@@ -233,8 +367,21 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Live ticker strip */}
+        {calendarIPOs.length > 0 && <LiveTicker ipos={calendarIPOs} />}
+
+        {/* Stats bar */}
+        {calendarIPOs.length > 0 && (
+          <div className="pt-4">
+            <StatsBar ipos={calendarIPOs} />
+          </div>
+        )}
+
         {/* Main Checker Card */}
-        <section className="container mx-auto max-w-4xl px-4 pb-8">
+        <section
+          ref={checkerRef}
+          className="container mx-auto max-w-4xl px-4 pb-8"
+        >
           <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
             {/* Card Header */}
             <div className="border-b border-border px-8 py-6">
@@ -301,9 +448,9 @@ export default function Home() {
             className="container mx-auto max-w-6xl px-4 pb-16"
           >
             {scanResults ? (
-              <ScanResultsDashboard results={scanResults} />
+              <ScanResultsDashboard results={scanResults} onCheckAgain={scrollToChecker} />
             ) : (
-              results && <ResultsDashboard results={results} />
+              results && <ResultsDashboard results={results} onCheckAgain={scrollToChecker} />
             )}
           </section>
         )}
@@ -321,7 +468,7 @@ export default function Home() {
                   step: "01",
                   icon: BarChart3,
                   title: "Select IPO",
-                  desc: "Choose from 28 active KFintech IPOs in the dropdown",
+                  desc: "Choose from active IPOs across KFintech, MUFG, and Bigshare registrars",
                 },
                 {
                   step: "02",
@@ -348,7 +495,6 @@ export default function Home() {
                   </div>
                   <h3 className="mb-2 font-semibold">{title}</h3>
                   <p className="text-sm text-muted-foreground">{desc}</p>
-
                 </div>
               ))}
             </div>

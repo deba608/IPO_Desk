@@ -175,6 +175,11 @@ export function CheckerTabs({
           <TabsTrigger value="profiles" className="gap-1 sm:gap-2 px-1 sm:px-3">
             <UserCheck className="h-3.5 w-3.5 shrink-0" />
             <span className="text-[11px] sm:text-xs md:text-sm">Profiles</span>
+            {profiles.length > 0 && (
+              <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/20 px-1 text-[9px] font-bold text-primary">
+                {profiles.length}
+              </span>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -223,9 +228,33 @@ export function CheckerTabs({
                 {singleError}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Format: 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F)
-            </p>
+            {/* Real-time PAN format hint */}
+            {!singleError && (
+              <p
+                className={cn(
+                  "text-xs transition-colors duration-200",
+                  singlePAN.length === 0
+                    ? "text-muted-foreground"
+                    : singlePAN.length < 5
+                    ? "text-muted-foreground/60"
+                    : singlePAN.length < 9
+                    ? "text-amber-400/80"
+                    : PAN_REGEX.test(singlePAN)
+                    ? "text-emerald-400"
+                    : "text-destructive"
+                )}
+              >
+                {singlePAN.length === 0
+                  ? "Format: 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F)"
+                  : singlePAN.length < 5
+                  ? `${singlePAN.length}/10 — keep typing…`
+                  : singlePAN.length < 9
+                  ? `${singlePAN.length}/10 — looking good…`
+                  : singlePAN.length === 10 && PAN_REGEX.test(singlePAN)
+                  ? "✓ Valid PAN format"
+                  : `${singlePAN.length}/10 — check the format`}
+              </p>
+            )}
           </div>
         </TabsContent>
 
@@ -234,17 +263,29 @@ export function CheckerTabs({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="bulk-pans">PANs (one per line)</Label>
-              {bulkPANs.valid.length > 0 && (
-                <div className="flex gap-2 text-xs">
-                  <Badge variant="success">{bulkPANs.valid.length} valid</Badge>
-                  {bulkPANs.invalid.length > 0 && (
-                    <Badge variant="danger">{bulkPANs.invalid.length} invalid</Badge>
-                  )}
-                  {bulkPANs.duplicates.length > 0 && (
-                    <Badge variant="warning">{bulkPANs.duplicates.length} duplicates</Badge>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {bulkPANs.valid.length > 0 && (
+                  <div className="flex gap-2 text-xs">
+                    <Badge variant="success">{bulkPANs.valid.length} valid</Badge>
+                    {bulkPANs.invalid.length > 0 && (
+                      <Badge variant="danger">{bulkPANs.invalid.length} invalid</Badge>
+                    )}
+                    {bulkPANs.duplicates.length > 0 && (
+                      <Badge variant="warning">{bulkPANs.duplicates.length} duplicates</Badge>
+                    )}
+                  </div>
+                )}
+                {bulkText.trim().length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setBulkText("")}
+                    className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
             <Textarea
               id="bulk-pans"

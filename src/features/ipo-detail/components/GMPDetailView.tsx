@@ -105,6 +105,7 @@ export function GMPDetailView({
   const [data, setData] = useState<ChartDataPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<"table" | "chart">("table");
+  const [rangeFilter, setRangeFilter] = useState<7 | 14 | "all">("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -145,21 +146,28 @@ export function GMPDetailView({
         latestGmp: 0,
         latestEstProfit: 0,
       };
-    const reversed = [...data].reverse();
-    const mins = Math.min(...data.map((d) => d.gmp));
-    const maxs = Math.max(...data.map((d) => d.gmp));
+
+    // Apply range filter: data is oldest-first, so slice from the end.
+    const rangeSlice =
+      rangeFilter === "all"
+        ? data
+        : data.slice(-rangeFilter);
+
+    const reversed = [...rangeSlice].reverse();
+    const mins = Math.min(...rangeSlice.map((d) => d.gmp));
+    const maxs = Math.max(...rangeSlice.map((d) => d.gmp));
     const latest = reversed[0]?.gmp ?? 0;
     return {
       tableData: reversed,
       minGmp: mins,
       maxGmp: maxs,
-      netChange: data[data.length - 1].gmp - data[0].gmp,
-      highDate: data.find((d) => d.gmp === maxs)?.date ?? "",
-      lowDate: data.find((d) => d.gmp === mins)?.date ?? "",
+      netChange: rangeSlice[rangeSlice.length - 1].gmp - rangeSlice[0].gmp,
+      highDate: rangeSlice.find((d) => d.gmp === maxs)?.date ?? "",
+      lowDate: rangeSlice.find((d) => d.gmp === mins)?.date ?? "",
       latestGmp: latest,
       latestEstProfit: latest * lotSize,
     };
-  }, [data, lotSize]);
+  }, [data, lotSize, rangeFilter]);
 
   if (loading) {
     return <Skeleton className="h-48 w-full rounded-lg" />;
@@ -179,6 +187,12 @@ export function GMPDetailView({
   const padding = Math.max((maxGmp - minGmp) * 0.15, 10);
   const yMin = Math.max(0, Math.floor(minGmp - padding));
   const yMax = Math.ceil(maxGmp + padding);
+
+  // Chart data respects range filter (oldest-first for Recharts)
+  const chartData = useMemo(() => {
+    if (!data) return [];
+    return rangeFilter === "all" ? data : data.slice(-rangeFilter);
+  }, [data, rangeFilter]);
 
   const getChange = (idx: number): number | null =>
     idx >= tableData.length - 1
@@ -222,7 +236,7 @@ export function GMPDetailView({
           </span>
         </div>
 
-        {/* View toggle + day count */}
+        {/* View toggle + day count + range filter */}
         <div className="flex items-center gap-1.5">
           {gmpUpdatedAt && (
             <span className="hidden text-[9px] text-white/20 sm:inline">
@@ -235,8 +249,28 @@ export function GMPDetailView({
               })}
             </span>
           )}
+
+          {/* Range filter */}
+          {data.length > 7 && (
+            <div className="flex items-center rounded-md border border-white/[0.06] bg-white/[0.02] p-px">
+              {([7, 14, "all"] as const).map((r) => (
+                <button
+                  key={String(r)}
+                  onClick={() => setRangeFilter(r)}
+                  className={`rounded-[5px] px-1.5 py-0.5 text-[9px] transition-all ${
+                    rangeFilter === r
+                      ? "bg-primary/15 text-primary"
+                      : "text-white/25 hover:text-white/45"
+                  }`}
+                >
+                  {r === "all" ? "All" : `${r}d`}
+                </button>
+              ))}
+            </div>
+          )}
+
           <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-1.5 py-px text-[9px] tabular-nums text-white/25">
-            {data.length}d
+            {tableData.length}d
           </span>
           {data.length >= 2 && (
             <div className="flex items-center rounded-md border border-white/[0.06] bg-white/[0.02] p-px">
@@ -439,12 +473,12 @@ export function GMPDetailView({
       )}
 
       {/* ── Chart view ──────────────────────────────────── */}
-      {activeView === "chart" && data.length >= 2 && (
+      {activeView === "chart" && chartData.length >= 2 && (
         <div className="overflow-hidden rounded-lg border border-white/[0.05] bg-gradient-to-br from-white/[0.015] to-transparent">
           <div className="h-48 p-2.5 pb-0.5">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
-                data={data}
+                data={chartData}
                 margin={{ top: 4, right: 6, left: -10, bottom: 0 }}
               >
                 <defs>

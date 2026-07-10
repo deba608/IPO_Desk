@@ -28,6 +28,7 @@ import {
   Tag,
   Pencil,
   Share2,
+  ArrowUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,7 @@ import { toast } from "sonner";
 
 interface ResultsDashboardProps {
   results: CheckResponse;
+  onCheckAgain?: () => void;
 }
 
 const STATUS_BADGE = {
@@ -49,7 +51,7 @@ const STATUS_BADGE = {
   error: <Badge variant="danger" className="gap-1"><AlertCircle className="h-3 w-3" /> Error</Badge>,
 };
 
-export function ResultsDashboard({ results }: ResultsDashboardProps) {
+export function ResultsDashboard({ results, onCheckAgain }: ResultsDashboardProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -485,6 +487,21 @@ export function ResultsDashboard({ results }: ResultsDashboardProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Check Again CTA */}
+      {onCheckAgain && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCheckAgain}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+            Check Again
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

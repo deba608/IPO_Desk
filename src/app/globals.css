@@ -112,3 +112,53 @@ body {
 ::-webkit-scrollbar-track { background: #1e293b; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ── Micro-animation keyframes ─────────────────────────── */
+
+/* Slow floating blob drift */
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(28px, -20px) scale(1.06); }
+  66%       { transform: translate(-18px, 22px) scale(0.94); }
+}
+
+/* Blob drift variant (offset phase for the second blob) */
+@keyframes blob-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(-24px, 18px) scale(1.04); }
+  66%       { transform: translate(20px, -24px) scale(0.96); }
+}
+
+/* Staggered fade-up entrance */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Horizontal infinite ticker scroll */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Subtle shimmer for skeleton / loading states */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position: 200% center; }
+}
+
+/* Utility classes */
+.animate-blob        { animation: blob-drift   18s ease-in-out infinite; }
+.animate-blob-2      { animation: blob-drift-2 22s ease-in-out infinite; }
+.animate-fade-up     { animation: fade-up 0.5s ease-out both; }
+.animate-ticker      { animation: ticker linear infinite; }
+.animate-ticker:hover { animation-play-state: paused; }
+
+/* Stagger helpers (use with animate-fade-up) */
+.delay-100  { animation-delay: 100ms; }
+.delay-150  { animation-delay: 150ms; }
+.delay-200  { animation-delay: 200ms; }
+.delay-250  { animation-delay: 250ms; }
+.delay-300  { animation-delay: 300ms; }
+.delay-400  { animation-delay: 400ms; }
+.delay-500  { animation-delay: 500ms; }

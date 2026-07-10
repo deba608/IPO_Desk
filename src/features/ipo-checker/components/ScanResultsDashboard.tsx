@@ -13,6 +13,7 @@ import {
   Tag,
   Share2,
   Loader2,
+  ArrowUp,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ const REGISTRAR_LABELS: Record<string, string> = {
   bigshare: "Bigshare",
 };
 
-export function ScanResultsDashboard({ results }: { results: ScanResponse }) {
+export function ScanResultsDashboard({ results, onCheckAgain }: { results: ScanResponse; onCheckAgain?: () => void }) {
   const { iposWithAllotment, totalAllotted, scanned, ipos, errors, pansChecked } =
     results;
   const [isSharing, setIsSharing] = useState(false);
@@ -144,6 +145,21 @@ export function ScanResultsDashboard({ results }: { results: ScanResponse }) {
           {ipos.map((ipo) => (
             <IPOScanCard key={ipo.ipoId} ipo={ipo} />
           ))}
+        </div>
+      )}
+
+      {/* Check Again CTA */}
+      {onCheckAgain && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCheckAgain}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+            Check Again
+          </Button>
         </div>
       )}
     </div>
