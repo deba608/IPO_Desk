@@ -200,7 +200,7 @@ export default async function IPODetailPage({ params }: PageProps) {
             {/* GMP analysis */}
             {estListing !== undefined && ipo.lifecycle !== "listed" && (
               <SectionCard title="GMP Analysis">
-                <GMPDetailView ipoId={ipo.id} ipoName={ipo.name} capPrice={ipo.priceBand.max} lotSize={ipo.lotSize} gmpUpdatedAt={ipo.gmpUpdatedAt} />
+                <GMPDetailView ipoId={ipo.id} ipoName={ipo.name} capPrice={ipo.priceBand.max} lotSize={ipo.lotSize} gmpUpdatedAt={ipo.gmpUpdatedAt} gmpMin={ipo.gmpMin} gmpMax={ipo.gmpMax} />
               </SectionCard>
             )}
 

@@ -67,6 +67,10 @@ export interface CalendarIPO {
 
   /** Latest grey-market premium in INR, when available */
   gmp?: number;
+  /** Intraday GMP band low (the "↓" seller rate), in INR, when reported. */
+  gmpMin?: number;
+  /** Intraday GMP band high (the "↑" buyer rate), in INR, when reported. */
+  gmpMax?: number;
   /** ISO timestamp of the last GMP update */
   gmpUpdatedAt?: string;
   /** Historical GMP snapshots for trend chart (most recent first) */

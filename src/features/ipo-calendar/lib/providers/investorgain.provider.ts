@@ -206,6 +206,25 @@ function parseGmp(raw?: string): number | undefined {
   return Number.isFinite(n) && n !== 0 ? n : undefined;
 }
 
+/**
+ * Intraday GMP band from the "<small><b>75 ↓ / 140 ↑</b></small>" fragment that
+ * follows the headline GMP — the seller (↓) and buyer (↑) grey-market rates.
+ * Returns undefined when the fragment is absent or unparseable.
+ */
+function parseGmpRange(raw?: string): { min?: number; max?: number } {
+  if (!raw) return {};
+  const m = raw.match(
+    /<small[^>]*>[\s\S]*?(-?\d+(?:\.\d+)?)\s*↓\s*\/\s*(-?\d+(?:\.\d+)?)\s*↑/
+  );
+  if (!m) return {};
+  const min = Number(m[1]);
+  const max = Number(m[2]);
+  return {
+    min: Number.isFinite(min) ? min : undefined,
+    max: Number.isFinite(max) ? max : undefined,
+  };
+}
+
 /** "170" / "99 - 100" → { min, max }. */
 function parsePriceBand(raw?: string): PriceBand {
   const nums =
@@ -326,6 +345,7 @@ function normalize(
       : undefined);
 
   const sourcePath = row["~urlrewrite_folder_name"]?.trim();
+  const gmpRange = parseGmpRange(row.GMP);
 
   return {
     id: `${board}-${slugify(name)}`,
@@ -342,6 +362,8 @@ function normalize(
     listingDate: isoDate(row["~Str_Listing"]),
     exchanges: parseExchanges(row.Name),
     gmp: parseGmp(row.GMP),
+    gmpMin: gmpRange.min,
+    gmpMax: gmpRange.max,
     gmpUpdatedAt: parseUpdatedOn(row["Updated-On"]),
     gmpPercent: parseDecimal(row["~gmp_percent_calc"]) || undefined,
     subscription,

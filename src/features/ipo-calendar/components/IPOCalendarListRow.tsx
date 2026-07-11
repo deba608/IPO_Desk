@@ -135,11 +135,25 @@ export function IPOCalendarListRow({ ipo }: { ipo: CalendarIPOWithStatus }) {
         {gain}%
       </span>
     ) : ipo.gmp !== undefined ? (
-      <span className="text-xs font-semibold text-emerald-400">
-        ₹{ipo.gmp}
-        {ipo.gmpPercent !== undefined && (
-          <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">
-            ({ipo.gmpPercent}%)
+      <span
+        className="flex flex-col leading-tight"
+        title={
+          ipo.gmpMin !== undefined && ipo.gmpMax !== undefined
+            ? `Grey-market rate ₹${ipo.gmpMin}–${ipo.gmpMax}`
+            : undefined
+        }
+      >
+        <span className="text-xs font-semibold text-emerald-400">
+          ₹{ipo.gmp}
+          {ipo.gmpPercent !== undefined && (
+            <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">
+              ({ipo.gmpPercent}%)
+            </span>
+          )}
+        </span>
+        {ipo.gmpMin !== undefined && ipo.gmpMax !== undefined && (
+          <span className="text-[10px] font-normal text-muted-foreground">
+            ₹{ipo.gmpMin}–{ipo.gmpMax}
           </span>
         )}
       </span>

@@ -33,6 +33,10 @@ interface GMPDetailViewProps {
   capPrice: number;
   lotSize: number;
   gmpUpdatedAt?: string;
+  /** Live intraday GMP band low (seller "↓" rate), in INR. */
+  gmpMin?: number;
+  /** Live intraday GMP band high (buyer "↑" rate), in INR. */
+  gmpMax?: number;
 }
 
 interface ChartDataPoint {
@@ -101,6 +105,8 @@ export function GMPDetailView({
   capPrice,
   lotSize,
   gmpUpdatedAt,
+  gmpMin,
+  gmpMax,
 }: GMPDetailViewProps) {
   const [data, setData] = useState<ChartDataPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -217,6 +223,14 @@ export function GMPDetailView({
             <span className="font-bold text-emerald-400">
               +{fmtINR(latestGmp)}
             </span>
+            {gmpMin !== undefined && gmpMax !== undefined && (
+              <span
+                className="ml-1 text-[10px] text-white/30"
+                title="Live grey-market seller (↓) / buyer (↑) rate"
+              >
+                ({fmtINR(gmpMin)}↓ / {fmtINR(gmpMax)}↑)
+              </span>
+            )}
           </span>
           <span className="text-white/35">
             Listing{" "}
