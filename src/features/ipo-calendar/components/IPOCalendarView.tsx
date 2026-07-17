@@ -722,9 +722,29 @@ export function IPOCalendarView() {
       )}
 
       {data && (
-        <p className="text-xs text-muted-foreground">
-          Showing {visible.length} of {data.total} IPOs · Updated {updatedAgo}
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            Showing {visible.length} of {data.total} IPOs · Updated {updatedAgo}
+          </p>
+          <p className="text-[11px] text-muted-foreground/70">
+            {data.dataSource === "live" ? (
+              <>
+                Data via{" "}
+                <a
+                  href="https://www.investorgain.com/"
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+                >
+                  InvestorGain
+                </a>
+                {" "}· unofficial, for information only — not investment advice. Verify on the registrar/exchange before acting.
+              </>
+            ) : (
+              <>Sample data shown — live source unavailable. For information only, not investment advice.</>
+            )}
+          </p>
+        </div>
       )}
     </div>
   );
