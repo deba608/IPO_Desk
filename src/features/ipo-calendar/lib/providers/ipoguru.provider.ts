@@ -173,6 +173,7 @@ function normalize(raw: RawIpo): CalendarIPO | null {
 export function createIpoGuruProvider(apiKey: string): CalendarProvider {
   return {
     source: "live",
+    credit: { name: "IPO Guru", url: "https://www.ipoguru.in/" },
     async fetchCatalogue(): Promise<CalendarIPO[]> {
       const res = await fetch(`${BASE_URL}/ipos`, {
         headers: { "X-API-KEY": apiKey, Accept: "application/json" },

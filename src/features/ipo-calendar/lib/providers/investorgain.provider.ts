@@ -482,6 +482,7 @@ export async function fetchGmpHistory(
 export function createInvestorGainProvider(): CalendarProvider {
   return {
     source: "live",
+    credit: { name: "InvestorGain", url: "https://www.investorgain.com/" },
     async fetchCatalogue(): Promise<CalendarIPO[]> {
       // Primary report (331) is required — fetchReport throws if every path
       // candidate fails, so loadCatalogue falls through to NSE. The

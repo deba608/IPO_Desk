@@ -37,6 +37,14 @@ export interface Subscription {
 /** Where the calendar data came from — surfaced in the UI for honesty. */
 export type DataSource = "live" | "sample";
 
+/** Attribution for the specific provider that served the data. */
+export interface ProviderCredit {
+  /** Display name, e.g. "IPO Guru". */
+  name: string;
+  /** Optional homepage to link the credit to. */
+  url?: string;
+}
+
 export interface CalendarIPO {
   /** Stable identifier, e.g. `mainboard-acme-2026` */
   id: string;
@@ -120,5 +128,7 @@ export interface CalendarResponse {
   counts: Record<IPOLifecycle, number>;
   /** "live" when served from a real provider, "sample" for seed data */
   dataSource: DataSource;
+  /** Attribution for the specific provider that served the data (live only). */
+  credit?: ProviderCredit;
   lastUpdated: string;
 }
