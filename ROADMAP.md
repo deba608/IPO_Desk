@@ -72,6 +72,7 @@ Replace in-memory caches with a real database for persistence, history, and quer
 - [x] Auto-persist calendar IPO data + GMP snapshots to DB when available
 - [x] GMP history route reads from DB when available, falls back to demo data
 - [x] `DATABASE_URL` in `.env.example` (optional — app works without DB)
+- [x] Cron `/api/cron/sync-ipos` now also runs `loadCatalogue(force)` so GMP/subscription snapshots persist on schedule (every 6h) — not just on organic calendar traffic (2026-07-22)
 
 ---
 
@@ -113,7 +114,8 @@ Dashboard for managing IPO data, monitoring syncs, and reviewing AI outputs.
 
 Add testing infrastructure and automated deployment.
 
-- [ ] Unit tests: Vitest for services, providers, utils
+- [x] Unit tests: Vitest set up (`npm test`) + IPO Guru provider normalizers covered (26 tests) — extend to other services/providers/utils
+- [ ] Unit tests: remaining services, providers, utils
 - [ ] Integration tests: API route testing with mocked registrars
 - [ ] E2E tests: Playwright for critical user flows
 - [ ] GitHub Actions: lint → test → build → deploy
@@ -148,4 +150,4 @@ Allow users to build and test IPO selection strategies against historical data.
 
 ---
 
-*Last updated: 2026-07-01*
+*Last updated: 2026-07-22*
