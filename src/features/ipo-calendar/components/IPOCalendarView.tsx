@@ -730,14 +730,18 @@ export function IPOCalendarView() {
             {data.dataSource === "live" ? (
               <>
                 Data via{" "}
-                <a
-                  href="https://www.investorgain.com/"
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className="underline decoration-dotted underline-offset-2 hover:text-foreground"
-                >
-                  InvestorGain
-                </a>
+                {data.credit?.url ? (
+                  <a
+                    href={data.credit.url}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                    className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+                  >
+                    {data.credit.name}
+                  </a>
+                ) : (
+                  data.credit?.name ?? "live market sources"
+                )}
                 {" "}· unofficial, for information only — not investment advice. Verify on the registrar/exchange before acting.
               </>
             ) : (

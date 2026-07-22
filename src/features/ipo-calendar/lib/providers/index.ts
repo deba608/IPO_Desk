@@ -1,4 +1,4 @@
-import { CalendarIPO, DataSource } from "@/types/calendar.types";
+import { CalendarIPO, DataSource, ProviderCredit } from "@/types/calendar.types";
 import { CalendarProvider } from "./types";
 import { seedProvider } from "./seed.provider";
 import { createIpoGuruProvider } from "./ipoguru.provider";
@@ -12,6 +12,7 @@ type Registrar = "kfintech" | "linkintime" | "bigshare" | "mufg";
 export interface CatalogueResult {
   ipos: CalendarIPO[];
   source: DataSource;
+  credit?: ProviderCredit;
 }
 
 const TTL_MS = 60 * 1000;
@@ -120,7 +121,11 @@ export async function loadCatalogue(forceRefresh = false): Promise<CatalogueResu
     try {
       const ipos = await provider.fetchCatalogue();
       if (ipos.length === 0) continue;
-      const result: CatalogueResult = { ipos, source: provider.source };
+      const result: CatalogueResult = {
+        ipos,
+        source: provider.source,
+        credit: provider.credit,
+      };
       cache = { at: Date.now(), result };
       persistToDb(ipos, provider.source);
       return result;

@@ -73,7 +73,7 @@ function compareWithin(a: CalendarIPOWithStatus, b: CalendarIPOWithStatus): numb
 
 export async function getCalendar(forceRefresh = false): Promise<CalendarResponse> {
   const today = todayISO();
-  const { ipos: catalogue, source } = await loadCatalogue(forceRefresh);
+  const { ipos: catalogue, source, credit } = await loadCatalogue(forceRefresh);
 
   const ipos = catalogue.map((ipo) => enrich(ipo, today)).sort(compareWithin);
 
@@ -90,6 +90,7 @@ export async function getCalendar(forceRefresh = false): Promise<CalendarRespons
     total: ipos.length,
     counts,
     dataSource: source,
+    credit,
     lastUpdated: new Date().toISOString(),
   };
 }

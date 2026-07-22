@@ -132,6 +132,7 @@ function normalize(raw: RawUpcoming, board: IPOBoard): CalendarIPO | null {
 export function createNseProvider(): CalendarProvider {
   return {
     source: "live",
+    credit: { name: "NSE", url: "https://www.nseindia.com/" },
     async fetchCatalogue(): Promise<CalendarIPO[]> {
       // 1. Prime session cookies from the homepage.
       const home = await fetch(ORIGIN, {
