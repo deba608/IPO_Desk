@@ -54,7 +54,7 @@ interface RawResponse {
 }
 
 /** "₹2,100.00" / "2100 Cr" / 2100 → 2100 (number). NaN-safe → 0. */
-function toNumber(v: unknown): number {
+export function toNumber(v: unknown): number {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
   if (typeof v === "string") {
     const n = parseFloat(v.replace(/[^0-9.\-]/g, ""));
@@ -63,14 +63,14 @@ function toNumber(v: unknown): number {
   return 0;
 }
 
-function toOptionalNumber(v: unknown): number | undefined {
+export function toOptionalNumber(v: unknown): number | undefined {
   if (v === undefined || v === null || v === "") return undefined;
   const n = toNumber(v);
   return n === 0 && typeof v !== "number" ? undefined : n;
 }
 
 /** "₹440 - ₹463" / "440-463" / "118" → { min, max }. */
-function parsePriceBand(raw?: string): PriceBand {
+export function parsePriceBand(raw?: string): PriceBand {
   if (!raw) return { min: 0, max: 0 };
   const nums = raw.match(/[\d.]+/g)?.map(Number).filter((n) => !Number.isNaN(n)) ?? [];
   if (nums.length === 0) return { min: 0, max: 0 };
@@ -79,7 +79,7 @@ function parsePriceBand(raw?: string): PriceBand {
 }
 
 /** Normalise any sensible date string to ISO yyyy-mm-dd, else undefined. */
-function toISODate(raw?: string): string | undefined {
+export function toISODate(raw?: string): string | undefined {
   if (!raw) return undefined;
   // Already ISO?
   if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
@@ -93,11 +93,11 @@ function toISODate(raw?: string): string | undefined {
   }).format(d);
 }
 
-function parseBoard(type?: string): IPOBoard {
+export function parseBoard(type?: string): IPOBoard {
   return (type ?? "").toLowerCase().includes("sme") ? "sme" : "mainboard";
 }
 
-function parseExchanges(listingOn?: string): ("NSE" | "BSE")[] {
+export function parseExchanges(listingOn?: string): ("NSE" | "BSE")[] {
   const up = (listingOn ?? "").toUpperCase();
   const out: ("NSE" | "BSE")[] = [];
   if (up.includes("NSE")) out.push("NSE");
@@ -112,19 +112,19 @@ const REGISTRAR_MAP: { match: RegExp; name: RegistrarName }[] = [
   { match: /mufg|intime/i, name: "mufg" },
 ];
 
-function parseRegistrar(raw?: string): RegistrarName {
+export function parseRegistrar(raw?: string): RegistrarName {
   const hit = REGISTRAR_MAP.find((r) => r.match.test(raw ?? ""));
   return hit?.name ?? "kfintech";
 }
 
-function slugify(s: string): string {
+export function slugify(s: string): string {
   return s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 
-function normalizeSubscription(raw?: RawSubscription): Subscription | undefined {
+export function normalizeSubscription(raw?: RawSubscription): Subscription | undefined {
   if (!raw) return undefined;
   const sub: Subscription = {
     qib: toOptionalNumber(raw.qib),
@@ -141,7 +141,7 @@ function normalizeSubscription(raw?: RawSubscription): Subscription | undefined 
   return hasData ? sub : undefined;
 }
 
-function normalize(raw: RawIpo): CalendarIPO | null {
+export function normalize(raw: RawIpo): CalendarIPO | null {
   const name = raw.name?.trim();
   const openDate = toISODate(raw.open_date);
   const closeDate = toISODate(raw.close_date);
