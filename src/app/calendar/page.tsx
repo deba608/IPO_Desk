@@ -12,10 +12,10 @@ export const metadata: Metadata = {
 
 export default function CalendarPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main>
+      <main className="flex-1">
         {/* Page heading */}
         <section className="relative overflow-hidden px-4 py-12 sm:py-16">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
@@ -35,7 +35,7 @@ export default function CalendarPage() {
         </section>
 
         {/* Calendar */}
-        <section className="container mx-auto max-w-6xl px-4 pb-20">
+        <section className="container mx-auto max-w-6xl px-4 pb-4">
           <IPOCalendarView />
         </section>
       </main>

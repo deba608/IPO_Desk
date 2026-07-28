@@ -162,7 +162,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -192,7 +192,7 @@ export default function Home() {
       />
       <Header />
 
-      <main>
+      <main className="flex-1">
         {/* Hero Section */}
         <section className="relative overflow-hidden px-4 py-4">
           {/* Animated background blobs */}
