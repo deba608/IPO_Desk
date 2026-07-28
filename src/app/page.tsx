@@ -213,7 +213,7 @@ export default function Home() {
               <span className="block gradient-text">in Seconds</span>
             </h1>
 
-            <p className="animate-fade-up delay-100 mx-auto mb-10 max-w-2xl text-lg text-muted-foreground">
+            <p className="animate-fade-up delay-100 mx-auto max-w-2xl text-lg text-muted-foreground">
               Check allotment status for single or multiple PANs instantly.
               Upload Excel files for bulk checking. Export results to CSV or
               Excel.
