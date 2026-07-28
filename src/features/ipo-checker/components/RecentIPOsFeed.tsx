@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { RefreshCw, Clock, Zap } from "lucide-react";
@@ -104,11 +104,9 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
   /* ── Loading skeleton ──────────────────────────────────────────── */
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card/60 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <span className="text-xs text-muted-foreground">Loading active IPOs…</span>
-        </div>
+      <div className="flex items-center gap-2 py-2">
+        <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <span className="text-xs text-muted-foreground">Loading active IPOs…</span>
       </div>
     );
   }
@@ -117,10 +115,10 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
 
   /* ── Render ────────────────────────────────────────────────────── */
   return (
-    <div className="rounded-xl border border-border bg-card/60 backdrop-blur-sm">
+    <div>
 
       {/* ── Top header bar ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
+      <div className="flex items-center gap-3 pb-2.5">
         {/* Title */}
         <div className="flex items-center gap-2 shrink-0">
           <Zap className="h-3.5 w-3.5 text-amber-400" />
@@ -130,7 +128,7 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-background/60 p-0.5">
+        <div className="flex items-center gap-0.5 rounded-lg border border-border/50 bg-card/40 p-0.5">
           {FILTER_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -188,7 +186,7 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
       {/* ── Scrollable pill strip ───────────────────────────────────── */}
       {displayed.length > 0 ? (
         <div
-          className="flex gap-2 overflow-x-auto px-4 py-3"
+          className="flex gap-2 overflow-x-auto pt-2"
           style={{ scrollbarWidth: "none" }}
         >
           {displayed.map((ipo) => {
@@ -224,19 +222,12 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
           })}
         </div>
       ) : (
-        <div className="px-4 py-6 text-center">
+        <div className="pt-4 text-center">
           <p className="text-xs text-muted-foreground">
             No {activeFilter === "sme" ? "SME" : "Mainboard"} IPOs currently active.
           </p>
         </div>
       )}
-
-      {/* ── Footer hint ─────────────────────────────────────────────── */}
-      <div className="border-t border-border px-4 py-2">
-        <p className="text-[10px] text-muted-foreground/50">
-          Click any IPO pill to instantly select it in the checker below
-        </p>
-      </div>
     </div>
   );
 }
