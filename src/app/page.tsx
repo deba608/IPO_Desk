@@ -206,7 +206,7 @@ export default function Home() {
             />
           </div>
 
-          <div className="relative container mx-auto max-w-5xl text-center mb-16">
+          <div className="relative container mx-auto max-w-5xl text-center mb-8">
             <h1 className="animate-fade-up text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Check IPO Allotment
               <span className="block gradient-text mt-4">in Seconds</span>
