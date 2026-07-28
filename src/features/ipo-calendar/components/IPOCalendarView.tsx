@@ -742,10 +742,9 @@ export function IPOCalendarView() {
                 ) : (
                   data.credit?.name ?? "live market sources"
                 )}
-                {" "}· unofficial, for information only — not investment advice. Verify on the registrar/exchange before acting.
               </>
             ) : (
-              <>Sample data shown — live source unavailable. For information only, not investment advice.</>
+              <>Sample data shown — live source unavailable.</>
             )}
           </p>
         </div>
