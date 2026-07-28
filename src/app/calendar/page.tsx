@@ -40,7 +40,7 @@ export default function CalendarPage() {
         </section>
       </main>
 
-      <footer className="border-t border-border py-2 sm:py-3">
+      <footer className="border-t border-border py-0.5">
         <div className="container mx-auto flex flex-col items-center px-4 sm:flex-row">
           <div className="hidden flex-1 sm:block" />
           <p className="text-xs text-muted-foreground sm:text-sm">
