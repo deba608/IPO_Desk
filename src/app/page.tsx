@@ -207,13 +207,10 @@ export default function Home() {
           </div>
 
           <div className="relative container mx-auto max-w-5xl text-center">
-            <h1 className="animate-fade-up mb-4 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="animate-fade-up text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
               Check IPO Allotment
               <span className="block gradient-text">in Seconds</span>
             </h1>
-            <p className="animate-fade-up delay-100 mx-auto max-w-2xl text-lg text-muted-foreground">
-              Check single or multiple PANs instantly. Upload Excel for bulk checking, export to CSV.
-            </p>
           </div>
         </section>
 
