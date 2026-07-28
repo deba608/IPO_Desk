@@ -10,6 +10,7 @@ import { IPOSelector } from "@/features/ipo-checker/components/IPOSelector";
 import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
 import { ResultsDashboard } from "@/features/ipo-checker/components/ResultsDashboard";
 import { ScanResultsDashboard } from "@/features/ipo-checker/components/ScanResultsDashboard";
+import { RecentIPOsFeed } from "@/features/ipo-checker/components/RecentIPOsFeed";
 import { CheckResponse, ScanResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
@@ -194,7 +195,7 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden px-4 py-4">
+        <section className="relative overflow-hidden px-4 py-8 pb-6">
           {/* Animated background blobs */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
           <div className="absolute inset-0 pointer-events-none">
@@ -206,12 +207,25 @@ export default function Home() {
             />
           </div>
 
-          <div className="relative container mx-auto max-w-5xl text-center mb-8">
+          <div className="relative container mx-auto max-w-5xl text-center">
             <h1 className="animate-fade-up text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Check IPO Allotment
               <span className="block gradient-text mt-4">in Seconds</span>
             </h1>
           </div>
+        </section>
+
+        {/* Recent IPOs Feed */}
+        <section className="container mx-auto max-w-4xl px-4 pb-4">
+          <RecentIPOsFeed
+            onSelect={(ipo) => {
+              setSelectedIPO(ipo);
+              setScanMode(false);
+              setTimeout(() => {
+                checkerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 100);
+            }}
+          />
         </section>
 
         {/* Main Checker Card */}
