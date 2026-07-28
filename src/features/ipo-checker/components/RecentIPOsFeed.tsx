@@ -167,40 +167,45 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
       <div className="flex items-center gap-3 pb-2.5">
         {/* Title */}
         <div className="flex items-center gap-2 shrink-0">
-          <Zap className="h-3.5 w-3.5 text-amber-400" />
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+          </span>
           <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Live IPOs
           </span>
         </div>
 
-        {/* Filter tabs — transparent ghost style */}
-        <div className="flex items-center gap-1">
-          {FILTER_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveFilter(tab.id)}
-              className={cn(
-                "relative flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium transition-all duration-200",
-                "border-b-2",
-                activeFilter === tab.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-              )}
-            >
-              {tab.label}
-              <span
+        {/* Filter tabs — pill group */}
+        <div className="flex items-center rounded-lg border border-border bg-muted/20 p-0.5">
+          {FILTER_TABS.map((tab) => {
+            const active = activeFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveFilter(tab.id)}
                 className={cn(
-                  "rounded-full px-1.5 py-px text-[9px] font-bold transition-colors",
-                  activeFilter === tab.id
-                    ? "bg-primary/15 text-primary"
-                    : "bg-transparent text-muted-foreground/60"
+                  "relative flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all duration-200",
+                  active
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {counts[tab.id]}
-              </span>
-            </button>
-          ))}
+                {tab.label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-px text-[9px] font-bold transition-colors",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "bg-transparent text-muted-foreground/50"
+                  )}
+                >
+                  {counts[tab.id]}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex-1" />
@@ -223,7 +228,7 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
           onClick={() => fetchIPOs(true)}
           disabled={refreshing}
           aria-label="Refresh IPO list"
-          className="flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary disabled:opacity-40"
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground transition-all hover:border-primary/50 hover:text-primary hover:bg-primary/5 active:scale-90 disabled:opacity-40"
         >
           <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
         </button>
