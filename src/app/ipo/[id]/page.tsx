@@ -100,10 +100,10 @@ export default async function IPODetailPage({ params }: PageProps) {
     ipo.gmp !== undefined ? ipo.priceBand.max + ipo.gmp : undefined;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="container mx-auto max-w-5xl px-4 py-5">
+      <main className="flex-1 container mx-auto max-w-5xl px-4 py-5">
         {/* Breadcrumb */}
         <Link href="/calendar" className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to calendar
