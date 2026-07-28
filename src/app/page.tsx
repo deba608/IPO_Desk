@@ -214,9 +214,7 @@ export default function Home() {
             </h1>
 
             <p className="animate-fade-up delay-100 mx-auto max-w-2xl text-lg text-muted-foreground">
-              Check allotment status for single or multiple PANs instantly.
-              Upload Excel files for bulk checking. Export results to CSV or
-              Excel.
+              Check single or multiple PANs instantly. Upload Excel for bulk checking, export to CSV.
             </p>
 
           </div>
