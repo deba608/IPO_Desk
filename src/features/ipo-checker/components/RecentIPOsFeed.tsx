@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { RefreshCw, Clock, Zap } from "lucide-react";
 import { IPO, IPOListResponse } from "@/types/ipo.types";
+import { CalendarResponse } from "@/types/calendar.types";
 import { cn } from "@/lib/utils";
 
 interface RecentIPOsFeedProps {
@@ -26,7 +27,6 @@ const REGISTRAR_LABELS: Record<string, string> = {
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
 
-/** SME IPOs contain "SME" in the name (standard SEBI naming convention). */
 function isSME(name: string): boolean {
   return /\bSME\b/i.test(name);
 }
@@ -42,7 +42,15 @@ function timeAgo(isoDate: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-/* ── Filter tabs definition ───────────────────────────────────────── */
+/** Normalise a name for fuzzy matching — strip suffixes, punctuation, case */
+function normaliseName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b(limited|ltd|ipo|pvt|private|sme)\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+/* ── Filter tabs ──────────────────────────────────────────────────── */
 type FilterTab = "all" | "mainboard" | "sme";
 
 const FILTER_TABS: { id: FilterTab; label: string }[] = [
@@ -51,9 +59,15 @@ const FILTER_TABS: { id: FilterTab; label: string }[] = [
   { id: "sme",       label: "SME" },
 ];
 
+/* ── Enriched IPO (IPO + optional openDate from calendar) ──────────── */
+interface EnrichedIPO extends IPO {
+  openDate?: string; // yyyy-mm-dd from calendar, used for sort
+}
+
 /* ── Component ────────────────────────────────────────────────────── */
 export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
   const [ipos, setIpos] = useState<IPO[]>([]);
+  const [dateMap, setDateMap] = useState<Record<string, string>>({}); // normName → openDate
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,11 +77,29 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
   const fetchIPOs = useCallback(async (force = false) => {
     if (force) setRefreshing(true);
     try {
-      const res = await fetch(force ? "/api/ipos?refresh=true" : "/api/ipos");
-      if (!res.ok) return;
-      const data: IPOListResponse = await res.json();
-      setIpos(data.ipos ?? []);
-      setLastUpdated(data.lastUpdated ?? null);
+      // Fetch active IPO list + calendar in parallel
+      const [ipoRes, calRes] = await Promise.allSettled([
+        fetch(force ? "/api/ipos?refresh=true" : "/api/ipos"),
+        fetch("/api/calendar"),
+      ]);
+
+      if (ipoRes.status === "fulfilled" && ipoRes.value.ok) {
+        const data: IPOListResponse = await ipoRes.value.json();
+        setIpos(data.ipos ?? []);
+        setLastUpdated(data.lastUpdated ?? null);
+      }
+
+      // Build name → openDate lookup from calendar data
+      if (calRes.status === "fulfilled" && calRes.value.ok) {
+        const cal: CalendarResponse = await calRes.value.json();
+        const map: Record<string, string> = {};
+        for (const entry of cal.ipos ?? []) {
+          if (entry.openDate) {
+            map[normaliseName(entry.name)] = entry.openDate;
+          }
+        }
+        setDateMap(map);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -76,32 +108,47 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
 
   useEffect(() => { fetchIPOs(); }, [fetchIPOs]);
 
-  /* Refresh the "X min ago" label every minute */
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
     return () => clearInterval(id);
   }, []);
 
-  /* Counts per tab for badge rendering */
+  /* Counts per tab */
   const counts = useMemo(() => ({
     all:       ipos.length,
     mainboard: ipos.filter((i) => !isSME(i.name)).length,
     sme:       ipos.filter((i) =>  isSME(i.name)).length,
   }), [ipos]);
 
-  /* Filtered + sorted list */
-  const displayed = useMemo(() => {
-    const filtered = ipos.filter((ipo) => {
+  /* Enrich + filter + sort by openDate descending (latest first) */
+  const displayed = useMemo((): EnrichedIPO[] => {
+    const enriched: EnrichedIPO[] = ipos.map((ipo) => ({
+      ...ipo,
+      openDate: dateMap[normaliseName(ipo.name)],
+    }));
+
+    const filtered = enriched.filter((ipo) => {
       if (activeFilter === "mainboard") return !isSME(ipo.name);
       if (activeFilter === "sme")       return  isSME(ipo.name);
       return true;
     });
-    return filtered
-      .sort((a, b) => new Date(b.lastSyncedAt).getTime() - new Date(a.lastSyncedAt).getTime())
-      .slice(0, 30);
-  }, [ipos, activeFilter]);
 
-  /* ── Loading skeleton ──────────────────────────────────────────── */
+    return [...filtered]
+      .sort((a, b) => {
+        // Both have calendar dates → sort newest openDate first
+        if (a.openDate && b.openDate) {
+          return b.openDate.localeCompare(a.openDate);
+        }
+        // One has a date → date-enriched floats to top
+        if (a.openDate) return -1;
+        if (b.openDate) return 1;
+        // Neither has a date → preserve source order (registrar's native newest-first)
+        return 0;
+      })
+      .slice(0, 30);
+  }, [ipos, dateMap, activeFilter]);
+
+  /* ── Loading state ─────────────────────────────────────────────── */
   if (loading) {
     return (
       <div className="flex items-center gap-2 py-2">
@@ -116,8 +163,7 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
   /* ── Render ────────────────────────────────────────────────────── */
   return (
     <div>
-
-      {/* ── Top header bar ─────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 pb-2.5">
         {/* Title */}
         <div className="flex items-center gap-2 shrink-0">
@@ -157,7 +203,6 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
           ))}
         </div>
 
-        {/* Spacer */}
         <div className="flex-1" />
 
         {/* Freshness */}
@@ -184,12 +229,9 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
         </button>
       </div>
 
-      {/* ── Scrollable pill strip ───────────────────────────────────── */}
+      {/* ── Pill strip ─────────────────────────────────────────────── */}
       {displayed.length > 0 ? (
-        <div
-          className="flex gap-2 overflow-x-auto pt-2"
-          style={{ scrollbarWidth: "none" }}
-        >
+        <div className="flex gap-2 overflow-x-auto pt-1" style={{ scrollbarWidth: "none" }}>
           {displayed.map((ipo) => {
             const c = REGISTRAR_COLORS[ipo.registrar] ?? REGISTRAR_COLORS.kfintech;
             return (
@@ -197,7 +239,9 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
                 key={ipo.id}
                 type="button"
                 onClick={() => onSelect?.(ipo)}
-                title={`${ipo.name} — click to select`}
+                title={ipo.openDate
+                  ? `${ipo.name} · opened ${ipo.openDate} · click to select`
+                  : `${ipo.name} · click to select`}
                 className={cn(
                   "group flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5",
                   "text-xs font-medium transition-all duration-200",
@@ -211,7 +255,6 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
                   <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", c.dot)} />
                 </span>
 
-                {/* Name */}
                 <span className="max-w-[150px] truncate">{ipo.name}</span>
 
                 {/* Registrar badge */}
