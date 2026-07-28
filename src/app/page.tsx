@@ -192,7 +192,7 @@ export default function Home() {
       />
       <Header />
 
-      <main className="flex flex-1 flex-col">
+      <main>
         {/* Hero Section */}
         <section className="relative overflow-hidden px-4 py-4">
           {/* Animated background blobs */}
@@ -217,7 +217,7 @@ export default function Home() {
         {/* Main Checker Card */}
         <section
           ref={checkerRef}
-          className="container mx-auto max-w-4xl px-4 pb-4 flex-1"
+          className="container mx-auto max-w-4xl px-4"
         >
           <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
             {/* Card Header */}
@@ -285,7 +285,7 @@ export default function Home() {
         {(results || scanResults) && (
           <section
             ref={resultsRef}
-            className="container mx-auto max-w-6xl px-4 pb-16"
+            className="container mx-auto max-w-6xl px-4 pb-4"
           >
             {scanResults ? (
               <ScanResultsDashboard results={scanResults} onCheckAgain={scrollToChecker} />
@@ -294,8 +294,6 @@ export default function Home() {
             )}
           </section>
         )}
-
-
       </main>
 
       <footer className="border-t border-border py-1">

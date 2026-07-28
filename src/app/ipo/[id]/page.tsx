@@ -261,7 +261,7 @@ export default async function IPODetailPage({ params }: PageProps) {
         </div>
       </main>
 
-      <footer className="border-t border-border py-4">
+      <footer className="border-t border-border py-2">
         <div className="container mx-auto px-4 text-center">
           <p className="text-[10px] text-muted-foreground">© 2026 IPO Desk · GMP and grey-market figures are indicative, not investment advice.</p>
         </div>
