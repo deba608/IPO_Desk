@@ -209,7 +209,7 @@ export default function Home() {
           <div className="relative container mx-auto max-w-5xl text-center">
             <h1 className="animate-fade-up text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Check IPO Allotment
-              <span className="block gradient-text">in Seconds</span>
+              <span className="block gradient-text mt-2">in Seconds</span>
             </h1>
           </div>
         </section>
@@ -296,7 +296,7 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="border-t border-border py-0.5">
+      <footer className="border-t border-border py-3">
         <div className="container mx-auto flex flex-col items-center px-4 sm:flex-row">
           <div className="hidden flex-1 sm:block" />
           <p className="text-xs text-muted-foreground sm:text-sm">
