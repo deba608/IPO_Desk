@@ -373,8 +373,8 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
               {/* Divider */}
               <span className="mx-1 h-4 w-px bg-border shrink-0" />
 
-              {/* Type filter */}
-              <div className="flex rounded-md border border-border bg-muted/20 p-0.5">
+              {/* Type filter — right end */}
+              <div className="ml-auto flex rounded-md border border-border bg-muted/20 p-0.5">
                 {(["all", "mainboard", "sme"] as const).map((type) => {
                   const count = type === "all"
                     ? ipos.length
