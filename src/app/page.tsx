@@ -298,7 +298,7 @@ export default function Home() {
 
       </main>
 
-      <footer className="border-t border-border py-3 sm:py-4">
+      <footer className="border-t border-border py-1">
         <div className="container mx-auto flex flex-col items-center px-4 sm:flex-row">
           <div className="hidden flex-1 sm:block" />
           <p className="text-xs text-muted-foreground sm:text-sm">
