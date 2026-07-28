@@ -196,16 +196,18 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative overflow-hidden px-4 pt-14 pb-12">
-          {/* Animated background blobs */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="animate-blob absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-            <div className="animate-blob-2 absolute right-1/4 bottom-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
-            <div
-              className="animate-blob absolute left-1/2 bottom-10 h-48 w-48 rounded-full bg-violet-500/8 blur-3xl"
-              style={{ animationDelay: "-8s" }}
-            />
-          </div>
+          {/* Clean grid background */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 1px 1px, rgba(99,102,241,0.15) 1px, transparent 0)",
+              backgroundSize: "28px 28px",
+            }}
+          />
+          {/* Subtle vignette so edges fade to background */}
+          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/80" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-background/80" />
 
           <div className="relative container mx-auto max-w-5xl text-center">
             <h1 className="animate-fade-up text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
@@ -213,7 +215,7 @@ export default function Home() {
               <span className="block gradient-text mt-3">in Seconds</span>
             </h1>
             <p className="animate-fade-up delay-200 mt-4 text-sm text-muted-foreground sm:text-base">
-              Instantly verify allotment status across all registrars — KFintech, Link Intime, Bigshare &amp; MUFG.
+              Instantly verify allotment status across all registrars &mdash; KFintech, Link Intime, Bigshare &amp; MUFG.
             </p>
           </div>
         </section>
