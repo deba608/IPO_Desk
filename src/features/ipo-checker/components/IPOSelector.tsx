@@ -14,6 +14,10 @@ import {
 import { IPO } from "@/types/ipo.types";
 import { cn } from "@/lib/utils";
 
+function isSME(name: string): boolean {
+  return /\bSME\b/i.test(name);
+}
+
 /** Normalise an IPO name for fuzzy matching: drop suffixes + non-alphanumerics. */
 function normalizeName(name: string): string {
   return name
@@ -74,6 +78,7 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [registrarFilter, setRegistrarFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [activeIndex, setActiveIndex] = useState(0);
   const didAutoSelect = useRef(false);
 
@@ -134,15 +139,19 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
       ipos.filter(
         (ipo) =>
           (registrarFilter === "all" || ipo.registrar === registrarFilter) &&
+          (typeFilter === "all" ||
+            (typeFilter === "mainboard" && !isSME(ipo.name)) ||
+            (typeFilter === "sme" && isSME(ipo.name))) &&
           ipo.name.toLowerCase().includes(search.toLowerCase())
       ),
-    [ipos, registrarFilter, search]
+    [ipos, registrarFilter, typeFilter, search]
   );
 
   const closeDropdown = useCallback(() => {
     setOpen(false);
     setSearch("");
     setRegistrarFilter("all");
+    setTypeFilter("all");
   }, []);
 
   const selectIPO = useCallback(
@@ -330,9 +339,10 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
               "animate-in fade-in-0 zoom-in-95 duration-150"
             )}
           >
-            {/* Registrar Filter */}
-            {registrars.length > 1 && (
-              <div className="border-b border-border p-2 flex flex-wrap gap-1.5">
+            {/* Filter bar */}
+            <div className="border-b border-border p-2 flex flex-wrap items-center gap-1.5">
+              {/* Registrar filter */}
+              <div className="flex flex-wrap gap-1.5">
                 {["all", ...registrars].map((registrar) => {
                   const count =
                     registrar === "all"
@@ -359,7 +369,41 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
                   );
                 })}
               </div>
-            )}
+
+              {/* Divider */}
+              <span className="mx-1 h-4 w-px bg-border shrink-0" />
+
+              {/* Type filter */}
+              <div className="flex rounded-md border border-border bg-muted/20 p-0.5">
+                {(["all", "mainboard", "sme"] as const).map((type) => {
+                  const count = type === "all"
+                    ? ipos.length
+                    : ipos.filter((i) => type === "mainboard" ? !isSME(i.name) : isSME(i.name)).length;
+                  const active = typeFilter === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setTypeFilter(type)}
+                      className={cn(
+                        "rounded px-2 py-1 text-[11px] font-medium transition-all",
+                        active
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {type === "all" ? "All" : type === "mainboard" ? "Mainboard" : "SME"}
+                      <span className={cn(
+                        "ml-1 rounded-full px-1 py-px text-[9px] font-bold",
+                        active ? "bg-primary/10 text-primary" : "text-muted-foreground/50"
+                      )}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* IPO List */}
             <div

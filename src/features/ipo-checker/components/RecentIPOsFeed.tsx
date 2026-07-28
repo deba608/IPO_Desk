@@ -176,6 +176,31 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
           </span>
         </div>
 
+        <div className="flex-1" />
+
+        {/* Freshness */}
+        {lastUpdated && (
+          <span
+            className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground"
+            title={new Date(lastUpdated).toLocaleString()}
+          >
+            <Clock className="h-3 w-3 shrink-0" />
+            {tick >= 0 && null}
+            synced {timeAgo(lastUpdated)}
+          </span>
+        )}
+
+        {/* Refresh */}
+        <button
+          type="button"
+          onClick={() => fetchIPOs(true)}
+          disabled={refreshing}
+          aria-label="Refresh IPO list"
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground transition-all hover:border-primary/50 hover:text-primary hover:bg-primary/5 active:scale-90 disabled:opacity-40"
+        >
+          <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
+        </button>
+
         {/* Filter tabs — pill group */}
         <div className="flex items-center rounded-lg border border-border bg-muted/20 p-0.5">
           {FILTER_TABS.map((tab) => {
@@ -207,31 +232,6 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
             );
           })}
         </div>
-
-        <div className="flex-1" />
-
-        {/* Freshness */}
-        {lastUpdated && (
-          <span
-            className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground"
-            title={new Date(lastUpdated).toLocaleString()}
-          >
-            <Clock className="h-3 w-3 shrink-0" />
-            {tick >= 0 && null}
-            synced {timeAgo(lastUpdated)}
-          </span>
-        )}
-
-        {/* Refresh */}
-        <button
-          type="button"
-          onClick={() => fetchIPOs(true)}
-          disabled={refreshing}
-          aria-label="Refresh IPO list"
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground transition-all hover:border-primary/50 hover:text-primary hover:bg-primary/5 active:scale-90 disabled:opacity-40"
-        >
-          <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
-        </button>
       </div>
 
       {/* ── Pill strip ─────────────────────────────────────────────── */}
