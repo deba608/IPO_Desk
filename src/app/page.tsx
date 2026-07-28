@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   ScanSearch,
   Target,
+  SearchCode,
+  Calendar,
 } from "lucide-react";
 import { IPOSelector } from "@/features/ipo-checker/components/IPOSelector";
 import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
@@ -195,28 +198,76 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden px-4 pt-14 pb-12">
-          {/* Clean grid background */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, rgba(99,102,241,0.15) 1px, transparent 0)",
-              backgroundSize: "28px 28px",
-            }}
-          />
-          {/* Subtle vignette so edges fade to background */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/80" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-background/80" />
+        <section className="relative overflow-hidden px-4 pt-16 pb-14 sm:pt-20 sm:pb-16">
+          {/* Glow blobs */}
+          <div className="pointer-events-none absolute left-1/4 top-0 h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-primary/10 blur-[120px] animate-blob" />
+          <div className="pointer-events-none absolute right-1/4 top-8 h-[300px] w-[300px] rounded-full bg-blue-500/8 blur-[100px] animate-blob-2" />
+          {/* Fade edges */}
+          <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-transparent to-background" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background to-transparent" />
 
           <div className="relative container mx-auto max-w-5xl text-center">
-            <h1 className="animate-fade-up text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            {/* Registrar badges */}
+            <div className="animate-fade-up flex flex-wrap justify-center gap-2 mb-5">
+              {[
+                { label: "KFintech", class: "bg-indigo-500/10 text-indigo-300 border-indigo-500/20" },
+                { label: "Link Intime", class: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20" },
+                { label: "Bigshare", class: "bg-amber-500/10 text-amber-300 border-amber-500/20" },
+                { label: "MUFG", class: "bg-sky-500/10 text-sky-300 border-sky-500/20" },
+              ].map((b) => (
+                <span
+                  key={b.label}
+                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium tracking-wide ${b.class}`}
+                >
+                  {b.label}
+                </span>
+              ))}
+            </div>
+
+            <h1 className="animate-fade-up delay-100 text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Check IPO Allotment
-              <span className="block gradient-text mt-3">in Seconds</span>
+              <span className="block gradient-text mt-2 sm:mt-3">in Seconds</span>
             </h1>
-            <p className="animate-fade-up delay-200 mt-4 text-sm text-muted-foreground sm:text-base">
-              Instantly verify allotment status across all registrars &mdash; KFintech, Link Intime, Bigshare &amp; MUFG.
+
+            <p className="animate-fade-up delay-200 mx-auto mt-4 max-w-2xl text-sm text-muted-foreground sm:text-base">
+              Enter your PAN and instantly check allotment status across every Indian registrar.
+              No sign-ups, no fees.
             </p>
+
+            {/* CTA */}
+            <div className="animate-fade-up delay-300 mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={scrollToChecker}
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.97]"
+              >
+                <SearchCode className="h-4 w-4" />
+                Check Your Allotment
+              </button>
+              <Link
+                href="/calendar"
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-6 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-[0.97]"
+              >
+                <Calendar className="h-4 w-4" />
+                Browse IPO Calendar
+              </Link>
+            </div>
+
+            {/* Quick stats */}
+            <div className="animate-fade-up delay-500 mt-10 flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1 w-1 rounded-full bg-success" />
+                Real-time from 4 registrars
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-1 w-1 rounded-full bg-success" />
+                Bulk check up to 50 PANs
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-1 w-1 rounded-full bg-success" />
+                Export to CSV / Excel
+              </span>
+            </div>
           </div>
         </section>
 
