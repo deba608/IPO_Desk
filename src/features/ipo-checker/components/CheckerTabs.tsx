@@ -159,7 +159,7 @@ export function CheckerTabs({
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid h-auto w-full grid-cols-4 gap-1.5 bg-transparent p-0">
+        <TabsList className="grid h-auto w-full grid-cols-4 gap-1 bg-transparent p-0">
           {[
             { value: "single", Icon: UserIcon, label: "Single" },
             { value: "bulk", Icon: Users, label: "Bulk" },
@@ -170,7 +170,7 @@ export function CheckerTabs({
               key={value}
               value={value}
               className={cn(
-                "group flex-col gap-1 rounded-xl border border-border bg-muted/30 px-1 py-2.5 sm:flex-row sm:gap-2 sm:py-2",
+                "group flex-col gap-1 rounded-xl border border-border bg-muted/30 px-1 py-2 sm:flex-row sm:gap-2 sm:py-1.5",
                 "transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted/60",
                 "active:translate-y-0 active:scale-[0.97]",
                 "data-[state=active]:border-primary/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:shadow-primary/10"
@@ -296,7 +296,7 @@ export function CheckerTabs({
               placeholder={`ABCDE1234F\nFGHIJ5678K\nLMNOP9012Q\n...`}
               value={bulkText}
               onChange={(e) => setBulkText(e.target.value)}
-              className="min-h-[160px] font-mono text-sm"
+              className="min-h-[120px] font-mono text-sm"
               disabled={isLoading}
             />
             <p className="text-xs text-muted-foreground">
@@ -515,7 +515,7 @@ export function CheckerTabs({
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+    <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">Select a profile to check:</p>
                 <Button

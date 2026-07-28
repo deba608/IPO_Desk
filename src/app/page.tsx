@@ -192,9 +192,9 @@ export default function Home() {
       />
       <Header />
 
-      <main>
+      <main className="flex flex-1 flex-col">
         {/* Hero Section */}
-        <section className="relative overflow-hidden px-4 py-10">
+        <section className="relative overflow-hidden px-4 py-4">
           {/* Animated background blobs */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
           <div className="absolute inset-0 pointer-events-none">
@@ -217,11 +217,11 @@ export default function Home() {
         {/* Main Checker Card */}
         <section
           ref={checkerRef}
-          className="container mx-auto max-w-4xl px-4 pb-8"
+          className="container mx-auto max-w-4xl px-4 pb-4 flex-1"
         >
           <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
             {/* Card Header */}
-            <div className="flex flex-col gap-4 border-b border-border px-8 py-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Check Allotment Status</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -230,7 +230,7 @@ export default function Home() {
               </div>
 
               {/* Mode toggle: single IPO vs scan all — one control, swiping highlight */}
-              <div className="relative grid w-full grid-cols-2 rounded-xl border border-border bg-muted/30 p-1 sm:w-auto shrink-0">
+              <div className="relative grid w-full grid-cols-2 rounded-xl border border-border bg-muted/30 p-0.5 sm:w-auto shrink-0">
                 {/* Swiping highlight */}
                 <span
                   aria-hidden
@@ -263,13 +263,13 @@ export default function Home() {
 
             {/* IPO Selector — hidden in scan mode */}
             {!scanMode && (
-              <div className="px-8 py-6 border-b border-border">
+              <div className="px-6 py-4 border-b border-border">
                 <IPOSelector value={selectedIPO} onChange={setSelectedIPO} />
               </div>
             )}
 
             {/* Input Tabs */}
-            <div className="px-8 py-6">
+            <div className="px-6 py-4">
               <CheckerTabs
                 onCheck={handleCheck}
                 isLoading={isLoading}
