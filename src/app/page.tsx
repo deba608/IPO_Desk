@@ -3,10 +3,6 @@
 import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
-  Shield,
-  Zap,
-  Users,
-  FileSpreadsheet,
   ScanSearch,
   Target,
 } from "lucide-react";
@@ -223,23 +219,6 @@ export default function Home() {
               Excel.
             </p>
 
-            {/* Feature pills — staggered entrance */}
-            <div className="mb-6 flex flex-wrap justify-center gap-3">
-              {[
-                { icon: Shield, text: "Secure & Private", delay: "delay-150" },
-                { icon: Zap, text: "Instant Results", delay: "delay-200" },
-                { icon: Users, text: "Bulk Processing", delay: "delay-250" },
-                { icon: FileSpreadsheet, text: "Excel Upload", delay: "delay-300" },
-              ].map(({ icon: Icon, text, delay }) => (
-                <div
-                  key={text}
-                  className={`animate-fade-up ${delay} flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm`}
-                >
-                  <Icon className="h-3.5 w-3.5 text-primary" />
-                  {text}
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
