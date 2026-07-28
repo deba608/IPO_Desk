@@ -195,7 +195,7 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden px-4 py-8 pb-6">
+        <section className="relative overflow-hidden px-4 pt-14 pb-12">
           {/* Animated background blobs */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
           <div className="absolute inset-0 pointer-events-none">
@@ -210,13 +210,16 @@ export default function Home() {
           <div className="relative container mx-auto max-w-5xl text-center">
             <h1 className="animate-fade-up text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Check IPO Allotment
-              <span className="block gradient-text mt-4">in Seconds</span>
+              <span className="block gradient-text mt-3">in Seconds</span>
             </h1>
+            <p className="animate-fade-up delay-200 mt-4 text-sm text-muted-foreground sm:text-base">
+              Instantly verify allotment status across all registrars — KFintech, Link Intime, Bigshare &amp; MUFG.
+            </p>
           </div>
         </section>
 
         {/* Recent IPOs Feed */}
-        <section className="container mx-auto max-w-4xl px-4 pb-4">
+        <section className="container mx-auto max-w-4xl px-4 py-5">
           <RecentIPOsFeed
             onSelect={(ipo) => {
               setSelectedIPO(ipo);
@@ -231,7 +234,7 @@ export default function Home() {
         {/* Main Checker Card */}
         <section
           ref={checkerRef}
-          className="container mx-auto max-w-4xl px-4"
+          className="container mx-auto max-w-4xl px-4 pb-8"
         >
           <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
             {/* Card Header */}
