@@ -127,18 +127,19 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
           </span>
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex items-center gap-0.5 rounded-lg border border-border/50 bg-card/40 p-0.5">
+        {/* Filter tabs — transparent ghost style */}
+        <div className="flex items-center gap-1">
           {FILTER_TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveFilter(tab.id)}
               className={cn(
-                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all duration-200",
+                "relative flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium transition-all duration-200",
+                "border-b-2",
                 activeFilter === tab.id
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
               )}
             >
               {tab.label}
@@ -146,8 +147,8 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
                 className={cn(
                   "rounded-full px-1.5 py-px text-[9px] font-bold transition-colors",
                   activeFilter === tab.id
-                    ? "bg-white/20 text-white"
-                    : "bg-muted text-muted-foreground"
+                    ? "bg-primary/15 text-primary"
+                    : "bg-transparent text-muted-foreground/60"
                 )}
               >
                 {counts[tab.id]}
