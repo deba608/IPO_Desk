@@ -194,7 +194,7 @@ export default function Home() {
 
       <main>
         {/* Hero Section */}
-        <section className="relative overflow-hidden px-4 py-14">
+        <section className="relative overflow-hidden px-4 py-10">
           {/* Animated background blobs */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
           <div className="absolute inset-0 pointer-events-none">
@@ -207,16 +207,13 @@ export default function Home() {
           </div>
 
           <div className="relative container mx-auto max-w-5xl text-center">
-            {/* Title */}
-            <h1 className="animate-fade-up mb-6 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="animate-fade-up mb-4 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
               Check IPO Allotment
               <span className="block gradient-text">in Seconds</span>
             </h1>
-
             <p className="animate-fade-up delay-100 mx-auto max-w-2xl text-lg text-muted-foreground">
               Check single or multiple PANs instantly. Upload Excel for bulk checking, export to CSV.
             </p>
-
           </div>
         </section>
 
