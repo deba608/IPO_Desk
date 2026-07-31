@@ -207,22 +207,7 @@ export default function Home() {
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background to-transparent" />
 
           <div className="relative container mx-auto max-w-5xl text-center">
-            {/* Registrar badges */}
-            <div className="animate-fade-up flex flex-wrap justify-center gap-2 mb-5">
-              {[
-                { label: "KFintech", class: "bg-indigo-500/10 text-indigo-300 border-indigo-500/20" },
-                { label: "Link Intime", class: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20" },
-                { label: "Bigshare", class: "bg-amber-500/10 text-amber-300 border-amber-500/20" },
-                { label: "MUFG", class: "bg-sky-500/10 text-sky-300 border-sky-500/20" },
-              ].map((b) => (
-                <span
-                  key={b.label}
-                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium tracking-wide ${b.class}`}
-                >
-                  {b.label}
-                </span>
-              ))}
-            </div>
+
 
             <h1 className="animate-fade-up delay-100 text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Check IPO Allotment
