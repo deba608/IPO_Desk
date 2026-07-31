@@ -324,10 +324,13 @@ export function CheckerTabs({
         <TabsContent value="upload" className="space-y-4">
           {/* Drop Zone */}
           <div
+            onClick={() => {
+              document.getElementById("file-upload-input")?.click();
+            }}
             className={cn(
-              "relative rounded-xl border-2 border-dashed p-4 sm:p-8 text-center transition-all",
+              "relative cursor-pointer rounded-xl border-2 border-dashed p-4 sm:p-8 text-center transition-all select-none",
               isDragOver
-                ? "border-primary bg-primary/5"
+                ? "border-primary bg-primary/10 scale-[1.01] shadow-lg shadow-primary/5"
                 : "border-border hover:border-primary/50 hover:bg-muted/30",
               parsedFile && "border-emerald-500/50 bg-emerald-500/5"
             )}
@@ -335,7 +338,10 @@ export function CheckerTabs({
               e.preventDefault();
               setIsDragOver(true);
             }}
-            onDragLeave={() => setIsDragOver(false)}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              setIsDragOver(false);
+            }}
             onDrop={(e) => {
               e.preventDefault();
               setIsDragOver(false);
@@ -343,6 +349,16 @@ export function CheckerTabs({
               if (file) handleFileUpload(file);
             }}
           >
+            <input
+              id="file-upload-input"
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
+            />
             {parsedFile ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-center gap-3">
@@ -355,7 +371,11 @@ export function CheckerTabs({
                     </p>
                   </div>
                   <button
-                    onClick={() => setParsedFile(null)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setParsedFile(null);
+                    }}
                     className="ml-auto text-muted-foreground hover:text-foreground hover:bg-transparent cursor-pointer p-1"
                   >
                     <X className="h-4 w-4" />
@@ -374,26 +394,19 @@ export function CheckerTabs({
             ) : (
               <div className="space-y-3">
                 <div className="flex justify-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-                    <Upload className="h-6 w-6 text-muted-foreground" />
+                  <div className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200",
+                    isDragOver ? "bg-primary/20 scale-110 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    <Upload className="h-6 w-6" />
                   </div>
                 </div>
                 <div>
-                  <p className="font-medium">Drag & drop your file here</p>
+                  <p className="font-medium">
+                    {isDragOver ? "Drop your file here" : "Drag & drop your file here"}
+                  </p>
                   <p className="text-sm text-muted-foreground">
-                    or{" "}
-                    <label className="cursor-pointer text-primary hover:underline">
-                      browse to upload
-                      <input
-                        type="file"
-                        accept=".xlsx,.xls,.csv"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileUpload(file);
-                        }}
-                      />
-                    </label>
+                    or <span className="text-primary font-medium hover:underline">browse to upload</span>
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
