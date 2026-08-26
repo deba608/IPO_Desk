@@ -81,6 +81,16 @@ export async function POST(request: Request) {
     }
 
     const prisma = await getPrisma();
+    // Clients may pass either the internal cuid or the public slug — resolve
+    // to the internal id for the FK.
+    const ipo = await prisma.ipo.findFirst({
+      where: { OR: [{ id: validated.data.ipoId }, { slug: validated.data.ipoId }] },
+      select: { id: true },
+    });
+    if (!ipo) {
+      return NextResponse.json({ error: "Unknown ipoId" }, { status: 400 });
+    }
+
     // Cap per-device alert count so a device can't grow the table unbounded.
     const existing = await prisma.alert.count({ where: { deviceId } });
     if (existing >= 100) {
@@ -93,7 +103,7 @@ export async function POST(request: Request) {
     const alert = await prisma.alert.create({
       data: {
         deviceId,
-        ipoId: validated.data.ipoId,
+        ipoId: ipo.id,
         trigger: validated.data.trigger,
         threshold: validated.data.threshold,
         channel: "push",
@@ -102,10 +112,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ alert });
   } catch (error) {
-    // Prisma P2003 = foreign key violation — the referenced IPO id doesn't exist.
-    if ((error as { code?: string }).code === "P2003") {
-      return NextResponse.json({ error: "Unknown ipoId" }, { status: 400 });
-    }
     console.error("[/api/alerts] POST failed:", error);
     return NextResponse.json({ error: "Failed to create alert" }, { status: 500 });
   }
