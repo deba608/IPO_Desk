@@ -102,6 +102,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ alert });
   } catch (error) {
+    // Prisma P2003 = foreign key violation — the referenced IPO id doesn't exist.
+    if ((error as { code?: string }).code === "P2003") {
+      return NextResponse.json({ error: "Unknown ipoId" }, { status: 400 });
+    }
     console.error("[/api/alerts] POST failed:", error);
     return NextResponse.json({ error: "Failed to create alert" }, { status: 500 });
   }
