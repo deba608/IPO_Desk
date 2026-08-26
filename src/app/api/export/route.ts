@@ -4,20 +4,24 @@ import { z } from "zod";
 import { exportToCSV, exportToXLSX } from "@/services/export.service";
 
 const ExportRequestSchema = z.object({
-  results: z.array(
-    z.object({
-      pan: z.string(),
-      name: z.string().optional(),
-      appliedShares: z.number().optional(),
-      allottedShares: z.number().optional(),
-      status: z.enum(["allotted", "not_allotted", "not_found", "error"]),
-      error: z.string().optional(),
-      label: z.string().optional(),
-    })
-  ),
+  // Cap the payload — an unbounded array is parsed and materialized into a
+  // workbook per request (500 matches /api/check's PAN cap).
+  results: z
+    .array(
+      z.object({
+        pan: z.string().max(20),
+        name: z.string().max(200).optional(),
+        appliedShares: z.number().optional(),
+        allottedShares: z.number().optional(),
+        status: z.enum(["allotted", "not_allotted", "not_found", "error"]),
+        error: z.string().max(500).optional(),
+        label: z.string().max(100).optional(),
+      })
+    )
+    .max(500),
   format: z.enum(["csv", "xlsx"]),
-  ipoName: z.string(),
-  checkedAt: z.string(),
+  ipoName: z.string().max(200),
+  checkedAt: z.string().datetime({ offset: true }).or(z.string().datetime()),
 });
 
 function sanitizeFilename(name: string): string {

@@ -61,7 +61,8 @@ export function exportToCSV(
   XLSX.utils.book_append_sheet(wb, ws, "Results");
 
   const csvBuffer = XLSX.write(wb, { bookType: "csv", type: "buffer" });
-  return Buffer.from(csvBuffer);
+  // UTF-8 BOM so Excel detects the encoding (₹ renders as mojibake without it).
+  return Buffer.concat([Buffer.from("\uFEFF", "utf-8"), Buffer.from(csvBuffer)]);
 }
 
 export function exportToXLSX(
