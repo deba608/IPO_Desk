@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -154,7 +154,9 @@ export function CheckerTabs({
     }
   };
 
-  const bulkPANs = parsePANsFromText(bulkText);
+  // Parsing on every keystroke is wasted work — recompute only when the text
+  // actually changes.
+  const bulkPANs = useMemo(() => parsePANsFromText(bulkText), [bulkText]);
 
   return (
     <div className="space-y-4">
@@ -357,6 +359,8 @@ export function CheckerTabs({
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFileUpload(file);
+                // Reset so re-selecting the same file re-fires onChange.
+                e.target.value = "";
               }}
             />
             {parsedFile ? (

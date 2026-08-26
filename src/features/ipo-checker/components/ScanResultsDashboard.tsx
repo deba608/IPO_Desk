@@ -183,10 +183,19 @@ function IPOScanCard({ ipo }: { ipo: ScanIPOResult }) {
         hasAllotment ? "border-emerald-500/30" : "border-border"
       )}
     >
-      <button
-        type="button"
+      {/* A <Link> inside a <button> is invalid HTML (hydration mismatch) —
+          use a clickable div with keyboard support instead. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 p-4 text-left"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-left"
       >
         <div className="flex min-w-0 items-center gap-3">
           {hasAllotment ? (
@@ -227,7 +236,7 @@ function IPOScanCard({ ipo }: { ipo: ScanIPOResult }) {
             )}
           />
         </div>
-      </button>
+      </div>
 
       {open && (
         <div className="border-t border-border px-4 py-3">

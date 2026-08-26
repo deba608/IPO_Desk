@@ -147,6 +147,13 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
     [ipos, registrarFilter, typeFilter, search]
   );
 
+  // The highlight must never point past the end of the list — filtering can
+  // shrink `filtered` without touching activeIndex.
+  const clampedIndex = Math.min(activeIndex, Math.max(0, filtered.length - 1));
+  useEffect(() => {
+    if (clampedIndex !== activeIndex) setActiveIndex(clampedIndex);
+  }, [clampedIndex, activeIndex]);
+
   const closeDropdown = useCallback(() => {
     setOpen(false);
     setSearch("");
@@ -188,7 +195,7 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const ipo = filtered[activeIndex];
+      const ipo = filtered[clampedIndex];
       if (ipo) selectIPO(ipo);
     } else if (e.key === "Escape") {
       e.preventDefault();

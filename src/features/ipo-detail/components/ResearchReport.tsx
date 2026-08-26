@@ -39,23 +39,33 @@ interface ResearchReportProps {
 export function ResearchReport({ ipoId }: ResearchReportProps) {
   const [report, setReport] = useState<ResearchReportType | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0, 1, 2, 3, 4]));
+  // Track expanded state by section title, not index — index keys misattach
+  // accordion state when navigating between IPOs.
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
+    setExpandedSections(new Set());
     fetch(`/api/ipo/${encodeURIComponent(ipoId)}/report`)
       .then((r) => r.json())
-      .then((json) => { if (!cancelled) setReport(json); })
+      .then((json) => {
+        if (!cancelled) {
+          setReport(json);
+          if (json?.sections) {
+            setExpandedSections(new Set(json.sections.map((s: { title: string }) => s.title)));
+          }
+        }
+      })
       .catch(() => { if (!cancelled) setReport(null); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [ipoId]);
 
-  const toggleSection = (idx: number) => {
+  const toggleSection = (title: string) => {
     setExpandedSections((prev) => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
       return next;
     });
   };
@@ -127,10 +137,10 @@ export function ResearchReport({ ipoId }: ResearchReportProps) {
       <Separator />
 
       {/* Sections */}
-      {report.sections.map((section, idx) => (
-        <div key={idx} className="rounded-lg border border-border">
+      {report.sections.map((section) => (
+        <div key={section.title} className="rounded-lg border border-border">
           <button
-            onClick={() => toggleSection(idx)}
+            onClick={() => toggleSection(section.title)}
             className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/50"
           >
             <div className="flex items-center gap-2.5">
@@ -142,13 +152,13 @@ export function ResearchReport({ ipoId }: ResearchReportProps) {
                 </Badge>
               )}
             </div>
-            {expandedSections.has(idx) ? (
+            {expandedSections.has(section.title) ? (
               <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
             ) : (
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
           </button>
-          {expandedSections.has(idx) && (
+          {expandedSections.has(section.title) && (
             <div className="border-t border-border px-4 py-3">
               <p className="text-sm leading-relaxed text-muted-foreground">{section.content}</p>
               {section.score !== undefined && section.maxScore && (

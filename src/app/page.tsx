@@ -54,9 +54,12 @@ export default function Home() {
       setIsLoading(true);
       setProgress(10);
 
+      // Simulate progress (scans across many IPOs are slower — ramp gently).
+      // Hoisted so the finally block can always clear it — a leaked interval
+      // here re-rendered the page every 300ms forever.
+      let progressInterval: ReturnType<typeof setInterval> | undefined;
       try {
-        // Simulate progress (scans across many IPOs are slower — ramp gently)
-        const progressInterval = setInterval(() => {
+        progressInterval = setInterval(() => {
           setProgress((p) => Math.min(p + (scanMode ? 2 : 5), 85));
         }, 300);
 
@@ -154,6 +157,7 @@ export default function Home() {
           error instanceof Error ? error.message : "Something went wrong";
         toast.error(msg);
       } finally {
+        if (progressInterval !== undefined) clearInterval(progressInterval);
         setIsLoading(false);
         setTimeout(() => setProgress(0), 1000);
       }

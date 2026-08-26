@@ -103,6 +103,48 @@ function CardSkeleton() {
   );
 }
 
+// Self-ticking 1s components — isolates the per-second re-render to a tiny
+// leaf instead of re-rendering the whole calendar tree every second.
+const IST_CLOCK_FORMAT = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "Asia/Kolkata",
+  weekday: "short",
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+});
+
+function useNowTicker() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+function LiveISTClock() {
+  const now = useNowTicker();
+  return (
+    <span className="tabular-nums">
+      {IST_CLOCK_FORMAT.format(now)} IST
+    </span>
+  );
+}
+
+function UpdatedAgo({ lastUpdated }: { lastUpdated: string }) {
+  const now = useNowTicker();
+  const secs = Math.max(
+    0,
+    Math.round((now - new Date(lastUpdated).getTime()) / 1000)
+  );
+  const text =
+    secs < 5 ? "just now" : secs < 60 ? `${secs}s ago` : `${Math.floor(secs / 60)}m ago`;
+  return <span>Updated {text}</span>;
+}
+
 export function IPOCalendarView() {
   const [data, setData] = useState<CalendarResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,7 +153,6 @@ export function IPOCalendarView() {
   const [board, setBoard] = useState<BoardFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("openDate_desc");
   const [query, setQuery] = useState("");
-  const [now, setNow] = useState(() => Date.now());
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [gmpFilter, setGmpFilter] = useState("all");
@@ -141,15 +182,24 @@ export function IPOCalendarView() {
     setRegistrarFilter("all");
   };
 
-  // Restore view mode preference from localStorage.
+  // Restore view mode preference from localStorage. Guarded — blocked
+  // storage (private mode, hardened browsers) throws on access.
   useEffect(() => {
-    const saved = localStorage.getItem("ipo-calendar-view") as ViewMode | null;
-    if (saved === "grid" || saved === "list") setViewMode(saved);
+    try {
+      const saved = localStorage.getItem("ipo-calendar-view") as ViewMode | null;
+      if (saved === "grid" || saved === "list") setViewMode(saved);
+    } catch {
+      // Storage unavailable — default view is fine.
+    }
   }, []);
 
   const switchView = (mode: ViewMode) => {
     setViewMode(mode);
-    localStorage.setItem("ipo-calendar-view", mode);
+    try {
+      localStorage.setItem("ipo-calendar-view", mode);
+    } catch {
+      // Non-fatal.
+    }
   };
 
   // Hydrate filters from URL search params on mount
@@ -216,20 +266,14 @@ export function IPOCalendarView() {
     window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, "", newUrl);
   }, [tab, board, query, gmpFilter, sizeFilter, registrarFilter]);
 
-  // Tick every second so the live IST clock and "updated Xs ago" stay current.
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
   // Single fetcher reused for the initial load, interval polling, and focus
   // refresh. Background refreshes keep the current list on screen (no skeleton
   // flash) and never override the user's selected tab.
   const load = useCallback(async (background: boolean) => {
     try {
-      // Background polls bypass the server cache so data stays fresh within ~60s.
-      const url = background ? "/api/calendar?refresh=true" : "/api/calendar";
-      const res = await fetch(url, { cache: "no-store" });
+      // The server-side catalogue cache has a 60s TTL, matching the poll
+      // interval — no need for the (secret-gated) ?refresh=true bypass here.
+      const res = await fetch("/api/calendar", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load calendar");
       const json: CalendarResponse = await res.json();
       setData(json);
@@ -326,38 +370,13 @@ export function IPOCalendarView() {
     return sortIPOs(filtered, sortKey);
   }, [data, tab, board, sortKey, query, isWatched, gmpFilter, sizeFilter, registrarFilter]);
 
-  // Live IST wall-clock, re-rendered every second via `now`.
-  const istClock = useMemo(
-    () =>
-      new Intl.DateTimeFormat("en-IN", {
-        timeZone: "Asia/Kolkata",
-        weekday: "short",
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      }).format(new Date(now)),
-    [now]
-  );
-
-  // "just now" / "12s ago" / "3m ago" since the last successful fetch.
-  const updatedAgo = useMemo(() => {
-    if (!data) return "";
-    const secs = Math.max(0, Math.round((now - new Date(data.lastUpdated).getTime()) / 1000));
-    if (secs < 5) return "just now";
-    if (secs < 60) return `${secs}s ago`;
-    return `${Math.floor(secs / 60)}m ago`;
-  }, [data, now]);
-
   return (
     <div className="space-y-6">
       {/* Live IST clock + auto-refresh indicator */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
-          <span className="tabular-nums">{istClock} IST</span>
+          <LiveISTClock />
         </div>
         {data?.dataSource === "live" ? (
           <div className="flex items-center gap-1.5 text-xs text-emerald-400">
@@ -724,7 +743,7 @@ export function IPOCalendarView() {
       {data && (
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            Showing {visible.length} of {data.total} IPOs · Updated {updatedAgo}
+            Showing {visible.length} of {data.total} · <UpdatedAgo lastUpdated={data.lastUpdated} />
           </p>
           <p className="text-[11px] text-muted-foreground/70">
             {data.dataSource === "live" ? (

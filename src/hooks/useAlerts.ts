@@ -76,6 +76,14 @@ function getServerSnapshot(): AlertRule[] {
   return EMPTY;
 }
 
+function makeId(): string {
+  // crypto.randomUUID is only available in secure contexts.
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `alert-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function useAlerts() {
   const alerts = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
@@ -85,7 +93,7 @@ export function useAlerts() {
       const updated = [
         ...current,
         {
-          id: crypto.randomUUID(),
+          id: makeId(),
           ipoId,
           ipoName,
           trigger,

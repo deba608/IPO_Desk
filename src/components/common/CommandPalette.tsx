@@ -170,7 +170,11 @@ export function CommandPalette() {
                         )}
                         <button
                           type="button"
-                          onMouseDown={(e) => {
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            // cmdk fires onSelect on click — stop it or
+                            // unwatching also navigates to the IPO page.
+                            e.preventDefault();
                             e.stopPropagation();
                             toggleWatch(ipo.id);
                           }}
