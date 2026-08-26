@@ -18,10 +18,25 @@ import { log } from "./logger.service";
 // themselves always hit the registrar live per request.
 const SYNC_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+// After a failed (or suspiciously empty) sync, wait this long before hitting
+// the registrar live again — otherwise every incoming request re-fires the
+// full retry cascade against a failing site.
+const FAILED_RETRY_COOLDOWN_MS = 60 * 1000;
+
+// Consecutive empty results tolerated before accepting an empty catalogue
+// (a single empty response is far more likely a parser break than reality).
+const EMPTY_RESULTS_BEFORE_ACCEPT = 3;
+
 interface RegistrarSyncState {
   ipos: IPO[];
   lastSyncedAt: number; // epoch ms of last successful sync (0 = never)
   syncing: Promise<IPO[]> | null;
+  lastAttemptAt: number; // epoch ms of last live attempt (success or failure)
+  emptyResults: number; // consecutive empty results from the adapter
+}
+
+function newState(): RegistrarSyncState {
+  return { ipos: [], lastSyncedAt: 0, syncing: null, lastAttemptAt: 0, emptyResults: 0 };
 }
 
 // globalThis so the cache survives module duplication across route bundles
@@ -34,7 +49,7 @@ const stateByRegistrar = globalStore.__registrarSync;
 function getState(registrar: string): RegistrarSyncState {
   let state = stateByRegistrar.get(registrar);
   if (!state) {
-    state = { ipos: [], lastSyncedAt: 0, syncing: null };
+    state = newState();
     stateByRegistrar.set(registrar, state);
   }
   return state;
@@ -71,9 +86,32 @@ async function syncRegistrar(registrar: string): Promise<IPO[]> {
   if (!adapter) return [];
 
   const started = Date.now();
+  state.lastAttemptAt = started;
   state.syncing = (async () => {
     try {
       const ipos = await adapter.getActiveIPOs();
+
+      // A parser break or site redesign returning zero rows must not wipe a
+      // known-good catalogue and serve "fresh" emptiness for a full TTL.
+      if (ipos.length === 0 && state.ipos.length > 0) {
+        state.emptyResults++;
+        if (state.emptyResults < EMPTY_RESULTS_BEFORE_ACCEPT) {
+          log(
+            "warn",
+            "ipo_sync_empty",
+            `${registrar} returned 0 IPOs — keeping previous list of ${state.ipos.length} (${state.emptyResults}/${EMPTY_RESULTS_BEFORE_ACCEPT})`
+          );
+          return state.ipos;
+        }
+        log(
+          "warn",
+          "ipo_sync_empty",
+          `${registrar} returned 0 IPOs ${EMPTY_RESULTS_BEFORE_ACCEPT} times in a row — accepting empty catalogue`
+        );
+      } else {
+        state.emptyResults = 0;
+      }
+
       state.ipos = ipos;
       state.lastSyncedAt = Date.now();
       await saveSnapshot(registrar, ipos);
@@ -116,6 +154,18 @@ async function getRegistrarIPOs(registrar: string, forceRefresh: boolean): Promi
   if (!forceRefresh && fresh) {
     return state.ipos;
   }
+
+  // A failed attempt leaves lastSyncedAt older than lastAttemptAt — back off
+  // instead of re-scraping a failing registrar on every request.
+  const recentFailure =
+    state.lastAttemptAt > 0 &&
+    state.lastSyncedAt < state.lastAttemptAt &&
+    Date.now() - state.lastAttemptAt < FAILED_RETRY_COOLDOWN_MS;
+
+  if (!forceRefresh && recentFailure && state.syncing === null) {
+    return state.ipos;
+  }
+
   return syncRegistrar(registrar);
 }
 

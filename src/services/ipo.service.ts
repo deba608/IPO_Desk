@@ -18,6 +18,18 @@ export async function getActiveIPOs(forceRefresh = false): Promise<IPOListRespon
   };
 }
 
+// Negative cache: an id that isn't found even after a forced refresh is
+// remembered briefly so garbage ids can't trigger a full registrar re-scrape
+// on every request.
+const NEGATIVE_TTL_MS = 5 * 60 * 1000;
+const NEGATIVE_CACHE_MAX = 1000;
+
+const globalStore = globalThis as unknown as {
+  __ipoNegativeCache?: Map<string, number>;
+};
+globalStore.__ipoNegativeCache = globalStore.__ipoNegativeCache ?? new Map();
+const negativeCache = globalStore.__ipoNegativeCache;
+
 /**
  * Resolve an IPO by its namespaced id (`${registrar}-${clientId}`, preferred)
  * or bare registrar clientId (legacy clients; ambiguous if two registrars
@@ -29,10 +41,22 @@ export async function findIPO(idOrClientId: string): Promise<IPO | undefined> {
     ipos.find((ipo) => ipo.clientId === idOrClientId);
 
   const found = lookup(await getAllActiveIPOs());
-  if (found) return found;
+  if (found) {
+    negativeCache.delete(idOrClientId);
+    return found;
+  }
 
-  // IPO may have been added since the last sync — refresh once and retry
-  return lookup(await getAllActiveIPOs(true));
+  const missedAt = negativeCache.get(idOrClientId);
+  if (missedAt && Date.now() - missedAt < NEGATIVE_TTL_MS) {
+    return undefined;
+  }
+
+  // IPO may have been added since the last sync — refresh once and retry.
+  // Keep the map bounded; it only ever holds misses, so a full reset is fine.
+  if (negativeCache.size >= NEGATIVE_CACHE_MAX) negativeCache.clear();
+  const refreshed = lookup(await getAllActiveIPOs(true));
+  negativeCache.set(idOrClientId, Date.now());
+  return refreshed;
 }
 
 export async function getRegistrarForIPO(idOrClientId: string): Promise<string> {

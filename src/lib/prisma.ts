@@ -6,10 +6,14 @@ const globalForPrisma = globalThis as unknown as {
 
 let initPromise: Promise<void> | null = null;
 
+// Accept both canonical "postgresql://" and the equally valid "postgres://".
+function isPostgresUrl(url: string): boolean {
+  return url.startsWith("postgresql://") || url.startsWith("postgres://");
+}
+
 async function initPrisma(): Promise<void> {
   const url = process.env.DATABASE_URL;
-  if (!url || !url.startsWith("postgresql")) {
-    initPromise = null;
+  if (!url || !isPostgresUrl(url)) {
     throw new Error("DATABASE_URL not configured");
   }
   const { PrismaPg } = await import("@prisma/adapter-pg");
@@ -23,7 +27,13 @@ export async function getPrisma(): Promise<PrismaClient> {
   if (globalForPrisma.prisma) return globalForPrisma.prisma;
 
   if (!initPromise) {
-    initPromise = initPrisma();
+    // A rejected promise must not be cached — one transient failure (bad
+    // connection, cold adapter import) would otherwise poison the singleton
+    // until the next process restart.
+    initPromise = initPrisma().catch((error) => {
+      initPromise = null;
+      throw error;
+    });
   }
 
   await initPromise;
