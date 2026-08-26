@@ -148,11 +148,9 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
   );
 
   // The highlight must never point past the end of the list — filtering can
-  // shrink `filtered` without touching activeIndex.
+  // shrink `filtered` without touching activeIndex. Derived during render
+  // instead of synced via effect.
   const clampedIndex = Math.min(activeIndex, Math.max(0, filtered.length - 1));
-  useEffect(() => {
-    if (clampedIndex !== activeIndex) setActiveIndex(clampedIndex);
-  }, [clampedIndex, activeIndex]);
 
   const closeDropdown = useCallback(() => {
     setOpen(false);
@@ -171,8 +169,8 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
 
   useEffect(() => {
     if (!open) return;
-    optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
-  }, [activeIndex, open]);
+    optionRefs.current[clampedIndex]?.scrollIntoView({ block: "nearest" });
+  }, [clampedIndex, open]);
 
   // Close on outside click / Escape.
   useEffect(() => {
@@ -434,7 +432,7 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
               ) : (
                 filtered.map((ipo, i) => {
                   const selected = value?.id === ipo.id;
-                  const isActive = i === activeIndex;
+                  const isActive = i === clampedIndex;
                   return (
                     <button
                       key={ipo.id}
