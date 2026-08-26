@@ -241,22 +241,6 @@ export default function Home() {
                 Browse IPO Calendar
               </Link>
             </div>
-
-            {/* Quick stats */}
-            <div className="animate-fade-up delay-500 mt-10 flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-success" />
-                Real-time from 4 registrars
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-success" />
-                Bulk check up to 50 PANs
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-success" />
-                Export to CSV / Excel
-              </span>
-            </div>
           </div>
         </section>
 

@@ -1,3 +1,5 @@
+// tsx does not load .env by itself — pull it in before reading DATABASE_URL.
+import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
