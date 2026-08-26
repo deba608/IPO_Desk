@@ -127,6 +127,11 @@ model Alert {
   id        String   @id @default(cuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Device scoping for the (auth-less) alerts API: rows are partitioned by
+  // the anonymous device id sent in the x-device-id header, so no client can
+  // read or mutate another client's alerts. Superseded by userId once real
+  // auth exists.
+  deviceId  String?
   ipoId     String?
   ipo       Ipo?     @relation(fields: [ipoId], references: [id], onDelete: SetNull)
   trigger   String   // gmp_crossed, subscription_milestone, ipo_opens, allotment_available
@@ -136,6 +141,7 @@ model Alert {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([deviceId])
   @@index([ipoId])
 }
 

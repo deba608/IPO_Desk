@@ -11,7 +11,24 @@ const CreateAlertSchema = z.object({
   threshold: z.number().optional(),
 });
 
-export async function GET() {
+// Alerts are scoped to an anonymous per-device id (x-device-id header) so one
+// client can never read or mutate another client's alerts. When real auth
+// lands, this becomes the userId check.
+function requireDeviceId(request: Request): string | null {
+  const deviceId = request.headers.get("x-device-id")?.trim();
+  if (!deviceId || deviceId.length < 8 || deviceId.length > 64) return null;
+  return deviceId;
+}
+
+export async function GET(request: Request) {
+  const deviceId = requireDeviceId(request);
+  if (!deviceId) {
+    return NextResponse.json(
+      { error: "Missing or invalid x-device-id header" },
+      { status: 401 }
+    );
+  }
+
   if (!checkDbAvailability()) {
     return NextResponse.json(
       { error: "Database not configured" },
@@ -21,6 +38,7 @@ export async function GET() {
   try {
     const prisma = await getPrisma();
     const alerts = await prisma.alert.findMany({
+      where: { deviceId },
       orderBy: { createdAt: "desc" },
       take: 200,
     });
@@ -35,6 +53,14 @@ export async function GET() {
 export async function POST(request: Request) {
   if (isRateLimited(getClientKey(request), 30)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  const deviceId = requireDeviceId(request);
+  if (!deviceId) {
+    return NextResponse.json(
+      { error: "Missing or invalid x-device-id header" },
+      { status: 401 }
+    );
   }
 
   try {
@@ -55,8 +81,18 @@ export async function POST(request: Request) {
     }
 
     const prisma = await getPrisma();
+    // Cap per-device alert count so a device can't grow the table unbounded.
+    const existing = await prisma.alert.count({ where: { deviceId } });
+    if (existing >= 100) {
+      return NextResponse.json(
+        { error: "Alert limit reached (100). Delete some alerts first." },
+        { status: 409 }
+      );
+    }
+
     const alert = await prisma.alert.create({
       data: {
+        deviceId,
         ipoId: validated.data.ipoId,
         trigger: validated.data.trigger,
         threshold: validated.data.threshold,
@@ -76,6 +112,14 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
+  const deviceId = requireDeviceId(request);
+  if (!deviceId) {
+    return NextResponse.json(
+      { error: "Missing or invalid x-device-id header" },
+      { status: 401 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -88,10 +132,12 @@ export async function DELETE(request: Request) {
     }
 
     const prisma = await getPrisma();
-    await prisma.alert.delete({ where: { id } });
+    // Ownership check is part of the delete predicate — a foreign id 404s
+    // instead of deleting someone else's row.
+    await prisma.alert.delete({ where: { id, deviceId } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    // Prisma P2025 = record to delete does not exist.
+    // Prisma P2025 = record to delete does not exist (or belongs to another device).
     if ((error as { code?: string }).code === "P2025") {
       return NextResponse.json({ error: "Alert not found" }, { status: 404 });
     }
