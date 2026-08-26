@@ -9,6 +9,7 @@ export type LogEvent =
   | "ipo_sync_success"
   | "ipo_sync_failure"
   | "ipo_sync_fallback"
+  | "ipo_sync_empty"
   | "pan_check_success"
   | "pan_check_failure"
   | "api_response_time";

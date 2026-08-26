@@ -8,7 +8,7 @@ import { AllotmentResult, KFinTechResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { getActiveIPOs as getSyncedIPOs } from "@/services/kfintech-sync";
 import { log } from "@/services/logger.service";
-import { bulkCheck } from "./shared";
+import { bulkCheck, delay } from "./shared";
 
 const KFINTECH_BASE_URL =
   "https://0uz601ms56.execute-api.ap-south-1.amazonaws.com/prod/api/query?type=";

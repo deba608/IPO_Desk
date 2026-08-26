@@ -12,8 +12,6 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  TrendingUp,
-  TrendingDown,
   Minus,
   BarChart3,
   Calendar,
@@ -101,7 +99,6 @@ function TrendDot({ change }: { change: number | null }) {
 
 export function GMPDetailView({
   ipoId,
-  ipoName,
   capPrice,
   lotSize,
   gmpUpdatedAt,

@@ -1,9 +1,9 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { RefreshCw, Clock, Zap } from "lucide-react";
+import { RefreshCw, Clock } from "lucide-react";
 import { IPO, IPOListResponse } from "@/types/ipo.types";
-import { CalendarResponse } from "@/types/calendar.types";
+import { CalendarResponse, IPOLifecycle } from "@/types/calendar.types";
 import { cn } from "@/lib/utils";
 
 interface RecentIPOsFeedProps {
@@ -24,6 +24,40 @@ const REGISTRAR_LABELS: Record<string, string> = {
   linkintime: "LinkIn",
   bigshare:   "Bigshare",
 };
+
+/* ── Lifecycle chip styling ───────────────────────────────────────── */
+const LIFECYCHIP_STYLES: Record<IPOLifecycle, string> = {
+  open:     "bg-emerald-500/15 text-emerald-400",
+  upcoming: "bg-amber-500/15 text-amber-400",
+  closed:   "bg-slate-500/15 text-slate-400",
+  listed:   "bg-sky-500/15 text-sky-400",
+};
+
+const LIFECYCLE_LABELS: Record<IPOLifecycle, string> = {
+  open:     "Open",
+  upcoming: "Opens",
+  closed:   "Closed",
+  listed:   "Listed",
+};
+
+function formatDay(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+/** Short label for a pill's status chip, e.g. "Opens 12 Aug" / "Open". */
+function lifecycleChip(ipo: EnrichedIPO): string {
+  const base = ipo.lifecycle ? LIFECYCLE_LABELS[ipo.lifecycle] : undefined;
+  if (!base) return "";
+  // Show the date for upcoming issues (when it opens is the useful signal);
+  // open/closed/listed states are self-explanatory on their own.
+  if (ipo.lifecycle === "upcoming" && ipo.openDate) {
+    return `${base} ${formatDay(ipo.openDate)}`;
+  }
+  return base;
+}
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
 
@@ -59,27 +93,31 @@ const FILTER_TABS: { id: FilterTab; label: string }[] = [
   { id: "sme",       label: "SME" },
 ];
 
-/* ── Enriched IPO (IPO + optional openDate from calendar) ──────────── */
+/* ── Enriched IPO (IPO + calendar context for the status chip) ────── */
 interface EnrichedIPO extends IPO {
   openDate?: string; // yyyy-mm-dd from calendar, used for sort
+  lifecycle?: IPOLifecycle;
 }
 
 /* ── Component ────────────────────────────────────────────────────── */
 export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
   const [ipos, setIpos] = useState<IPO[]>([]);
-  const [dateMap, setDateMap] = useState<Record<string, string>>({}); // normName → openDate
+  const [calendarMap, setCalendarMap] = useState<
+    Record<string, { openDate: string; lifecycle?: IPOLifecycle }>
+  >({}); // normName → calendar context
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
 
   const fetchIPOs = useCallback(async (force = false) => {
     if (force) setRefreshing(true);
     try {
-      // Fetch active IPO list + calendar in parallel
+      // Fetch active IPO list + calendar in parallel. The server-side
+      // catalogue cache (60s TTL) keeps both fresh; no secret-gated refresh.
       const [ipoRes, calRes] = await Promise.allSettled([
-        fetch(force ? "/api/ipos?refresh=true" : "/api/ipos"),
+        fetch("/api/ipos"),
         fetch("/api/calendar"),
       ]);
 
@@ -89,16 +127,19 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
         setLastUpdated(data.lastUpdated ?? null);
       }
 
-      // Build name → openDate lookup from calendar data
+      // Build name → calendar context lookup
       if (calRes.status === "fulfilled" && calRes.value.ok) {
         const cal: CalendarResponse = await calRes.value.json();
-        const map: Record<string, string> = {};
+        const map: Record<string, { openDate: string; lifecycle?: IPOLifecycle }> = {};
         for (const entry of cal.ipos ?? []) {
           if (entry.openDate) {
-            map[normaliseName(entry.name)] = entry.openDate;
+            map[normaliseName(entry.name)] = {
+              openDate: entry.openDate,
+              lifecycle: entry.lifecycle,
+            };
           }
         }
-        setDateMap(map);
+        setCalendarMap(map);
       }
     } finally {
       setLoading(false);
@@ -106,6 +147,7 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState fires after await
   useEffect(() => { fetchIPOs(); }, [fetchIPOs]);
 
   useEffect(() => {
@@ -124,7 +166,8 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
   const displayed = useMemo((): EnrichedIPO[] => {
     const enriched: EnrichedIPO[] = ipos.map((ipo) => ({
       ...ipo,
-      openDate: dateMap[normaliseName(ipo.name)],
+      openDate: calendarMap[normaliseName(ipo.name)]?.openDate,
+      lifecycle: calendarMap[normaliseName(ipo.name)]?.lifecycle,
     }));
 
     const filtered = enriched.filter((ipo) => {
@@ -146,7 +189,7 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
         return 0;
       })
       .slice(0, 30);
-  }, [ipos, dateMap, activeFilter]);
+  }, [ipos, calendarMap, activeFilter]);
 
   /* ── Loading state ─────────────────────────────────────────────── */
   if (loading) {
@@ -185,7 +228,6 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
             title={new Date(lastUpdated).toLocaleString()}
           >
             <Clock className="h-3 w-3 shrink-0" />
-            {tick >= 0 && null}
             synced {timeAgo(lastUpdated)}
           </span>
         )}
@@ -210,8 +252,10 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveFilter(tab.id)}
+                aria-pressed={active}
                 className={cn(
-                  "relative flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all duration-200",
+                  "relative flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all duration-200 outline-none",
+                  "focus-visible:ring-2 focus-visible:ring-primary/60",
                   active
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -236,7 +280,7 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
 
       {/* ── Pill strip ─────────────────────────────────────────────── */}
       {displayed.length > 0 ? (
-        <div className="flex gap-2 overflow-x-auto pt-1" style={{ scrollbarWidth: "none" }}>
+        <div className="flex gap-2 overflow-x-auto pt-1 pb-1" style={{ scrollbarWidth: "none" }}>
           {displayed.map((ipo) => {
             const c = REGISTRAR_COLORS[ipo.registrar] ?? REGISTRAR_COLORS.kfintech;
             return (
@@ -245,25 +289,39 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
                 type="button"
                 onClick={() => onSelect?.(ipo)}
                 title={ipo.openDate
-                  ? `${ipo.name} · opened ${ipo.openDate} · click to select`
+                  ? `${ipo.name} · opened ${formatDay(ipo.openDate)} · click to select`
                   : `${ipo.name} · click to select`}
                 className={cn(
                   "group flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5",
-                  "text-xs font-medium transition-all duration-200",
-                  "hover:scale-[1.03] hover:shadow-lg hover:shadow-primary/5",
+                  "text-xs font-medium transition-all duration-200 outline-none",
+                  "focus-visible:ring-2 focus-visible:ring-primary/60",
+                  "hover:shadow-lg hover:shadow-primary/5 hover:brightness-110",
                   c.bg, c.border, c.text
                 )}
               >
-                {/* Pulsing live dot */}
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-50", c.dot)} />
-                  <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", c.dot)} />
-                </span>
+                {/* Registrar dot — static colour identity (no ping: 30
+                    simultaneous animations is noise and burns paint) */}
+                <span
+                  aria-hidden="true"
+                  className={cn("h-1.5 w-1.5 shrink-0 rounded-full", c.dot)}
+                />
 
                 <span className="max-w-[150px] truncate">{ipo.name}</span>
 
+                {/* Lifecycle chip — tells the user where the issue actually is */}
+                {ipo.lifecycle && (
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-1.5 py-px text-[9px] font-semibold leading-4",
+                      LIFECYCHIP_STYLES[ipo.lifecycle]
+                    )}
+                  >
+                    {lifecycleChip(ipo)}
+                  </span>
+                )}
+
                 {/* Registrar badge */}
-                <span className="shrink-0 rounded-sm bg-white/5 px-1.5 py-px text-[9px] uppercase tracking-wide opacity-60 group-hover:opacity-90 transition-opacity">
+                <span className="shrink-0 rounded-sm bg-white/5 px-1.5 py-px text-[9px] uppercase tracking-wide opacity-60 transition-opacity group-hover:opacity-90">
                   {REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}
                 </span>
               </button>
@@ -273,7 +331,9 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
       ) : (
         <div className="pt-4 text-center">
           <p className="text-xs text-muted-foreground">
-            No {activeFilter === "sme" ? "SME" : "Mainboard"} IPOs currently active.
+            No{" "}
+            {activeFilter === "all" ? "" : activeFilter === "sme" ? "SME " : "Mainboard "}
+            IPOs currently active.
           </p>
         </div>
       )}

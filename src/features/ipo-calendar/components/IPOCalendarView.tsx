@@ -187,6 +187,7 @@ export function IPOCalendarView() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("ipo-calendar-view") as ViewMode | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from an external store; must not run during render (SSR)
       if (saved === "grid" || saved === "list") setViewMode(saved);
     } catch {
       // Storage unavailable — default view is fine.
@@ -202,11 +203,14 @@ export function IPOCalendarView() {
     }
   };
 
-  // Hydrate filters from URL search params on mount
+  // Hydrate filters from URL search params on mount. The setStates here are
+  // intentional: URL is an external store the render can't read (SSR-safe),
+  // so this one-time hydration must happen in an effect.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    
+
     const urlTab = params.get("tab") as LifecycleTab | null;
     if (urlTab && ["all", "open", "upcoming", "closed", "listed", "watchlist"].includes(urlTab)) {
       setTab(urlTab);
@@ -247,6 +251,7 @@ export function IPOCalendarView() {
 
     urlHydrated.current = true;
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Update URL search parameters when filters change
   useEffect(() => {
@@ -713,7 +718,7 @@ export function IPOCalendarView() {
             <>
               <Search className="h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                No IPOs match "{query}".
+                No IPOs match &ldquo;{query}&rdquo;.
               </p>
             </>
           ) : (

@@ -45,7 +45,6 @@ export function ResearchReport({ ipoId }: ResearchReportProps) {
 
   useEffect(() => {
     let cancelled = false;
-    setExpandedSections(new Set());
     fetch(`/api/ipo/${encodeURIComponent(ipoId)}/report`)
       .then((r) => r.json())
       .then((json) => {
@@ -53,6 +52,8 @@ export function ResearchReport({ ipoId }: ResearchReportProps) {
           setReport(json);
           if (json?.sections) {
             setExpandedSections(new Set(json.sections.map((s: { title: string }) => s.title)));
+          } else {
+            setExpandedSections(new Set());
           }
         }
       })

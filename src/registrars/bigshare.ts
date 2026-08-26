@@ -62,7 +62,7 @@ export class BigShareAdapter implements RegistrarAdapter {
 
   async getActiveIPOs(): Promise<IPO[]> {
     const started = Date.now();
-    let lastError: Error | null = null;
+    let lastError: unknown = null;
 
     for (const mirror of BIGSHARE_MIRRORS) {
       try {
@@ -104,13 +104,15 @@ export class BigShareAdapter implements RegistrarAdapter {
           meta: { count: ipos.length, registrar: this.name, mirror },
         });
         return ipos;
-      } catch (error) {
+      } catch (error: unknown) {
         lastError = error;
         log("warn", "ipo_sync_fallback", `Bigshare mirror ${mirror} failed: ${errorMessage(error)}`);
       }
     }
 
-    throw lastError || new Error("All Bigshare mirrors failed to fetch active IPOs");
+    throw lastError instanceof Error
+      ? lastError
+      : new Error(errorMessage(lastError) || "All Bigshare mirrors failed to fetch active IPOs");
   }
 
   async checkAllotment(pan: string, clientId: string): Promise<AllotmentResult> {
