@@ -19,6 +19,25 @@ export interface ExportRow {
   Remarks?: string;
 }
 
+// Cells beginning with these characters are interpreted as formulas by
+// Excel/LibreOffice when the CSV is opened — neutralize them (CSV injection).
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+function sanitizeCsvValue(value: string): string {
+  return FORMULA_PREFIX.test(value) ? `'${value}` : value;
+}
+
+function sanitizeRowsForCsv(rows: ExportRow[]): ExportRow[] {
+  return rows.map((row) =>
+    Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [
+        key,
+        typeof value === "string" ? sanitizeCsvValue(value) : value,
+      ])
+    ) as ExportRow
+  );
+}
+
 function buildRows(results: AllotmentResult[]): ExportRow[] {
   return results.map((r) => ({
     PAN: r.pan,
@@ -36,7 +55,7 @@ function buildRows(results: AllotmentResult[]): ExportRow[] {
 export function exportToCSV(
   results: AllotmentResult[],
 ): Buffer {
-  const rows = buildRows(results);
+  const rows = sanitizeRowsForCsv(buildRows(results));
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Results");

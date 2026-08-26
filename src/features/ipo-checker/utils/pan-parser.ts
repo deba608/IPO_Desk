@@ -17,10 +17,9 @@ function detectPANColumn(
   worksheet: XLSX.WorkSheet,
   headers: string[]
 ): string | undefined {
-  // First: check for headers with "pan" in the name (case-insensitive)
-  const panHeader = headers.find((h) =>
-    /pan/i.test(h)
-  );
+  // First: check for headers naming PAN explicitly. Word boundary is required —
+  // a plain /pan/i also matches "Company", "Expansion", "Japan".
+  const panHeader = headers.find((h) => /\bpan(\s*(no\.?|number|card))?\b/i.test(h));
   if (panHeader) return panHeader;
 
   // Second: score each column by % of values matching PAN regex

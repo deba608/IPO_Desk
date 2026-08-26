@@ -15,6 +15,13 @@ interface RouteParams {
 const TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; history: GMPEntry[] }>();
 
+// Drop long-dead entries so the cache can't grow with the catalogue forever.
+function evictStaleCache() {
+  for (const [key, entry] of cache) {
+    if (Date.now() - entry.at >= TTL_MS) cache.delete(key);
+  }
+}
+
 export async function GET(_request: Request, { params }: RouteParams) {
   const { id } = await params;
   const ipo = await findCalendarIPO(id);
@@ -30,13 +37,14 @@ export async function GET(_request: Request, { params }: RouteParams) {
       const prisma = await getPrisma();
       const dbIpo = await prisma.ipo.findUnique({ where: { slug: id } });
       if (dbIpo) {
+        // Newest snapshots first, then restore chronological order for the chart.
         const snapshots = await prisma.gmpSnapshot.findMany({
           where: { ipoId: dbIpo.id },
-          orderBy: { date: "asc" },
+          orderBy: { date: "desc" },
           take: 30,
         });
         if (snapshots.length >= 2) {
-          const typed = snapshots as Array<{ date: Date; gmp: number }>;
+          const typed = (snapshots as Array<{ date: Date; gmp: number }>).reverse();
           return NextResponse.json({
             history: typed.map((s) => ({
               date: s.date.toISOString().split("T")[0],
@@ -57,6 +65,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
   // 2) Live date-wise history from the IPO's InvestorGain detail page.
   if (ipo.sourceUrl) {
+    evictStaleCache();
     const cached = cache.get(id);
     if (cached && Date.now() - cached.at < TTL_MS) {
       return NextResponse.json({ history: cached.history, source: "investorgain" });
@@ -66,6 +75,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
       if (history.length > 0) {
         cache.set(id, { at: Date.now(), history });
         return NextResponse.json({ history, source: "investorgain" });
+      }
+      // Empty result is still a valid answer — serve known-good cache if any.
+      if (cached) {
+        return NextResponse.json({ history: cached.history, source: "investorgain" });
       }
     } catch (err) {
       console.error(`[gmp-history] live fetch failed for ${id}:`, err);

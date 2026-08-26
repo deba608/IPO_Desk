@@ -18,6 +18,14 @@ export interface ResearchReport {
   disclaimer: string;
 }
 
+// gmpPercent can be missing/NaN when gmp is set but the price band max is 0 —
+// never trust the non-null assertion downstream.
+function safeGmpPercent(ipo: CalendarIPOWithStatus): number | undefined {
+  return typeof ipo.gmpPercent === "number" && Number.isFinite(ipo.gmpPercent)
+    ? ipo.gmpPercent
+    : undefined;
+}
+
 function generateVerdict(score: number): {
   verdict: ResearchReport["verdict"];
   label: string;
@@ -53,8 +61,11 @@ function assessFinancialHealth(ipo: CalendarIPOWithStatus): ReportSection {
   }
 
   if (ipo.gmp !== undefined) {
+    const pct = safeGmpPercent(ipo);
     points.push(
-      `Current grey-market premium of ₹${ipo.gmp} (${ipo.gmpPercent}%) signals ${ipo.gmpPercent! >= 20 ? "strong" : ipo.gmpPercent! >= 10 ? "positive" : "mild"} market sentiment.`
+      pct !== undefined
+        ? `Current grey-market premium of ₹${ipo.gmp} (${pct}%) signals ${pct >= 20 ? "strong" : pct >= 10 ? "positive" : "mild"} market sentiment.`
+        : `Current grey-market premium of ₹${ipo.gmp}.`
     );
   }
 
@@ -117,12 +128,17 @@ function assessMarketSentiment(ipo: CalendarIPOWithStatus): ReportSection {
     }
   }
 
+  const gmpPct = safeGmpPercent(ipo);
   if (ipo.gmp !== undefined) {
     points.push(
-      `GMP of ₹${ipo.gmp} (${ipo.gmpPercent}%) implies an estimated listing price of ₹${ipo.priceBand.max + ipo.gmp}.`
+      gmpPct !== undefined
+        ? `GMP of ₹${ipo.gmp} (${gmpPct}%) implies an estimated listing price of ₹${ipo.priceBand.max + ipo.gmp}.`
+        : `GMP of ₹${ipo.gmp} over the cap price of ₹${ipo.priceBand.max}.`
     );
-    if (ipo.gmpPercent! >= 30) score += 10;
-    else if (ipo.gmpPercent! >= 15) score += 5;
+    if (gmpPct !== undefined) {
+      if (gmpPct >= 30) score += 10;
+      else if (gmpPct >= 15) score += 5;
+    }
   }
 
   return {
@@ -176,9 +192,12 @@ export function generateReport(ipo: CalendarIPOWithStatus): ResearchReport {
     assessRisk(ipo),
   ];
 
-  const overallScore = Math.round(
-    sections.reduce((sum, s) => sum + (s.score ?? 0), 0) / sections.length
-  );
+  // Average over scored sections only — "Business Overview" carries no score
+  // and must not deflate the overall result.
+  const scored = sections.filter((s) => typeof s.score === "number");
+  const overallScore = scored.length
+    ? Math.round(scored.reduce((sum, s) => sum + (s.score ?? 0), 0) / scored.length)
+    : 0;
 
   const { verdict, label } = generateVerdict(overallScore);
 
