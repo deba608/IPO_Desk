@@ -101,8 +101,15 @@ export class MUFGAdapter implements RegistrarAdapter {
       const record = records[0];
       // Field names vary slightly across issues; match defensively.
       const name = findField(record, /name/i);
-      const allottedRaw = findField(record, /^al+ot/i);
-      const appliedRaw = findField(record, /share|appl/i);
+      // Anchor the allotted match first, then exclude that same key from the
+      // applied search — /share|appl/i alone also hits "Alloted_Shares", which
+      // made appliedShares equal the allotted count.
+      const allottedKey = Object.keys(record).find((k) => /^al+ot/i.test(k));
+      const appliedKey = Object.keys(record).find(
+        (k) => k !== allottedKey && /share|appl/i.test(k)
+      );
+      const allottedRaw = allottedKey !== undefined ? record[allottedKey] : undefined;
+      const appliedRaw = appliedKey !== undefined ? record[appliedKey] : undefined;
 
       const allottedShares = Number(allottedRaw?.replace(/[^\d.-]/g, ""));
       const appliedShares = Number(appliedRaw?.replace(/[^\d.-]/g, ""));

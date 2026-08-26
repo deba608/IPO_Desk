@@ -28,6 +28,21 @@ const BIGSHARE_MIRRORS = [
   "ipo2.bigshareonline.com",
 ];
 
+function stripTags(html: string): string {
+  return html.replace(/<[^>]*>/g, "");
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** Coerce a share-count field of any type to a number; null when unusable. */
+function toCount(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  const digits = String(value).replace(/[^\d]/g, "");
+  return digits ? Number(digits) : null;
+}
+
 export class BigShareAdapter implements RegistrarAdapter {
   readonly name = "bigshare";
   readonly displayName = "Bigshare Services Pvt. Ltd.";
@@ -69,13 +84,15 @@ export class BigShareAdapter implements RegistrarAdapter {
 
         const syncedAt = new Date().toISOString();
         const ipos: IPO[] = [];
-        const optionRe = /<option\s+value="(\d+)"\s*>([^<]+)<\/option>/gi;
+        // Tolerate attribute order/extra attrs/whitespace variations in the
+        // server-rendered <option> tags.
+        const optionRe = /<option[^>]*\bvalue="(\d+)"[^>]*>([\s\S]*?)<\/option>/gi;
         let match: RegExpExecArray | null;
         while ((match = optionRe.exec(selectMatch[1])) !== null) {
           ipos.push({
             id: `${this.name}-${match[1]}`,
             clientId: match[1],
-            name: match[2].trim(),
+            name: stripTags(match[2]).trim(),
             registrar: "bigshare",
             status: "ACTIVE",
             lastSyncedAt: syncedAt,
@@ -88,8 +105,8 @@ export class BigShareAdapter implements RegistrarAdapter {
         });
         return ipos;
       } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        log("warn", "ipo_sync_fallback", `Bigshare mirror ${mirror} failed: ${lastError.message}`);
+        lastError = error;
+        log("warn", "ipo_sync_fallback", `Bigshare mirror ${mirror} failed: ${errorMessage(error)}`);
       }
     }
 
@@ -131,42 +148,67 @@ export class BigShareAdapter implements RegistrarAdapter {
           throw new Error("Registrar returned an unrecognized response format.");
         }
 
-        if (record.DPID === "No data found") {
+        // A schema shift (missing/renamed fields) must surface as an error,
+        // not fall through to a silent not_allotted.
+        if (
+          record.DPID === undefined &&
+          record.ALLOTED === undefined &&
+          record.APPLIED === undefined
+        ) {
+          log("warn", "pan_check_failure", "Bigshare response had unrecognized fields", {
+            meta: { clientId, registrar: this.name, mirror, keys: Object.keys(record).join(",") },
+          });
+          return {
+            pan: normalizedPan,
+            status: "error",
+            error: "Registrar returned an unrecognized response format.",
+          };
+        }
+
+        if (
+          typeof record.DPID === "string" &&
+          /^no data found/i.test(record.DPID.trim())
+        ) {
           return { pan: normalizedPan, status: "not_found" };
         }
-      if (record.DPID?.startsWith("Please Enter Valid")) {
-        return { pan: normalizedPan, status: "error", error: record.DPID };
-      }
+        if (
+          typeof record.DPID === "string" &&
+          record.DPID.startsWith("Please Enter Valid")
+        ) {
+          return { pan: normalizedPan, status: "error", error: record.DPID };
+        }
 
-      const allottedRaw = (record.ALLOTED ?? "").replace(/[^\d]/g, "");
-      const allottedShares = allottedRaw ? Number(allottedRaw) : 0;
-      const appliedRaw = (record.APPLIED ?? "").replace(/[^\d]/g, "");
-      const appliedShares = appliedRaw ? Number(appliedRaw) : undefined;
+        const allottedShares = toCount(record.ALLOTED) ?? 0;
+        const applied = toCount(record.APPLIED);
 
-      return {
-        pan: normalizedPan,
-        name: record.Name || undefined,
-        appliedShares,
-        allottedShares,
-        status: allottedShares > 0 ? "allotted" : "not_allotted",
-      };
+        return {
+          pan: normalizedPan,
+          name: record.Name || undefined,
+          appliedShares: applied ?? undefined,
+          allottedShares,
+          status: allottedShares > 0 ? "allotted" : "not_allotted",
+        };
       } catch (error) {
         lastError = error;
-        log("warn", "pan_check_failure", `Bigshare check failed on mirror ${mirror}: ${(error as Error).message}`);
+        log("warn", "pan_check_failure", `Bigshare check failed on mirror ${mirror}: ${errorMessage(error)}`);
+        // A definitive 4xx (bad request, forbidden) will fail on every mirror
+        // the same way — don't burn the retry budget on the remaining ones.
+        const status = (error as { response?: { status?: number } }).response?.status;
+        if (status && status >= 400 && status < 500 && status !== 429) break;
       }
     }
 
     const err = lastError as { response?: { status?: number }; message?: string };
 
-    log("error", "pan_check_failure", `All Bigshare mirrors failed: ${err.message ?? "unknown"}`, {
+    log("error", "pan_check_failure", `All Bigshare mirrors failed: ${err?.message ?? "unknown"}`, {
       durationMs: Date.now() - started,
-      meta: { clientId, registrar: this.name, httpStatus: err.response?.status ?? "none" },
+      meta: { clientId, registrar: this.name, httpStatus: err?.response?.status ?? "none" },
     });
 
-    if (!err.response) {
+    if (!err?.response) {
       return { pan: normalizedPan, status: "error", error: "Network error on Bigshare servers. Please try again." };
     }
-    if (err.response.status === 429) {
+    if (err?.response?.status === 429) {
       return {
         pan: normalizedPan,
         status: "error",

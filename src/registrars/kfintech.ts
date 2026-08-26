@@ -8,57 +8,35 @@ import { AllotmentResult, KFinTechResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { getActiveIPOs as getSyncedIPOs } from "@/services/kfintech-sync";
 import { log } from "@/services/logger.service";
+import { bulkCheck } from "./shared";
 
 const KFINTECH_BASE_URL =
   "https://0uz601ms56.execute-api.ap-south-1.amazonaws.com/prod/api/query?type=";
 
-const RETRY_CONFIG = {
-  delayFirstAttempt: true,
-  numOfAttempts: 5,
-  startingDelay: 2000,
-  timeMultiple: 2,
-  jitter: "full" as const,
-};
-
-const CHUNK_SIZE = 5; // max simultaneous API requests (rate-limit protection)
-const CHUNK_DELAY_MS = 500;
-
-async function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function withRetry<T>(
   fn: () => Promise<T>,
-  attempts = RETRY_CONFIG.numOfAttempts,
-  delayMs = RETRY_CONFIG.startingDelay
+  attempts = 5,
+  delayMs = 2000
 ): Promise<T> {
   for (let i = 0; i < attempts; i++) {
     try {
       return await fn();
     } catch (error: unknown) {
+      const err = error as { response?: { status?: number }; code?: string };
+      const status = err.response?.status;
+      // Retry rate-limit/server errors plus pure network failures
+      // (timeouts, ECONNRESET have no response object).
       const isRetryable =
-        error instanceof Error &&
-        "response" in (error as { response?: { status?: number } }) &&
-        [429, 500, 502, 504].includes(
-          ((error as { response?: { status?: number } }).response?.status ?? 0)
-        );
+        status === undefined ||
+        [429, 500, 502, 503, 504].includes(status);
 
       if (i === attempts - 1 || !isRetryable) throw error;
 
-      const jitter = Math.random() * delayMs;
-      await delay(delayMs + jitter);
-      delayMs *= RETRY_CONFIG.timeMultiple;
+      await delay(delayMs + Math.random() * delayMs);
+      delayMs *= 2;
     }
   }
   throw new Error("Max retries exceeded");
-}
-
-function chunk<T>(arr: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
-  }
-  return chunks;
 }
 
 export class KFinTechAdapter implements RegistrarAdapter {
@@ -77,36 +55,29 @@ export class KFinTechAdapter implements RegistrarAdapter {
   }
 
   async getActiveIPOs(): Promise<IPO[]> {
-    // Dynamic discovery lives in the sync service (6h cache, snapshot
+    // Dynamic discovery lives in the sync service (5-minute cache, snapshot
     // fallback, sync logging) — see src/services/kfintech-sync.ts
     return getSyncedIPOs();
   }
 
   async checkAllotment(pan: string, clientId: string): Promise<AllotmentResult> {
+    const normalizedPan = pan.toUpperCase().trim();
     const started = Date.now();
     try {
-      const response = await withRetry(async () => {
-        return this.http.get<KFinTechResponse>(KFINTECH_BASE_URL + "pan", {
+      // Axios throws on non-2xx by default, so success here means HTTP 200.
+      const response = await withRetry(() =>
+        this.http.get<KFinTechResponse>(KFINTECH_BASE_URL + "pan", {
           headers: {
-            reqparam: pan.toUpperCase().trim(),
+            reqparam: normalizedPan,
             client_id: `${clientId}`,
-            "Access-Control-Allow-Origin": "*",
           },
-        });
-      });
-
-      if (response.status !== 200) {
-        return {
-          pan: pan.toUpperCase(),
-          status: "error",
-          error: `Unexpected response: ${response.status}`,
-        };
-      }
+        })
+      );
 
       const records = response.data?.data;
       if (!records || records.length === 0) {
         return {
-          pan: pan.toUpperCase(),
+          pan: normalizedPan,
           status: "not_found",
         };
       }
@@ -115,15 +86,30 @@ export class KFinTechAdapter implements RegistrarAdapter {
       const allottedShares = Number(record.All_Shares);
       const appliedShares = Number(record.App_Shares);
 
+      // A missing/garbage share count must surface as an error rather than a
+      // silent NaN-driven "not_allotted".
+      if (!Number.isFinite(allottedShares)) {
+        log("warn", "pan_check_failure", "KFintech response had unusable share counts", {
+          durationMs: Date.now() - started,
+          meta: { clientId, keys: Object.keys(record).join(",") },
+        });
+        return {
+          pan: normalizedPan,
+          name: record.Name,
+          status: "error",
+          error: "Registrar returned an unrecognized response format.",
+        };
+      }
+
       log("info", "api_response_time", "KFintech PAN query completed", {
         durationMs: Date.now() - started,
         meta: { clientId },
       });
 
       return {
-        pan: record.Pan_No || pan.toUpperCase(),
+        pan: record.Pan_No || normalizedPan,
         name: record.Name,
-        appliedShares,
+        appliedShares: Number.isFinite(appliedShares) ? appliedShares : undefined,
         allottedShares,
         status: allottedShares > 0 ? "allotted" : "not_allotted",
       };
@@ -138,7 +124,7 @@ export class KFinTechAdapter implements RegistrarAdapter {
       if (!err.response) {
         // Network error
         return {
-          pan: pan.toUpperCase(),
+          pan: normalizedPan,
           status: "error",
           error: "Network error. Please try again.",
         };
@@ -146,14 +132,14 @@ export class KFinTechAdapter implements RegistrarAdapter {
 
       if (err.response.status === 429) {
         return {
-          pan: pan.toUpperCase(),
+          pan: normalizedPan,
           status: "error",
           error: "Rate limit exceeded. Please wait before retrying.",
         };
       }
 
       return {
-        pan: pan.toUpperCase(),
+        pan: normalizedPan,
         status: "error",
         error: `API error: ${err.response.status ?? err.message}`,
       };
@@ -164,33 +150,9 @@ export class KFinTechAdapter implements RegistrarAdapter {
     pans: string[],
     clientId: string
   ): Promise<AllotmentResult[]> {
-    const results: AllotmentResult[] = [];
-    const chunks = chunk(pans, CHUNK_SIZE);
-
-    for (const chunkPans of chunks) {
-      const chunkResults = await Promise.allSettled(
-        chunkPans.map((pan) => this.checkAllotment(pan, clientId))
-      );
-
-      for (const result of chunkResults) {
-        if (result.status === "fulfilled") {
-          results.push(result.value);
-        } else {
-          results.push({
-            pan: "UNKNOWN",
-            status: "error",
-            error: result.reason?.message ?? "Unknown error",
-          });
-        }
-      }
-
-      // Add delay between chunks to avoid rate limiting
-      if (chunks.indexOf(chunkPans) < chunks.length - 1) {
-        await delay(CHUNK_DELAY_MS);
-      }
-    }
-
-    return results;
+    // Shared implementation keeps chunking/rate-limit behaviour identical
+    // across adapters and attributes failures to the right PAN.
+    return bulkCheck(pans, (pan) => this.checkAllotment(pan, clientId));
   }
 }
 
