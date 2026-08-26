@@ -11,16 +11,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncAllRegistrars } from "@/services/registrar-sync";
 import { loadCatalogue } from "@/features/ipo-calendar/lib/providers";
+import { bearerToken, secretsMatch } from "@/lib/server-secret";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
-  // When CRON_SECRET is set (recommended on Vercel), require it
   const cronSecret = process.env.CRON_SECRET;
+
+  // Fail closed in production: an unset secret would leave this endpoint
+  // open to anyone wanting to hammer the registrar scrapes on demand.
+  if (!cronSecret && process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "CRON_SECRET not configured" },
+      { status: 503 }
+    );
+  }
+
   if (cronSecret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
+    const token = bearerToken(request.headers.get("authorization"));
+    if (!secretsMatch(token, cronSecret)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }

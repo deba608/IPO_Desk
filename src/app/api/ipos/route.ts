@@ -1,12 +1,27 @@
 // src/app/api/ipos/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getActiveIPOs } from "@/services/ipo.service";
+import { bearerToken, secretsMatch } from "@/lib/server-secret";
 
 export const dynamic = "force-dynamic";
 
+// ?refresh=true forces a live re-scrape of every registrar. Left open it is a
+// cache-bust DoS amplifier, so require the CRON_SECRET when set; without a
+// secret configured, refresh requests silently fall back to cached data.
+function isAuthorizedRefresh(request: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  return (
+    secretsMatch(bearerToken(request.headers.get("authorization")), secret) ||
+    secretsMatch(request.nextUrl.searchParams.get("secret"), secret)
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const forceRefresh = request.nextUrl.searchParams.get("refresh") === "true";
+    const wantsRefresh =
+      request.nextUrl.searchParams.get("refresh") === "true";
+    const forceRefresh = wantsRefresh && isAuthorizedRefresh(request);
 
     const ipoList = await getActiveIPOs(forceRefresh);
 

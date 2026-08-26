@@ -5,26 +5,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { scanAllotment } from "@/services/registrar.service";
+import { getClientKey, isRateLimited } from "@/lib/rate-limit";
 
-// Rate limiting (simple in-memory — use Upstash Redis in production)
-const requestCounts = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 5; // scans per minute (each scan = many registrar calls)
 const RATE_WINDOW_MS = 60 * 1000;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const record = requestCounts.get(ip);
-
-  if (!record || now > record.resetAt) {
-    requestCounts.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return false;
-  }
-
-  if (record.count >= RATE_LIMIT) return true;
-
-  record.count++;
-  return false;
-}
 
 const PANSchema = z
   .string()
@@ -41,12 +25,7 @@ const ScanRequestSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown";
-
-  if (isRateLimited(ip)) {
+  if (isRateLimited(getClientKey(request), RATE_LIMIT, RATE_WINDOW_MS)) {
     return NextResponse.json(
       { error: "Too many scans. Please wait before retrying." },
       { status: 429 }
@@ -54,7 +33,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const validated = ScanRequestSchema.safeParse(body);
 
     if (!validated.success) {
@@ -77,7 +61,9 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: 200 });
   } catch (error: unknown) {
     console.error("[/api/scan] Error:", error);
-    const errMsg = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: errMsg }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to scan allotments. Please try again." },
+      { status: 500 }
+    );
   }
 }

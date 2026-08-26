@@ -8,6 +8,8 @@ import { AllotmentResult } from "@/types/allotment.types";
 export const BULK_CHUNK_SIZE = 5; // max simultaneous requests per registrar
 export const BULK_CHUNK_DELAY_MS = 500;
 
+export const PAN_FORMAT = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -54,7 +56,17 @@ export async function bulkCheck(
   check: (pan: string) => Promise<AllotmentResult>
 ): Promise<AllotmentResult[]> {
   const results: AllotmentResult[] = [];
-  const batches = chunk(pans, BULK_CHUNK_SIZE);
+
+  // Never forward malformed PANs to registrar endpoints — the adapter
+  // interface promises validated PANs, and garbage input wastes upstream
+  // requests or produces misleading "not found" results.
+  const validPans = pans.filter((pan) => {
+    if (PAN_FORMAT.test(pan)) return true;
+    results.push({ pan, status: "error", error: "Invalid PAN format" });
+    return false;
+  });
+
+  const batches = chunk(validPans, BULK_CHUNK_SIZE);
 
   for (let b = 0; b < batches.length; b++) {
     const settled = await Promise.allSettled(batches[b].map((pan) => check(pan)));

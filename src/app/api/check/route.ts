@@ -2,26 +2,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { checkAllotment } from "@/services/registrar.service";
+import { getClientKey, isRateLimited } from "@/lib/rate-limit";
 
-// Rate limiting (simple in-memory — use Upstash Redis in production)
-const requestCounts = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 20; // requests per minute
 const RATE_WINDOW_MS = 60 * 1000;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const record = requestCounts.get(ip);
-
-  if (!record || now > record.resetAt) {
-    requestCounts.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return false;
-  }
-
-  if (record.count >= RATE_LIMIT) return true;
-
-  record.count++;
-  return false;
-}
 
 // Zod validation schema
 const PANSchema = z
@@ -47,14 +31,8 @@ const CheckRequestSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  // Get client IP
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown";
-
   // Rate limiting
-  if (isRateLimited(ip)) {
+  if (isRateLimited(getClientKey(request), RATE_LIMIT, RATE_WINDOW_MS)) {
     return NextResponse.json(
       { error: "Too many requests. Please wait before retrying." },
       { status: 429 }
@@ -62,7 +40,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const validated = CheckRequestSchema.safeParse(body);
 
     if (!validated.success) {
@@ -85,11 +68,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result, { status: 200 });
   } catch (error: unknown) {
+    // Log the details server-side; never echo internal error messages
+    // (registrar URLs, adapter internals) back to the client.
     console.error("[/api/check] Error:", error);
-    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    const errMsg = error instanceof Error ? error.message : "";
+    if (errMsg.includes("not found")) {
+      return NextResponse.json({ error: "IPO not found" }, { status: 404 });
+    }
     return NextResponse.json(
-      { error: errMsg },
-      { status: errMsg.includes("not found") ? 404 : 500 }
+      { error: "Failed to check allotment. Please try again." },
+      { status: 500 }
     );
   }
 }
