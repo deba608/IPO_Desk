@@ -24,9 +24,12 @@ const LANG_PATH = process.cwd();
 // Keep a single warm worker across solves so the OCR engine is loaded once.
 let workerPromise: Promise<Tesseract.Worker> | null = null;
 
+/** Time to wait for the OCR worker to produce a result before failing over. */
+const OCR_TIMEOUT_MS = 10_000;
+
 async function ocrImage(imageBuffer: Buffer): Promise<string> {
   if (!workerPromise) {
-workerPromise = Tesseract.createWorker("eng", undefined, {
+    workerPromise = Tesseract.createWorker("eng", undefined, {
       langPath: LANG_PATH,
       // The traineddata is bundled at the repo root; don't try to (re)write a
       // cache copy. Vercel serverless filesystems are read-only outside /tmp,
@@ -35,8 +38,25 @@ workerPromise = Tesseract.createWorker("eng", undefined, {
     });
   }
   const worker = await workerPromise;
-  const { data } = await worker.recognize(imageBuffer);
-  return (data?.text ?? "").replace(/\s+/g, "");
+  const promise = worker.recognize(imageBuffer);
+
+  // Guard against a non-responsive OCR worker (e.g. on restrictive serverless
+  // runtimes) so the caller never hangs on an unresolved recognize() promise.
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const { data } = (await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("CAPTCHA OCR timed out")),
+          OCR_TIMEOUT_MS
+        );
+      }),
+    ])) as { data: { text?: string } };
+    return (data?.text ?? "").replace(/\s+/g, "");
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Drop the worker and re-create it on the next solve after a failure. */
