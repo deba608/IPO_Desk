@@ -6,10 +6,6 @@ import {
   Search,
   ExternalLink,
   Building2,
-  Calendar,
-  Layers,
-  IndianRupee,
-  TrendingUp,
   ClipboardCheck,
   RefreshCw,
 } from "lucide-react";
@@ -23,7 +19,7 @@ export function IpoManager() {
   const [boardFilter, setBoardFilter] = useState<"all" | "mainboard" | "sme">("all");
   const [lifecycleFilter, setLifecycleFilter] = useState<string>("all");
 
-  const fetchCatalogue = async () => {
+  const loadCatalogue = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/calendar");
@@ -39,7 +35,11 @@ export function IpoManager() {
   };
 
   useEffect(() => {
-    fetchCatalogue();
+    void fetch("/api/calendar")
+      .then((r) => r.json())
+      .then((data) => setIpos(data.ipos || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const filteredIpos = ipos.filter((ipo) => {
@@ -111,7 +111,7 @@ export function IpoManager() {
           </div>
 
           <button
-            onClick={fetchCatalogue}
+            onClick={loadCatalogue}
             className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-card px-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />

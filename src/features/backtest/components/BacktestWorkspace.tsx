@@ -6,17 +6,10 @@ import {
   Sparkles,
   TrendingUp,
   TrendingDown,
-  Target,
-  ShieldCheck,
   Download,
-  Filter,
   RefreshCw,
   BarChart3,
-  Layers,
-  IndianRupee,
-  Award,
   Search,
-  ArrowUpRight,
   Info,
 } from "lucide-react";
 import {

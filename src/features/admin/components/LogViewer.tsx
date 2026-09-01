@@ -7,12 +7,8 @@ import {
   Terminal,
   AlertCircle,
   AlertTriangle,
-  Info,
-  Clock,
-  Trash2,
   CheckCircle,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 interface LogEntry {
   timestamp: string;
@@ -49,8 +45,18 @@ export function LogViewer({ passcode }: { passcode: string }) {
   }, [passcode]);
 
   useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+    void fetch("/api/logs?limit=300", {
+      headers: {
+        Authorization: `Bearer ${passcode}`,
+      },
+    })
+      .then((res) => (res.ok ? res.json() : Promise.resolve(null)))
+      .then((data) => {
+        if (data) setLogs(data.logs || []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [passcode]);
 
   useEffect(() => {
     if (!autoRefresh) return;

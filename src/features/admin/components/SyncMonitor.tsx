@@ -6,11 +6,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Database,
-  Radio,
   Server,
-  Zap,
   Activity,
-  ArrowRight,
   Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

@@ -2,14 +2,8 @@
 
 import { useState, useEffect } from "react";
 import {
-  FileText,
   Sparkles,
-  Award,
-  CheckCircle,
-  AlertCircle,
-  TrendingUp,
   RefreshCw,
-  ExternalLink,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIPOWithStatus } from "@/types/calendar.types";
@@ -22,7 +16,7 @@ export function ReportReviewer() {
   const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => {
-    fetch("/api/calendar")
+    void fetch("/api/calendar")
       .then((res) => res.json())
       .then((data) => {
         const list: CalendarIPOWithStatus[] = data.ipos || [];
@@ -36,8 +30,7 @@ export function ReportReviewer() {
 
   useEffect(() => {
     if (!selectedIpoId) return;
-    setLoadingReport(true);
-    fetch(`/api/ipo/${selectedIpoId}/report`)
+    void fetch(`/api/ipo/${selectedIpoId}/report`)
       .then((res) => res.json())
       .then((data) => setReport(data))
       .catch(() => setReport(null))
