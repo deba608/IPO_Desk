@@ -5,7 +5,7 @@ import { AllotmentResult } from "@/types/allotment.types";
 const STATUS_LABELS: Record<string, string> = {
   allotted: "Allotted",
   not_allotted: "Not Allotted",
-  not_found: "Not Found",
+  not_found: "Not Applied",
   error: "Error",
 };
 
@@ -101,7 +101,7 @@ export function exportToXLSX(
     ["Total PANs", results.length],
     ["Allotted", results.filter((r) => r.status === "allotted").length],
     ["Not Allotted", results.filter((r) => r.status === "not_allotted").length],
-    ["Not Found", results.filter((r) => r.status === "not_found").length],
+    ["Not Applied", results.filter((r) => r.status === "not_found").length],
     ["Errors", results.filter((r) => r.status === "error").length],
   ];
 

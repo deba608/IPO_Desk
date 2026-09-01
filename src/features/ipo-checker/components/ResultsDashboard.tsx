@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   XCircle,
   HelpCircle,
+  MinusCircle,
   AlertCircle,
   FileText,
   Loader2,
@@ -47,7 +48,7 @@ interface ResultsDashboardProps {
 const STATUS_BADGE = {
   allotted: <Badge variant="success" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Allotted</Badge>,
   not_allotted: <Badge variant="danger" className="gap-1"><XCircle className="h-3 w-3" /> Not Allotted</Badge>,
-  not_found: <Badge variant="warning" className="gap-1"><HelpCircle className="h-3 w-3" /> Not Found</Badge>,
+  not_found: <Badge variant="secondary" className="gap-1 border-border text-muted-foreground bg-muted/60"><MinusCircle className="h-3 w-3" /> Not Applied</Badge>,
   error: <Badge variant="danger" className="gap-1"><AlertCircle className="h-3 w-3" /> Error</Badge>,
 };
 
@@ -311,11 +312,11 @@ export function ResultsDashboard({ results, onCheckAgain }: ResultsDashboardProp
           bgClass="bg-rose-500/10 border-rose-500/20"
         />
         <SummaryCard
-          label="Not Found"
+          label="Not Applied"
           value={notFound}
-          icon={<HelpCircle className="h-4 w-4" />}
-          color="text-amber-400"
-          bgClass="bg-amber-500/10 border-amber-500/20"
+          icon={<MinusCircle className="h-4 w-4" />}
+          color="text-muted-foreground"
+          bgClass="bg-muted/30 border-border"
         />
         <div className="rounded-xl border border-border bg-card p-4 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between mb-2">
@@ -356,7 +357,7 @@ export function ResultsDashboard({ results, onCheckAgain }: ResultsDashboardProp
                     ? "Allotted"
                     : s === "not_allotted"
                     ? "Not Allotted"
-                    : "Not Found"}
+                    : "Not Applied"}
                 </button>
               ))}
             </div>

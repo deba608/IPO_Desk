@@ -141,9 +141,19 @@ export default function Home() {
               `Allotment confirmed: ${check.summary.allotted} of ${check.summary.total} PANs were allotted.`,
               { duration: 5000 }
             );
+          } else if (check.summary.notAllotted > 0) {
+            toast.info(
+              `Check complete: ${check.summary.notAllotted} of ${check.summary.total} PANs were not allotted.`,
+              { duration: 4000 }
+            );
+          } else if (check.summary.notFound > 0) {
+            toast.info(
+              `Check complete: ${check.summary.notFound === 1 ? "This PAN was not applied" : `${check.summary.notFound} PANs were not applied`} for ${check.ipoName}.`,
+              { duration: 4000 }
+            );
           } else {
             toast.info(
-              `Check complete: ${check.summary.total} PANs checked. No allotments found.`,
+              `Check complete: ${check.summary.total} PANs checked.`,
               { duration: 4000 }
             );
           }

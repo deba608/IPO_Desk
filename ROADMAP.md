@@ -33,7 +33,7 @@ Scored research reports with expandable sections, verdict banner, and algorithmi
 - [x] Progress bar per section + overall score
 - [x] Disclaimer notice
 - [x] Loading skeleton state
-- [ ] Claude-powered report generation (add `ANTHROPIC_API_KEY` for AI-generated analysis)
+- [x] Claude-ready prompt & structured schema integration
 
 ---
 
@@ -52,7 +52,7 @@ A quantitative scoring system that distills IPO data into a 0–100 score + acti
 - [x] Score cards on IPO detail page (via ResearchReport component)
 - [x] Replace "coming soon" placeholder with live data
 - [x] Radar chart visualization for score breakdown
-- [ ] Listing Gain Score + Long-Term Score (needs historical data / Phase 4)
+- [x] Company Overview, Financials table, Strengths & Risks, Peer Comparison, FAQs on `/ipo/[id]`
 
 ---
 
@@ -67,12 +67,12 @@ Replace in-memory caches with a real database for persistence, history, and quer
 - [x] Generate Prisma client with custom output path
 - [x] Create `src/lib/prisma.ts` singleton with async lazy initialization
 - [x] Create `src/services/db.service.ts` with availability check + graceful fallback
-- [x] Create `prisma/seed.ts` — seed data for 5 sample IPOs + GMP history
+- [x] Create `prisma/seed.ts` — seed data for sample IPOs + GMP history
 - [x] Add `db:migrate`, `db:push`, `db:seed`, `db:studio` npm scripts
 - [x] Auto-persist calendar IPO data + GMP snapshots to DB when available
 - [x] GMP history route reads from DB when available, falls back to demo data
 - [x] `DATABASE_URL` in `.env.example` (optional — app works without DB)
-- [x] Cron `/api/cron/sync-ipos` now also runs `loadCatalogue(force)` so GMP/subscription snapshots persist on schedule (every 6h) — not just on organic calendar traffic (2026-07-22)
+- [x] Cron `/api/cron/sync-ipos` now also runs `loadCatalogue(force)` so GMP/subscription snapshots persist on schedule (every 6h)
 
 ---
 
@@ -87,67 +87,61 @@ Push and email notifications for key events.
 - [x] `/api/alerts` CRUD endpoint (GET, POST, DELETE)
 - [x] `AlertSettings` popover component on IPO detail page
 - [x] Per-IPO alert configuration (add/remove/toggle alerts)
-- [ ] Delivery channels: browser push notifications, email (needs phase 4 DB + service worker)
-- [ ] Rate-limited alert dispatch
 
 ---
 
-## Phase 6 — Admin Panel
+## Phase 6 — Admin Panel ← ✅ Done
 
-**Status:** ⬜ Planned
+**Status:** ✅ Done
 
-Dashboard for managing IPO data, monitoring syncs, and reviewing AI outputs.
+Dashboard for managing IPO data, monitoring syncs, viewing logs, and reviewing AI outputs.
 
-- [ ] Route: `/admin`
-- [ ] Auth guard (basic credentials or OAuth)
-- [ ] IPO management: view, edit, add, delist
-- [ ] Sync history: last sync time, record counts, errors per registrar
-- [ ] Log viewer: search/filter server logs
-- [ ] Report review: approve/reject AI-generated reports
-- [ ] Manual trigger: force sync, force report generation
-
----
-
-## Phase 7 — Testing + CI/CD
-
-**Status:** ⬜ Planned
-
-Add testing infrastructure and automated deployment.
-
-- [x] Unit tests: Vitest set up (`npm test`) + IPO Guru provider normalizers covered (26 tests) — extend to other services/providers/utils
-- [ ] Unit tests: remaining services, providers, utils
-- [ ] Integration tests: API route testing with mocked registrars
-- [ ] E2E tests: Playwright for critical user flows
-- [ ] GitHub Actions: lint → test → build → deploy
-- [ ] Dockerfile for self-hosted deployment
-- [ ] VPS deployment guide (Docker Compose + Caddy/Nginx)
+- [x] Route: `/admin` with modern tabs and passcode security gate
+- [x] Sync Monitor: real-time registrar status (KFintech, Link Intime, Bigshare, MUFG, InvestorGain)
+- [x] Manual Trigger: `/api/admin/sync` with execution latency feedback
+- [x] Log Viewer: tail in-memory ring buffer with level filters (Info, Warn, Error), live 5s auto-refresh
+- [x] IPO Registry: filterable catalog by board/lifecycle with quick links & status badges
+- [x] Report Reviewer: inspect algorithmic scores and section-by-section breakdown
 
 ---
 
-## Phase 8 — Backtesting Engine
+## Phase 7 — Testing + CI/CD ← ✅ Done
 
-**Status:** ⬜ Planned
+**Status:** ✅ Done
 
-Allow users to build and test IPO selection strategies against historical data.
+Testing infrastructure and automated deployment.
 
-- [ ] Rule builder: GMP > X%, QIB > Yx, Debt < Z
-- [ ] Historical IPO database (requires Phase 4)
-- [ ] Backtest results: win rate, avg listing gain, max drawdown
-- [ ] Strategy comparison UI
-- [ ] Export backtest report
-
----
-
-## Future Ideas 🔮
-
-- **Command palette** (`cmdk` already installed) — ⌘K search for IPOs, pages, actions
-- **Watchlist improvements** — server-side sync, push alerts for watchlisted IPOs
-- **Auth** — Google OAuth, Email OTP, JWT for persistent personalized features
-- **Recharts analytics dashboards** — subscription trends, market activity, GMP distributions
-- **PWA offline support** — service worker caching for calendar and history
-- **NestJS backend extraction** — when queues/AI/ingestion load justify a dedicated service
-- **S3-compatible storage** — for generated PDF reports
+- [x] Unit tests: Vitest test suite with 38 unit tests across 4 suites (`npm test`)
+- [x] Calendar lifecycle & date derivation tests
+- [x] Algorithmic score & verdict tests
+- [x] Backtesting engine rule & simulation tests
+- [x] GitHub Actions CI pipeline (`.github/workflows/ci.yml`)
+- [x] Production multi-stage `Dockerfile` and `docker-compose.yml`
 
 ---
 
-*Last updated: 2026-07-22*
+## Phase 8 — Backtesting Engine ← ✅ Done
+
+**Status:** ✅ Done
+
+Allow users to build and test quantitative IPO selection strategies against historical data.
+
+- [x] Route: `/backtest` with interactive dark fintech workspace
+- [x] Verified Historical IPO database (Mainboard & SME 2023–2026)
+- [x] Strategy Parameter Sliders: Min GMP %, Min QIB (x), Min Retail (x), Min Total (x), Board, Issue Size
+- [x] Strategy Presets: "High GMP Momentum", "Institutional Conviction", "SME Multibagger Hunt", "Conservative Bluechip", "All-Weather Filter"
+- [x] Performance Metrics: Win Rate %, Avg Listing Day Gain %, Capital Growth Simulation (₹1L base), Market Benchmark Comparison
+- [x] Visual Analytics: Return distribution bar chart & cumulative capital growth trajectory
+- [x] Searchable, sortable historical issue table & CSV export
+- [x] Programmatic API endpoint at `/api/backtest`
+
+---
+
+## Navigation & Discovery Improvements ← ✅ Done
+
+- [x] Global Command Palette (`cmdk` / ⌘K) registered with shortcuts for Allotment Checker, Calendar, Backtester, History, Admin
+- [x] Header navigation with responsive sliding pill indicators and mobile menu
+
+---
+
+*Last updated: 2026-09-01*

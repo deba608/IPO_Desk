@@ -1,7 +1,7 @@
 // src/components/common/StatusBadge.tsx
 import { Badge } from "@/components/ui/badge";
 import { AllotmentStatus } from "@/types/allotment.types";
-import { CheckCircle2, XCircle, AlertCircle, HelpCircle } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, MinusCircle } from "lucide-react";
 
 interface StatusBadgeProps {
   status: AllotmentStatus;
@@ -20,9 +20,9 @@ const STATUS_CONFIG = {
     variant: "danger" as const,
   },
   not_found: {
-    label: "Not Found",
-    icon: HelpCircle,
-    variant: "warning" as const,
+    label: "Not Applied",
+    icon: MinusCircle,
+    variant: "secondary" as const,
   },
   error: {
     label: "Error",

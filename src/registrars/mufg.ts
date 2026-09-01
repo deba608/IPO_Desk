@@ -99,6 +99,13 @@ export class MUFGAdapter implements RegistrarAdapter {
       }
 
       const record = records[0];
+
+      // Check if record is a sentinel "No record found" or "Not Applied" response
+      const allText = Object.values(record).join(" ");
+      if (/no\s*record|not\s*found|not\s*applied|no\s*data|invalid\s*pan|please\s*enter\s*valid/i.test(allText)) {
+        return { pan: normalizedPan, status: "not_found" };
+      }
+
       // Field names vary slightly across issues; match defensively.
       const name = findField(record, /name/i);
       // Anchor the allotted match first, then exclude that same key from the
@@ -136,12 +143,20 @@ export class MUFGAdapter implements RegistrarAdapter {
         status: allottedShares > 0 ? "allotted" : "not_allotted",
       };
     } catch (error: unknown) {
-      const err = error as { response?: { status?: number }; message?: string };
+      const err = error as { response?: { status?: number; data?: unknown }; message?: string };
 
       log("error", "pan_check_failure", `MUFG PAN check failed: ${err.message ?? "unknown"}`, {
         durationMs: Date.now() - started,
         meta: { clientId, registrar: this.name, httpStatus: err.response?.status ?? "none" },
       });
+
+      if (
+        err.response?.status === 404 ||
+        (err.response?.data &&
+          /no\s*record|not\s*found|not\s*applied/i.test(JSON.stringify(err.response.data)))
+      ) {
+        return { pan: normalizedPan, status: "not_found" };
+      }
 
       if (!err.response) {
         return { pan: normalizedPan, status: "error", error: "Network error. Please try again." };

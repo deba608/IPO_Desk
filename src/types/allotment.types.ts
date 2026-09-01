@@ -91,6 +91,8 @@ export interface BigShareCheckRecord {
   Name: string;
   APPLIED: string;
   ALLOTED: string;
+  Status?: string;
+  Message?: string;
 }
 
 export interface BigShareCheckResponse {

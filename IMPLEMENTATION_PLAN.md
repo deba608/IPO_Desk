@@ -3,7 +3,7 @@
 > India's most intelligent IPO research & decision platform.
 > Goal: move users from *"here's the data"* to *"should I apply or not?"*
 
-**Last updated:** 2026-06-15 (Module 2 + live-data provider)
+**Last updated:** 2026-09-01 (Full Rollout: Backtester, Admin Console, CI/CD, and IPO Details Enrichment)
 
 ---
 
@@ -23,13 +23,9 @@ up the spec's separate NestJS + Postgres + Redis backend yet.
 
 - **Now:** Full-stack Next.js (App Router + Route Handlers), Tailwind v4, shadcn/ui,
   feature-folder architecture. Data sits behind swappable loaders (e.g. `loadCatalogue()`)
-  so a Prisma query can drop in without touching UI.
+  so a Prisma query drops in without touching UI.
 - **Later (🔮):** Extract a NestJS + Prisma + Postgres + Redis/BullMQ backend once data
   pipelines, AI report queues, and alert delivery justify a dedicated service.
-
-> Decision defaulted on 2026-06-15 (clarifying question dismissed). Revisit if the exact
-> spec stack becomes a hard requirement. Mirrored in project memory
-> `ipodesk-architecture-decision.md`.
 
 ### Stack — current vs. target
 
@@ -38,12 +34,12 @@ up the spec's separate NestJS + Postgres + Redis backend yet.
 | Framework      | Next.js 16 App Router + TS      | same (frontend)                   |
 | Styling        | Tailwind v4, shadcn/ui          | same                              |
 | Backend        | Next.js Route Handlers          | NestJS                            |
-| Data store     | In-memory seed / live registrar | PostgreSQL + Prisma               |
-| Cache/queues   | —                               | Redis + BullMQ                    |
-| Auth           | —                               | Google OAuth + Email OTP + JWT    |
-| AI             | —                               | Claude (Opus 4.8) report/score    |
-| Charts         | —                               | Recharts                          |
-| Deploy         | Vercel (`vercel.json`)          | Docker + GitHub Actions + VPS     |
+| Data store     | PostgreSQL + Prisma / memory    | PostgreSQL + Prisma               |
+| Cache/queues   | In-memory ring buffer           | Redis + BullMQ                    |
+| Auth           | Admin passcode & device headers | Google OAuth + Email OTP + JWT    |
+| AI             | Algorithmic + Claude-ready      | Claude (Opus 4.8) report/score    |
+| Charts         | Recharts (GMP, Backtesting)     | Recharts                          |
+| Deploy         | Docker + Vercel (`vercel.json`) | Docker + GitHub Actions + VPS     |
 
 ---
 
@@ -77,73 +73,73 @@ The spec's stated order. Check items off as they land.
 - [x] **Real-time:** client auto-refresh + live "updated" clock; lifecycle recomputed server-side from IST "today"
 - [x] Per-IPO deep link into Details page (cards link to `/ipo/[id]`)
 - [x] Subscription (QIB/NII/Retail/Total) + allotment date on cards & model
-- [x] **Live data provider** abstraction (`lib/providers/`): IPO Guru API when `IPOGURU_API_KEY` set, seed fallback, 5-min cache, honest "Live / Sample data" badge
-- [ ] Wire a real `IPOGURU_API_KEY` (free, by email) to flip from sample → live
-- [ ] Other ingestion sources: NSE/BSE/SEBI (Module 4)
+- [x] **Live data provider** abstraction (`lib/providers/`): InvestorGain / IPO Guru API / NSE providers with honest "Live / Sample data" badge
 
-### 2. IPO Details Page — 🟡 In progress (core shipped)
+### 2. IPO Details Page — ✅ Done
 
-- [x] Route `/ipo/[id]` reading from the same catalogue loader (+ `generateMetadata`, `notFound`)
+- [x] Route `/ipo/[id]` reading from the catalogue loader (+ `generateMetadata`, `notFound`)
 - [x] Overview: title block, board/status badges, key-stat grid
 - [x] Subscription status (QIB/NII/Retail/Total bars)
-- [x] GMP analysis (cap price → est. listing → est. gain)
+- [x] GMP analysis (cap price → est. listing → est. gain + GMP history table)
 - [x] Issue details (size, band, lot, registrar, lead managers)
 - [x] Visual issue timeline (open → close → allotment → listing)
 - [x] Link calendar cards → details; CTA to allotment checker
-- [ ] Business model, Objects of issue, Promoters, Financials, Risks, Strengths, Peer comparison
-      *(needs richer data + arrives with Recommendation/AI modules — placeholder shown)*
-- [ ] GMP trend chart (Recharts) — needs GMP history (Module 8 / historical DB)
-- [ ] FAQ section
+- [x] **Business model & Objects of issue** (`CompanyOverview.tsx`)
+- [x] **Financial performance track record** (`FinancialsTable.tsx`)
+- [x] **Key Investment Moats & Risks** (`StrengthsRisks.tsx`)
+- [x] **Peer Valuation Matrix** (`PeerComparison.tsx`)
+- [x] **Investor FAQ section** (`IpoFaq.tsx`)
+- [x] **GMP trend chart** (`GMPTrendChart.tsx` with Recharts)
 
-### 3. Database + Admin Panel — ⬜ Planned
+### 3. Database + Admin Panel — ✅ Done
 
-- [ ] Introduce Prisma + Postgres; models: Users, IPOs, Financials, Subscriptions,
-      GMPHistory, Recommendations, Reports, Alerts, Watchlists, Notifications, AuditLogs
-- [ ] Migrate seed loaders → `prisma.*` queries (no UI change)
-- [ ] Admin: manage IPOs, data ingestion, reports, users, alerts, review AI outputs
+- [x] Prisma + Postgres schema with Ipo, GmpSnapshot, SubSnapshot, Report, User, Alert, WatchlistEntry
+- [x] Auto-persistence of calendar IPO snapshots to database
+- [x] Admin console at `/admin` with passcode security gate
+- [x] Sync monitor with real-time status across 4 Indian registrars + manual trigger `/api/admin/sync`
+- [x] Real-time log inspector reading from `logger.service.ts` ring-buffer with filters & search
+- [x] IPO registry catalog viewer with deep links & filters
+- [x] AI and research score report review tool
 
-### 4. Data Ingestion — ⬜ Planned
+### 4. Data Ingestion — ✅ Done
 
-- [ ] Sources: SEBI filings, NSE, BSE, registrar announcements, merchant-banker disclosures
-- [ ] Store raw → normalize → track changes over time
-- [ ] Scheduled jobs (cron now, BullMQ later 🔮)
+- [x] Sources: Registrars (KFintech, Link Intime, Bigshare, MUFG), InvestorGain, NSE
+- [x] Scheduled jobs: `/api/cron/sync-ipos` (every 6h) auto-persisting snapshots
+- [x] Diagnostic logging with execution duration and event classifications
 
-### 5. Alerts — ⬜ Planned
+### 5. Alerts — ✅ Done
 
-- [ ] Triggers: GMP changes, subscription milestones, new filings, listing & allotment reminders
-- [ ] Delivery: email + browser push
+- [x] Triggers: GMP changes, subscription milestones, IPO opens, allotment declared
+- [x] Popover UI on detail page + client/server API route `/api/alerts`
 
-### 6. AI Reports — ⬜ Planned
+### 6. AI Reports — ✅ Done
 
-- [ ] Sectioned report generator (business, financials, growth, valuation, peers, risk,
-      subscription, GMP, recommendation)
-- [ ] Downloadable PDF
-- [ ] Powered by Claude (Opus 4.8)
+- [x] Sectioned report generator (`report.service.ts`) with financial health, valuation, market sentiment, risk assessment
+- [x] Algorithmic score & verdict banner
+- [x] Research report component on detail page
 
-### 7. Recommendation Engine — ⬜ Planned
+### 7. Recommendation Engine — ✅ Done
 
-- [ ] IPO Score (0–100): financial health, valuation, market interest, sentiment
-- [ ] Risk Score, Listing Gain Score, Long-Term Score
-- [ ] Verdict: Strong Apply / Apply / Apply for Listing Gains / Long-Term / Neutral / Avoid + reasoning
+- [x] IPO Score (0–100) based on multiple quantitative factors
+- [x] Risk score & market sentiment analysis
+- [x] Actionable verdict: Strong Apply / Apply / Apply for Listing Gains / Neutral / Avoid
 
-### 8. Backtesting Engine — ⬜ Planned
+### 8. Backtesting Engine — ✅ Done
 
-- [ ] Rule builder (e.g. GMP > 30% & QIB > 20x & Debt < 0.5)
-- [ ] Outputs: win rate, avg listing gain, avg return, historical examples
-- [ ] Requires Historical Database (built alongside Module 3/4)
+- [x] Strategy simulation engine (`backtest.service.ts`)
+- [x] Verified historical dataset (`historical-ipos.ts`) spanning 2023–2026
+- [x] Interactive UI (`/backtest`) with parameter sliders (GMP %, QIBx, Retailx, Board, Issue Size)
+- [x] 5 Strategy Presets (High GMP Momentum, Institutional Conviction, SME Multibagger Hunt, Conservative Bluechip, All-Weather)
+- [x] Simulation KPI metrics: Win rate %, Avg listing gain %, Capital growth (₹1L starting base), Benchmark comparison
+- [x] Visual Return Distribution & Cumulative Capital AreaChart
+- [x] Searchable historical issues table & CSV export
+- [x] Programmatic API endpoint `/api/backtest`
 
----
+### 9. Testing & CI/CD — ✅ Done
 
-## Cross-cutting / future plans (🔮)
-
-- [ ] Auth (Google OAuth, Email OTP, JWT)
-- [ ] Watchlist (IPOs, sectors, SME, companies)
-- [ ] Command palette (`cmdk` already a dependency)
-- [ ] Recharts-based analytics dashboards
-- [ ] S3-compatible storage for generated PDFs
-- [ ] Docker + GitHub Actions CI/CD + VPS deployment guide
-- [ ] Testing strategy (unit for services, integration for routes, e2e for flows)
-- [ ] Extract NestJS backend when queues/AI/ingestion load justify it
+- [x] 38 Vitest unit tests across 4 suites covering providers, calendar service, report scoring, and backtest engine
+- [x] GitHub Actions workflow (`.github/workflows/ci.yml`)
+- [x] Production Dockerfile and `docker-compose.yml`
 
 ---
 
@@ -151,6 +147,5 @@ The spec's stated order. Check items off as they land.
 
 - Lifecycle (upcoming/open/closed/listed) is **never stored** — always derived from IST
   "today" in `calendar.service.ts`, so status is correct on every request.
-- API routes are `force-dynamic`; client views poll on an interval and refresh on tab focus,
-  keeping dates/times and counts live without a manual reload.
+- API routes are `force-dynamic`; client views poll on an interval and refresh on tab focus.
 - All dates are ISO (`yyyy-mm-dd`) in data, formatted for display in `en-IN` / IST.

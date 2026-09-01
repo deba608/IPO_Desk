@@ -83,11 +83,28 @@ export class KFinTechAdapter implements RegistrarAdapter {
       }
 
       const record = records[0];
+
+      // Check if record contains sentinel not applied / no record message
+      const recordText = `${record.Name || ""} ${record.Pan_No || ""}`.trim();
+      if (/no\s*record|not\s*found|not\s*applied|no\s*data/i.test(recordText)) {
+        return {
+          pan: normalizedPan,
+          status: "not_found",
+        };
+      }
+
       const allottedShares = Number(record.All_Shares);
       const appliedShares = Number(record.App_Shares);
 
-      // A missing/garbage share count must surface as an error rather than a
-      // silent NaN-driven "not_allotted".
+      // If share counts are missing or empty string and name is not provided, treat as not_found
+      if (!record.All_Shares && !record.App_Shares && !record.Name) {
+        return {
+          pan: normalizedPan,
+          status: "not_found",
+        };
+      }
+
+      // A missing/garbage share count when a name is present must surface as an error
       if (!Number.isFinite(allottedShares)) {
         log("warn", "pan_check_failure", "KFintech response had unusable share counts", {
           durationMs: Date.now() - started,
@@ -114,12 +131,23 @@ export class KFinTechAdapter implements RegistrarAdapter {
         status: allottedShares > 0 ? "allotted" : "not_allotted",
       };
     } catch (error: unknown) {
-      const err = error as { response?: { status?: number }; message?: string };
+      const err = error as { response?: { status?: number; data?: unknown }; message?: string };
 
       log("error", "pan_check_failure", `PAN check failed: ${err.message ?? "unknown"}`, {
         durationMs: Date.now() - started,
         meta: { clientId, httpStatus: err.response?.status ?? "none" },
       });
+
+      if (
+        err.response?.status === 404 ||
+        (err.response?.data &&
+          /no\s*record|not\s*found|not\s*applied/i.test(JSON.stringify(err.response.data)))
+      ) {
+        return {
+          pan: normalizedPan,
+          status: "not_found",
+        };
+      }
 
       if (!err.response) {
         // Network error

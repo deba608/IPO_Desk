@@ -25,6 +25,12 @@ import { ResearchReport } from "@/features/ipo-detail/components/ResearchReport"
 import { AlertSettings } from "@/features/ipo-detail/components/AlertSettings";
 import { Header } from "@/components/common/Header";
 
+import { CompanyOverview } from "@/features/ipo-detail/components/CompanyOverview";
+import { FinancialsTable } from "@/features/ipo-detail/components/FinancialsTable";
+import { StrengthsRisks } from "@/features/ipo-detail/components/StrengthsRisks";
+import { PeerComparison } from "@/features/ipo-detail/components/PeerComparison";
+import { IpoFaq } from "@/features/ipo-detail/components/IpoFaq";
+
 export const dynamic = "force-dynamic";
 
 const REGISTRAR_LABELS: Record<string, string> = {
@@ -156,12 +162,30 @@ export default async function IPODetailPage({ params }: PageProps) {
         </div>
 
         {/* ── Two-column layout ───────────────────────────── */}
-        {/* min-w-0 on the grid + columns lets inner overflow-x-auto tables
-            (e.g. the GMP date table) actually scroll instead of forcing the
-            whole page wider than the mobile viewport. */}
         <div className="grid min-w-0 gap-4 lg:grid-cols-3">
           {/* Left column */}
           <div className="min-w-0 space-y-4 lg:col-span-2">
+            {/* Company Overview & Issue Objects */}
+            <SectionCard title="About Company & Issue Objects">
+              <CompanyOverview ipo={ipo} />
+            </SectionCard>
+
+            {/* Financial Performance Highlights */}
+            <SectionCard title="Financial Performance Track Record">
+              <FinancialsTable ipo={ipo} />
+            </SectionCard>
+
+            {/* Strengths & Risks */}
+            <SectionCard title="Investment Moats & Key Risks">
+              <StrengthsRisks ipo={ipo} />
+            </SectionCard>
+
+            {/* Peer Comparison */}
+            <SectionCard title="Peer Valuation Matrix">
+              <PeerComparison ipo={ipo} />
+            </SectionCard>
+
+            {/* Subscription Status */}
             {ipo.subscription ? (
               <SectionCard title="Subscription Status" compact>
                 <SubscriptionBars subscription={ipo.subscription} />
@@ -187,7 +211,7 @@ export default async function IPODetailPage({ params }: PageProps) {
               </SectionCard>
             )}
 
-            {/* Retail allotment odds — driven by the retail subscription × */}
+            {/* Retail allotment odds */}
             {ipo.subscription?.retail !== undefined && (
               <SectionCard title="Allotment Odds (Retail)" compact>
                 <AllotmentOdds
@@ -207,6 +231,11 @@ export default async function IPODetailPage({ params }: PageProps) {
             {/* AI Research & Recommendation */}
             <SectionCard title="AI Research & Recommendation">
               <ResearchReport ipoId={ipo.id} />
+            </SectionCard>
+
+            {/* FAQs */}
+            <SectionCard title="Frequently Asked Questions">
+              <IpoFaq ipo={ipo} />
             </SectionCard>
           </div>
 
