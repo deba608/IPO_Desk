@@ -532,8 +532,8 @@ export function BacktestWorkspace() {
                           borderRadius: "8px",
                           fontSize: "11px",
                         }}
-                        formatter={(val: number | string, _name: string, props: Record<string, unknown>) => [
-                          `${val ?? 0} IPOs (${props?.payload?.percentage ?? 0}%)`,
+                        formatter={(val: number | string, _name: string, item: TooltipPayloadEntry) => [
+                          `${val ?? 0} IPOs (${item?.payload?.percentage ?? 0}%)`,
                           "Count",
                         ]}
                       />
@@ -586,9 +586,9 @@ export function BacktestWorkspace() {
                           borderRadius: "8px",
                           fontSize: "11px",
                         }}
-                        formatter={(val: number | string, _name: string, props: Record<string, unknown>) => [
-                          `₹${Number(val ?? 0).toLocaleString("en-IN")} (${props?.payload?.gain ? `+${props.payload.gain}%` : ""})`,
-                          props?.payload?.name ?? "Capital",
+                        formatter={(val: number | string, _name: string, item: TooltipPayloadEntry) => [
+                          `₹${Number(val ?? 0).toLocaleString("en-IN")} (${item?.payload?.gain ? `+${item.payload.gain}%` : ""})`,
+                          item?.payload?.name ?? "Capital",
                         ]}
                       />
                       <Area
