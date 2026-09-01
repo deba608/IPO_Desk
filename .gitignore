@@ -19,6 +19,7 @@ out/
 build/
 
 # editor / ide
+.gemini/
 .claude/
 .vscode/
 .idea/
