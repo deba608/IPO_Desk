@@ -26,8 +26,12 @@ let workerPromise: Promise<Tesseract.Worker> | null = null;
 
 async function ocrImage(imageBuffer: Buffer): Promise<string> {
   if (!workerPromise) {
-    workerPromise = Tesseract.createWorker("eng", undefined, {
+workerPromise = Tesseract.createWorker("eng", undefined, {
       langPath: LANG_PATH,
+      // The traineddata is bundled at the repo root; don't try to (re)write a
+      // cache copy. Vercel serverless filesystems are read-only outside /tmp,
+      // and the write attempt would throw inside the worker thread.
+      cacheMethod: "none",
     });
   }
   const worker = await workerPromise;
