@@ -1,5 +1,4 @@
 import { CalendarIPOWithStatus } from "@/types/calendar.types";
-import { formatCrore } from "@/features/ipo-calendar/lib/format";
 import { TrendingUp } from "lucide-react";
 
 interface Props {

@@ -531,7 +531,7 @@ export function BacktestWorkspace() {
                           borderRadius: "8px",
                           fontSize: "11px",
                         }}
-                        formatter={(val: any, _name: any, props: any) => [
+                        formatter={(val: number | string, _name: string, props: Record<string, unknown>) => [
                           `${val ?? 0} IPOs (${props?.payload?.percentage ?? 0}%)`,
                           "Count",
                         ]}
@@ -585,7 +585,7 @@ export function BacktestWorkspace() {
                           borderRadius: "8px",
                           fontSize: "11px",
                         }}
-                        formatter={(val: any, _name: any, props: any) => [
+                        formatter={(val: number | string, _name: string, props: Record<string, unknown>) => [
                           `₹${Number(val ?? 0).toLocaleString("en-IN")} (${props?.payload?.gain ? `+${props.payload.gain}%` : ""})`,
                           props?.payload?.name ?? "Capital",
                         ]}

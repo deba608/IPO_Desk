@@ -1,6 +1,6 @@
 import { CalendarIPOWithStatus } from "@/types/calendar.types";
 import { formatCrore } from "@/features/ipo-calendar/lib/format";
-import { Building2, Target, Users, Landmark } from "lucide-react";
+import { Target, Users, Landmark } from "lucide-react";
 
 interface Props {
   ipo: CalendarIPOWithStatus;
@@ -8,7 +8,6 @@ interface Props {
 
 export function CompanyOverview({ ipo }: Props) {
   // Derive contextual objects of issue and profile based on board and size
-  const isLarge = ipo.issueSizeCr >= 1000;
   const isSme = ipo.board === "sme";
 
   const freshIssueEst = Math.round(ipo.issueSizeCr * 0.7);
