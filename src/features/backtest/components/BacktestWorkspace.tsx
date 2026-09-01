@@ -23,6 +23,7 @@ import {
   AreaChart,
   Area,
   CartesianGrid,
+  type TooltipPayloadEntry,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import {
