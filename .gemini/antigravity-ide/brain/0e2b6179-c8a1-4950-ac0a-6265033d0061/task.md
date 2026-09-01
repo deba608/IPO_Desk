@@ -1,4 +1,0 @@
-- [x] Update Bigshare adapter (`src/registrars/bigshare.ts`) with browser User-Agent and mirror rotation/fallback.
-- [x] Update MUFG adapter (`src/registrars/mufg.ts`) with browser User-Agent.
-- [x] Update KFintech sync service (`src/services/kfintech-sync.ts`) with browser User-Agent.
-- [x] Run manual/automated tests to verify fetching and checking are successful.
