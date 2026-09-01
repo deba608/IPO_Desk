@@ -22,6 +22,7 @@ import { RegistrarAdapter } from "./adapter.interface";
 import { AllotmentResult, BigShareCheckResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { log } from "@/services/logger.service";
+import { solveBigShareCaptcha } from "@/services/captcha.service";
 import { bulkCheck, withRetry } from "./shared";
 
 const BIGSHARE_MIRRORS = [
@@ -64,18 +65,7 @@ export class BigShareAdapter implements RegistrarAdapter {
 
   /** Fetch a fresh CAPTCHA token and solved answer from the captcha service. */
   async fetchCaptchaToken(): Promise<{ token: string; answer: string }> {
-    const resp = await axios.get<{ token: string; answer: string }>(
-      "/api/bigshare/captcha",
-      {
-        timeout: 10000,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        },
-      }
-    );
-    if (resp.data?.token) return resp.data;
-    throw new Error("Failed to fetch CAPTCHA token");
+    return solveBigShareCaptcha();
   }
 
   async getActiveIPOs(): Promise<IPO[]> {
@@ -145,7 +135,7 @@ export class BigShareAdapter implements RegistrarAdapter {
       const cf = await this.fetchCaptchaToken();
       captchaToken = cf.token;
       captchaAnswer = cf.answer;
-    } catch (e) {
+    } catch {
       log("error", "pan_check_failure", "Failed to fetch CAPTCHA token", {
         meta: { clientId, registrar: this.name },
       });
@@ -157,119 +147,124 @@ export class BigShareAdapter implements RegistrarAdapter {
     }
 
     for (const mirror of BIGSHARE_MIRRORS) {
-      try {
-        const response = await withRetry(() =>
-          this.http.post<BigShareCheckResponse>(
-            `https://${mirror}/Data.aspx/FetchIpodetails`,
-            {
-              Applicationno: "",
-              Company: clientId,
-              SelectionType: "PN", // PN = search by PAN
-              PanNo: normalizedPan,
-              txtcsdl: "",
-              txtDPID: "",
-              txtClId: "",
-              ddlType: "",
-              lang: "en",
-              // New: server-side CAPTCHA requirements
-              CaptchaToken: captchaToken,
-              CaptchaAnswer: captchaAnswer,
-              ResultToken: "",
-            },
-            { headers: { "Content-Type": "application/json; charset=utf-8" } }
-          )
-        );
+      // Retry once per mirror with a fresh CAPTCHA if the answer is rejected.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const response = await withRetry(() =>
+            this.http.post<BigShareCheckResponse>(
+              `https://${mirror}/Data.aspx/FetchIpodetails`,
+              {
+                Applicationno: "",
+                Company: clientId,
+                SelectionType: "PN", // PN = search by PAN
+                PanNo: normalizedPan,
+                txtcsdl: "",
+                txtDPID: "",
+                txtClId: "",
+                ddlType: "",
+                lang: "en",
+                // New: server-side CAPTCHA requirements
+                CaptchaToken: captchaToken,
+                CaptchaAnswer: captchaAnswer,
+                ResultToken: "",
+              },
+              { headers: { "Content-Type": "application/json; charset=utf-8" } }
+            )
+          );
 
-        log("info", "api_response_time", `Bigshare PAN query completed via ${mirror}`, {
-          durationMs: Date.now() - started,
-          meta: { clientId, registrar: this.name, mirror },
-        });
-
-        const record = response.data?.d;
-        if (!record) {
-          throw new Error("Registrar returned an unrecognized response format.");
-        }
-
-        // Handle new Status field from server-side CAPTCHA upgrade
-        const status = record.Status;
-        if (status === "CAPTCHA") {
-          // Captcha answer was invalid; refresh captcha and retry once
-          log("warn", "pan_check_failure", "Bigshare CAPTCHA invalid, refreshing", {
+          log("info", "api_response_time", `Bigshare PAN query completed via ${mirror}`, {
+            durationMs: Date.now() - started,
             meta: { clientId, registrar: this.name, mirror },
           });
-          try {
-            const cf2 = await this.fetchCaptchaToken();
-            captchaToken = cf2.token;
-            captchaAnswer = cf2.answer;
 
-            // Recursive retry with fresh captcha (will retry the loop iteration)
-            // For simplicity, just continue to next mirror after marking error
-            // In a full implementation, would retry the same mirror
-            throw new Error("CAPTCHA invalid - retry with fresh token");
-          } catch (e2) {
-            log("error", "pan_check_failure", "Failed to refresh CAPTCHA", {
-              meta: { clientId, registrar: this.name },
+          const record = response.data?.d;
+          if (!record) {
+            throw new Error("Registrar returned an unrecognized response format.");
+          }
+
+          // Handle new Status field from server-side CAPTCHA upgrade
+          const status = record.Status;
+          if (status === "CAPTCHA") {
+            // Captcha answer was invalid; refresh and retry once on the same mirror.
+            if (attempt === 0) {
+              log("warn", "pan_check_failure", "Bigshare CAPTCHA invalid, refreshing", {
+                meta: { clientId, registrar: this.name, mirror },
+              });
+              try {
+                const cf2 = await this.fetchCaptchaToken();
+                captchaToken = cf2.token;
+                captchaAnswer = cf2.answer;
+                continue;
+              } catch {
+                log("error", "pan_check_failure", "Failed to refresh CAPTCHA", {
+                  meta: { clientId, registrar: this.name },
+                });
+                return {
+                  pan: normalizedPan,
+                  status: "error",
+                  error: "CAPTCHA verification failed. Please try again.",
+                };
+              }
+            }
+            // Second invalid CAPTCHA on the same mirror — fall through to next mirror.
+            throw new Error("CAPTCHA rejected on retry");
+          }
+
+          if (status === "NOTFOUND" || status === "NO_RECORD") {
+            return { pan: normalizedPan, status: "not_found" };
+          }
+          // status === "OK" or undefined - continue to parse fields
+
+          // Bigshare sentinel messages indicating no application was filed with this PAN
+          if (
+            (typeof record.DPID === "string" &&
+              (/please enter valid/i.test(record.DPID) ||
+                /no\s*data|no\s*record|not\s*found|invalid/i.test(record.DPID))) ||
+            (typeof record.Name === "string" &&
+              /no\s*data|no\s*record|not\s*found|not\s*applied/i.test(record.Name)) ||
+            (typeof record.APPLICATION_NO === "string" &&
+              /no\s*data|no\s*record|not\s*found/i.test(record.APPLICATION_NO))
+          ) {
+            return { pan: normalizedPan, status: "not_found" };
+          }
+
+          // A schema shift (missing/renamed fields) must surface as an error,
+          // not fall through to a silent not_allotted.
+          if (
+            record.DPID === undefined &&
+            record.ALLOTED === undefined &&
+            record.APPLIED === undefined
+          ) {
+            log("warn", "pan_check_failure", "Bigshare response had unrecognized fields", {
+              meta: { clientId, registrar: this.name, mirror, keys: Object.keys(record).join(",") },
             });
             return {
               pan: normalizedPan,
               status: "error",
-              error: "CAPTCHA verification failed. Please try again.",
+              error: "Registrar returned an unrecognized response format.",
             };
           }
-        }
 
-        if (status === "NOTFOUND" || status === "NO_RECORD") {
-          return { pan: normalizedPan, status: "not_found" };
-        }
-        // status === "OK" or undefined - continue to parse fields
+          const allottedShares = toCount(record.ALLOTED) ?? 0;
+          const applied = toCount(record.APPLIED);
 
-        // Bigshare sentinel messages indicating no application was filed with this PAN
-        if (
-          (typeof record.DPID === "string" &&
-            (/please enter valid/i.test(record.DPID) ||
-              /no\s*data|no\s*record|not\s*found|invalid/i.test(record.DPID))) ||
-          (typeof record.Name === "string" &&
-            /no\s*data|no\s*record|not\s*found|not\s*applied/i.test(record.Name)) ||
-          (typeof record.APPLICATION_NO === "string" &&
-            /no\s*data|no\s*record|not\s*found/i.test(record.APPLICATION_NO))
-        ) {
-          return { pan: normalizedPan, status: "not_found" };
-        }
-
-        // A schema shift (missing/renamed fields) must surface as an error,
-        // not fall through to a silent not_allotted.
-        if (
-          record.DPID === undefined &&
-          record.ALLOTED === undefined &&
-          record.APPLIED === undefined
-        ) {
-          log("warn", "pan_check_failure", "Bigshare response had unrecognized fields", {
-            meta: { clientId, registrar: this.name, mirror, keys: Object.keys(record).join(",") },
-          });
           return {
             pan: normalizedPan,
-            status: "error",
-            error: "Registrar returned an unrecognized response format.",
+            name: record.Name || undefined,
+            appliedShares: applied ?? undefined,
+            allottedShares,
+            status: allottedShares > 0 ? "allotted" : "not_allotted",
           };
+        } catch (error: unknown) {
+          lastError = error;
+          log("warn", "pan_check_failure", `Bigshare check failed on mirror ${mirror}: ${errorMessage(error)}`);
+          // A definitive 4xx (bad request, forbidden) will fail on every mirror
+          // the same way — don't burn the retry budget on the remaining ones.
+          const status = (error as { response?: { status?: number } }).response?.status;
+          if (status && status >= 400 && status < 500 && status !== 429) break;
+          // A CAPTCHA rejection isn't worth retrying further on this mirror.
+          if (errorMessage(error).includes("CAPTCHA")) break;
         }
-
-        const allottedShares = toCount(record.ALLOTED) ?? 0;
-        const applied = toCount(record.APPLIED);
-
-        return {
-          pan: normalizedPan,
-          name: record.Name || undefined,
-          appliedShares: applied ?? undefined,
-          allottedShares,
-          status: allottedShares > 0 ? "allotted" : "not_allotted",
-        };
-      } catch (error: unknown) {
-        lastError = error;
-        log("warn", "pan_check_failure", `Bigshare check failed on mirror ${mirror}: ${errorMessage(error)}`);
-        // A definitive 4xx (bad request, forbidden) will fail on every mirror
-        // the same way — don't burn the retry budget on the remaining ones.
-        const status = (error as { response?: { status?: number } }).response?.status;
-        if (status && status >= 400 && status < 500 && status !== 429) break;
       }
     }
 
