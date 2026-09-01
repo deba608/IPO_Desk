@@ -24,6 +24,7 @@ import {
   Area,
   CartesianGrid,
   type TooltipPayloadEntry,
+  type TooltipValueType,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -532,7 +533,7 @@ export function BacktestWorkspace() {
                           borderRadius: "8px",
                           fontSize: "11px",
                         }}
-                        formatter={(val: number | string, _name: string, item: TooltipPayloadEntry) => [
+                        formatter={(val: TooltipValueType | undefined, _name: string | number | undefined, item: TooltipPayloadEntry) => [
                           `${val ?? 0} IPOs (${item?.payload?.percentage ?? 0}%)`,
                           "Count",
                         ]}
@@ -586,7 +587,7 @@ export function BacktestWorkspace() {
                           borderRadius: "8px",
                           fontSize: "11px",
                         }}
-                        formatter={(val: number | string, _name: string, item: TooltipPayloadEntry) => [
+                        formatter={(val: TooltipValueType | undefined, _name: string | number | undefined, item: TooltipPayloadEntry) => [
                           `₹${Number(val ?? 0).toLocaleString("en-IN")} (${item?.payload?.gain ? `+${item.payload.gain}%` : ""})`,
                           item?.payload?.name ?? "Capital",
                         ]}
