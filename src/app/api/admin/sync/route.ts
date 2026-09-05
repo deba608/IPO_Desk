@@ -2,28 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { syncAllRegistrars } from "@/services/registrar-sync";
 import { getCalendar } from "@/features/ipo-calendar/lib/calendar.service";
 import { log } from "@/services/logger.service";
+import { bearerToken, secretsMatch } from "@/lib/server-secret";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const adminPasscode = request.headers.get("x-admin-passcode");
-    const configuredSecret = process.env.ADMIN_PASSCODE || process.env.CRON_SECRET || "admin123";
+    // Fail closed: without a configured secret this endpoint stays disabled
+    // in every environment — never fall back to a default passcode.
+    const configuredSecret =
+      process.env.ADMIN_PASSCODE || process.env.CRON_SECRET;
+    if (!configuredSecret) {
+      return NextResponse.json(
+        { error: "Admin access not configured" },
+        { status: 503 }
+      );
+    }
 
-    // Validate passcode or bearer token
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    // Constant-time comparison of either credential style; no env bypass.
+    const passcode = request.headers.get("x-admin-passcode");
+    const token = bearerToken(request.headers.get("authorization"));
     const isAuthorized =
-      adminPasscode === configuredSecret ||
-      token === configuredSecret ||
-      process.env.NODE_ENV !== "production";
+      secretsMatch(passcode, configuredSecret) ||
+      secretsMatch(token, configuredSecret);
 
     if (!isAuthorized) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
     const start = Date.now();
-    log("info", "ipo_sync_success", "Admin triggered full sync & catalogue reload");
 
     // 1. Sync registrars for allotment checking
     const registrarResults = await syncAllRegistrars();
@@ -32,6 +39,9 @@ export async function POST(request: NextRequest) {
     const calendarData = await getCalendar(true);
 
     const durationMs = Date.now() - start;
+    log("info", "ipo_sync_success", "Admin triggered full sync & catalogue reload", {
+      durationMs,
+    });
 
     return NextResponse.json({
       success: true,

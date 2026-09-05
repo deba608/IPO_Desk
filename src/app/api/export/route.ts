@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       buffer = exportToCSV(results);
       contentType = "text/csv; charset=utf-8";
     } else {
-      buffer = exportToXLSX(results, ipoName, checkedAt);
+      buffer = await exportToXLSX(results, ipoName, checkedAt);
       contentType =
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     }

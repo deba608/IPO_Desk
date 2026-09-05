@@ -24,19 +24,39 @@ export function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [inputCode, setInputCode] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>("sync");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputCode.trim()) {
+    const code = inputCode.trim();
+    if (!code) {
       setErrorMsg("Please enter the admin passcode");
       return;
     }
 
-    // In dev / client validation, accept standard dev key or any 6+ char passcode
-    setPasscode(inputCode);
-    setIsAuthenticated(true);
+    // Never trust client-side input alone: the passcode is verified against
+    // the server gate (/api/logs rejects a wrong secret with 401). Only a
+    // 401 means "wrong passcode"; any other answer means the gate itself
+    // responded. Network failure keeps the console locked.
+    setVerifying(true);
     setErrorMsg("");
+    try {
+      const res = await fetch("/api/logs?limit=1", {
+        headers: { Authorization: `Bearer ${code}` },
+      });
+      if (res.status === 401) {
+        setErrorMsg("Incorrect passcode");
+        return;
+      }
+      setPasscode(code);
+      setInputCode("");
+      setIsAuthenticated(true);
+    } catch {
+      setErrorMsg("Could not reach the server. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -64,10 +84,11 @@ export function AdminDashboard() {
                 <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <input
                   type="password"
-                  placeholder="Enter passcode (e.g. admin123)"
+                  placeholder="Enter passcode"
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                  disabled={verifying}
+                  className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none disabled:opacity-60"
                   autoFocus
                 />
               </div>
@@ -78,15 +99,14 @@ export function AdminDashboard() {
 
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              disabled={verifying}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
-              Access Dashboard <ArrowRight className="h-3.5 w-3.5" />
+              {verifying ? "Verifying…" : (
+                <>Access Dashboard <ArrowRight className="h-3.5 w-3.5" /></>
+              )}
             </button>
           </form>
-
-          <div className="mt-5 rounded-lg border border-border/40 bg-muted/20 p-2.5 text-center text-[11px] text-muted-foreground">
-            Default sandbox passcode: <code className="text-primary font-mono">admin123</code>
-          </div>
         </div>
       </div>
     );
@@ -114,6 +134,7 @@ export function AdminDashboard() {
         <button
           onClick={() => {
             setIsAuthenticated(false);
+            setPasscode("");
             setInputCode("");
           }}
           className="self-start rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground sm:self-auto"

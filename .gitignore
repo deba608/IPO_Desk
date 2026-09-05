@@ -42,6 +42,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# ad-hoc probes / scratch work (may contain real PANs — never commit)
+scratch/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

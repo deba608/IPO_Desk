@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Required by the Dockerfile, which serves .next/standalone/server.js.
+  output: "standalone",
   async headers() {
     return [
       {

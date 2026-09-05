@@ -566,14 +566,18 @@ export function IPOCalendarView() {
               <div className="flex flex-col gap-1">
                 <button
                   type="button"
-                  onClick={() => exportIPOs(visible, "xlsx")}
+                  onClick={() => {
+                    exportIPOs(visible, "xlsx").catch(() => {});
+                  }}
                   className="rounded-lg px-2 py-1.5 text-xs text-left text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors w-full"
                 >
                   Download Excel
                 </button>
                 <button
                   type="button"
-                  onClick={() => exportIPOs(visible, "csv")}
+                  onClick={() => {
+                    exportIPOs(visible, "csv").catch(() => {});
+                  }}
                   className="rounded-lg px-2 py-1.5 text-xs text-left text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors w-full"
                 >
                   Download CSV

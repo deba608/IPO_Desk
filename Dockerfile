@@ -5,13 +5,13 @@
 FROM node:20-slim AS base
 WORKDIR /app
 
-# Install Python + pip + the OCR library used by /api/bigshare/captcha
+# Python kept for ops tooling only (OCR now runs via the OCR.Space HTTPS API).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && pip3 install --no-cache-dir --break-system-packages ddddocr pillow
+    && pip3 install --no-cache-dir --break-system-packages ddddocr==5.4.6 pillow==11.3.0
 
 FROM base AS deps
 COPY package.json package-lock.json ./
@@ -41,10 +41,20 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+# Generated Prisma client (custom output at src/generated/prisma) plus the
+# CLI packages needed to run `prisma migrate deploy` at container start.
+COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
 
 USER nextjs
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+# Apply pending migrations when DATABASE_URL is set (skipped otherwise —
+# the app also runs with an in-memory fallback), then serve.
+CMD ["sh", "-c", "node scripts/migrate-if-db.mjs && exec node server.js"]

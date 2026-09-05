@@ -132,8 +132,8 @@ export function CheckerTabs({
     setParsedFile(null);
 
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (!["xlsx", "csv", "xls"].includes(ext ?? "")) {
-      setFileError("Please upload an Excel (.xlsx, .xls) or CSV file");
+    if (!["xlsx", "csv"].includes(ext ?? "")) {
+      setFileError("Please upload an Excel (.xlsx) or CSV file");
       return;
     }
 
@@ -354,7 +354,7 @@ export function CheckerTabs({
             <input
               id="file-upload-input"
               type="file"
-              accept=".xlsx,.xls,.csv"
+              accept=".xlsx,.csv"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -414,7 +414,7 @@ export function CheckerTabs({
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Excel (.xlsx, .xls) or CSV · Max 5MB · PAN column auto-detected
+                  Excel (.xlsx) or CSV · Max 5MB · PAN column auto-detected
                 </p>
               </div>
             )}

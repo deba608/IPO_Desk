@@ -1,5 +1,5 @@
 // src/services/export.service.ts
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { AllotmentResult } from "@/types/allotment.types";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -27,15 +27,9 @@ function sanitizeCsvValue(value: string): string {
   return FORMULA_PREFIX.test(value) ? `'${value}` : value;
 }
 
-function sanitizeRowsForCsv(rows: ExportRow[]): ExportRow[] {
-  return rows.map((row) =>
-    Object.fromEntries(
-      Object.entries(row).map(([key, value]) => [
-        key,
-        typeof value === "string" ? sanitizeCsvValue(value) : value,
-      ])
-    ) as ExportRow
-  );
+function toCsvCell(value: unknown): string {
+  const raw = typeof value === "string" ? sanitizeCsvValue(value) : String(value ?? "");
+  return /[",\n\r]/.test(raw) ? `"${raw.replace(/"/g, '""')}"` : raw;
 }
 
 function buildRows(results: AllotmentResult[]): ExportRow[] {
@@ -52,66 +46,100 @@ function buildRows(results: AllotmentResult[]): ExportRow[] {
   }));
 }
 
-export function exportToCSV(
-  results: AllotmentResult[],
-): Buffer {
-  const rows = sanitizeRowsForCsv(buildRows(results));
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Results");
+const CSV_HEADERS = [
+  "PAN",
+  "Label",
+  "Name",
+  "Applied Shares",
+  "Allotted Shares",
+  "Status",
+  "Remarks",
+] as const;
 
-  const csvBuffer = XLSX.write(wb, { bookType: "csv", type: "buffer" });
+export function exportToCSV(results: AllotmentResult[]): Buffer {
+  const rows = buildRows(results);
+  const lines = [
+    CSV_HEADERS.map(toCsvCell).join(","),
+    ...rows.map((row) =>
+      CSV_HEADERS.map((h) => toCsvCell(row[h] ?? "")).join(",")
+    ),
+  ];
   // UTF-8 BOM so Excel detects the encoding (₹ renders as mojibake without it).
-  return Buffer.concat([Buffer.from("\uFEFF", "utf-8"), Buffer.from(csvBuffer)]);
+  return Buffer.concat([
+    Buffer.from("\uFEFF", "utf-8"),
+    Buffer.from(lines.join("\r\n"), "utf-8"),
+  ]);
 }
 
-export function exportToXLSX(
+function styleHeaderRow(ws: ExcelJS.Worksheet): void {
+  const header = ws.getRow(1);
+  header.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF4F46E5" },
+    };
+    cell.alignment = { horizontal: "center" };
+  });
+}
+
+export async function exportToXLSX(
   results: AllotmentResult[],
   ipoName: string,
   checkedAt: string
-): Buffer {
+): Promise<Buffer> {
   const rows = buildRows(results);
+  const wb = new ExcelJS.Workbook();
 
   // Main results sheet
-  const ws = XLSX.utils.json_to_sheet(rows);
-
-  // Style header row
-  const headerRange = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
-  for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
-    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-    if (!ws[cellAddress]) continue;
-    ws[cellAddress].s = {
-      font: { bold: true, color: { rgb: "FFFFFF" } },
-      fill: { fgColor: { rgb: "4F46E5" } },
-      alignment: { horizontal: "center" },
-    };
-  }
-
-  // Auto-size columns
-  const colWidths = Object.keys(rows[0] ?? {}).map((key) => ({
-    wch: Math.max(key.length, ...rows.map((r) => String(r[key as keyof ExportRow] ?? "").length)) + 2,
-  }));
-  ws["!cols"] = colWidths;
+  const ws = wb.addWorksheet("Allotment Results");
+  ws.columns = CSV_HEADERS.map((h) => ({ header: h, key: h, width: 18 }));
+  ws.addRows(rows);
+  styleHeaderRow(ws);
+  // Auto-size columns to content
+  ws.columns.forEach((col) => {
+    let width = String(col.header ?? "").length;
+    col.eachCell?.((cell, rowNumber) => {
+      if (rowNumber === 1) return;
+      width = Math.max(width, String(cell.value ?? "").length);
+    });
+    col.width = Math.min(width + 2, 60);
+  });
 
   // Summary sheet
-  const summary = [
-    ["IPO Name", ipoName],
-    // Runs on the server — pin to IST so a UTC deploy doesn't shift the stamp.
-    ["Generated At", `${new Date(checkedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`],
-    ["Total PANs", results.length],
-    ["Allotted", results.filter((r) => r.status === "allotted").length],
-    ["Not Allotted", results.filter((r) => r.status === "not_allotted").length],
-    ["Not Applied", results.filter((r) => r.status === "not_found").length],
-    ["Errors", results.filter((r) => r.status === "error").length],
+  const summaryWs = wb.addWorksheet("Summary");
+  summaryWs.columns = [
+    { header: "Metric", key: "metric", width: 20 },
+    { header: "Value", key: "value", width: 40 },
   ];
+  summaryWs.addRows([
+    { metric: "IPO Name", value: ipoName },
+    // Runs on the server — pin to IST so a UTC deploy doesn't shift the stamp.
+    {
+      metric: "Generated At",
+      value: `${new Date(checkedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`,
+    },
+    { metric: "Total PANs", value: results.length },
+    {
+      metric: "Allotted",
+      value: results.filter((r) => r.status === "allotted").length,
+    },
+    {
+      metric: "Not Allotted",
+      value: results.filter((r) => r.status === "not_allotted").length,
+    },
+    {
+      metric: "Not Applied",
+      value: results.filter((r) => r.status === "not_found").length,
+    },
+    {
+      metric: "Errors",
+      value: results.filter((r) => r.status === "error").length,
+    },
+  ]);
+  styleHeaderRow(summaryWs);
 
-  const summaryWs = XLSX.utils.aoa_to_sheet(summary);
-  summaryWs["!cols"] = [{ wch: 20 }, { wch: 40 }];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Allotment Results");
-  XLSX.utils.book_append_sheet(wb, summaryWs, "Summary");
-
-  const xlsxBuffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
-  return Buffer.from(xlsxBuffer);
+  const out = await wb.xlsx.writeBuffer();
+  return Buffer.from(out);
 }

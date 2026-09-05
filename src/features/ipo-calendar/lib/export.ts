@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { CalendarIPOWithStatus } from "@/types/calendar.types";
 
 const REGISTRAR_LABELS: Record<string, string> = {
@@ -8,41 +8,90 @@ const REGISTRAR_LABELS: Record<string, string> = {
   bigshare: "Bigshare",
 };
 
-export function exportIPOs(ipos: CalendarIPOWithStatus[], format: "xlsx" | "csv") {
-  const data = ipos.map((ipo) => ({
-    "IPO Name": ipo.name,
-    "Symbol": ipo.symbol || "TBA",
-    "Board": ipo.board === "mainboard" ? "Mainboard" : "SME",
-    "Price Band (Min)": ipo.priceBand.min,
-    "Price Band (Max)": ipo.priceBand.max,
-    "Issue Size (Cr)": ipo.issueSizeCr,
-    "Lot Size": ipo.lotSize > 0 ? ipo.lotSize : "TBA",
-    "Min. Investment (INR)": ipo.minInvestment > 0 ? ipo.minInvestment : "TBA",
-    "Open Date": ipo.openDate,
-    "Close Date": ipo.closeDate,
-    "Allotment Date": ipo.allotmentDate || "TBA",
-    "Listing Date": ipo.listingDate || "TBA",
-    "Registrar": REGISTRAR_LABELS[ipo.registrar] || ipo.registrar,
-    "GMP (INR)": ipo.gmp !== undefined ? ipo.gmp : "N/A",
-    "GMP Premium (%)": ipo.gmpPercent !== undefined ? `${ipo.gmpPercent}%` : "N/A",
-    "Subscription (Total)": ipo.subscription?.total !== undefined ? `${ipo.subscription.total}x` : "N/A",
-    "Retail Subscription": ipo.subscription?.retail !== undefined ? `${ipo.subscription.retail}x` : "N/A",
-    "QIB Subscription": ipo.subscription?.qib !== undefined ? `${ipo.subscription.qib}x` : "N/A",
-    "NII Subscription": ipo.subscription?.nii !== undefined ? `${ipo.subscription.nii}x` : "N/A",
-    "Lifecycle Status": ipo.lifecycle.toUpperCase(),
-  }));
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoke async so Safari finishes the download first.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "IPO Screener Data");
+export async function exportIPOs(ipos: CalendarIPOWithStatus[], format: "xlsx" | "csv") {
+  const header = [
+    "IPO Name",
+    "Symbol",
+    "Board",
+    "Price Band (Min)",
+    "Price Band (Max)",
+    "Issue Size (Cr)",
+    "Lot Size",
+    "Min. Investment (INR)",
+    "Open Date",
+    "Close Date",
+    "Allotment Date",
+    "Listing Date",
+    "Registrar",
+    "GMP (INR)",
+    "GMP Premium (%)",
+    "Subscription (Total)",
+    "Retail Subscription",
+    "QIB Subscription",
+    "NII Subscription",
+    "Lifecycle Status",
+  ];
+  const rows = ipos.map((ipo) => [
+    ipo.name,
+    ipo.symbol || "TBA",
+    ipo.board === "mainboard" ? "Mainboard" : "SME",
+    ipo.priceBand.min,
+    ipo.priceBand.max,
+    ipo.issueSizeCr,
+    ipo.lotSize > 0 ? ipo.lotSize : "TBA",
+    ipo.minInvestment > 0 ? ipo.minInvestment : "TBA",
+    ipo.openDate,
+    ipo.closeDate,
+    ipo.allotmentDate || "TBA",
+    ipo.listingDate || "TBA",
+    REGISTRAR_LABELS[ipo.registrar] || ipo.registrar,
+    ipo.gmp !== undefined ? ipo.gmp : "N/A",
+    ipo.gmpPercent !== undefined ? `${ipo.gmpPercent}%` : "N/A",
+    ipo.subscription?.total !== undefined ? `${ipo.subscription.total}x` : "N/A",
+    ipo.subscription?.retail !== undefined ? `${ipo.subscription.retail}x` : "N/A",
+    ipo.subscription?.qib !== undefined ? `${ipo.subscription.qib}x` : "N/A",
+    ipo.subscription?.nii !== undefined ? `${ipo.subscription.nii}x` : "N/A",
+    ipo.lifecycle.toUpperCase(),
+  ]);
 
   const date = new Date().toISOString().split("T")[0];
   const filename = `IPO_Screener_${date}.${format}`;
 
-  if (format === "xlsx") {
-    XLSX.writeFile(workbook, filename);
-  } else {
-    // Generate CSV and write
-    XLSX.writeFile(workbook, filename, { bookType: "csv" });
+  if (format === "csv") {
+    const esc = (v: unknown): string => {
+      const s = String(v ?? "");
+      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [header, ...rows].map((r) => r.map(esc).join(",")).join("\r\n");
+    downloadBlob(
+      new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }),
+      filename
+    );
+    return;
   }
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("IPO Screener Data");
+  ws.addRow(header);
+  ws.addRows(rows);
+  ws.getRow(1).font = { bold: true };
+  const out = await wb.xlsx.writeBuffer();
+  downloadBlob(
+    new Blob([out], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    filename
+  );
 }
