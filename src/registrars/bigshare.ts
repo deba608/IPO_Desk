@@ -39,6 +39,25 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * Turn a raw CAPTCHA-stage failure into a user-actionable message. The three
+ * causes need three different fixes (network egress vs OCR quota vs retry),
+ * so they must not all surface as the same generic error.
+ */
+function classifyCaptchaFailure(raw: string): string {
+  if (
+    /timeout|timed out|ENOTFOUND|ECONNRESET|ECONNREFUSED|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH|socket hang up|incomplete response|HTTP \d{3}|failed to fetch|fetch failed/i.test(
+      raw
+    )
+  ) {
+    return "Bigshare servers are unreachable from our servers right now. Please try again in a few minutes.";
+  }
+  if (/rate limit|429/i.test(raw)) {
+    return "Too many checks at once — please wait a minute and retry.";
+  }
+  return "CAPTCHA solving failed. Please try again.";
+}
+
 /** Coerce a share-count field of any type to a number; null when unusable. */
 function toCount(value: unknown): number | null {
   if (value === undefined || value === null || value === "") return null;
@@ -54,7 +73,9 @@ export class BigShareAdapter implements RegistrarAdapter {
 
   constructor() {
     this.http = axios.create({
-      timeout: 20000,
+      // Keep well inside serverless function budgets; mirrors are tried in
+      // series so every second here multiplies on unreachable networks.
+      timeout: 12000,
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -135,14 +156,15 @@ export class BigShareAdapter implements RegistrarAdapter {
       const cf = await this.fetchCaptchaToken();
       captchaToken = cf.token;
       captchaAnswer = cf.answer;
-    } catch {
-      log("error", "pan_check_failure", "Failed to fetch CAPTCHA token", {
+    } catch (error: unknown) {
+      const msg = errorMessage(error);
+      log("error", "pan_check_failure", `Failed to fetch CAPTCHA token: ${msg}`, {
         meta: { clientId, registrar: this.name },
       });
       return {
         pan: normalizedPan,
         status: "error",
-        error: "Could not obtain CAPTCHA token. Please try again.",
+        error: classifyCaptchaFailure(msg),
       };
     }
 

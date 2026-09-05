@@ -16,7 +16,11 @@ const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
 const OCR_API_URL = "https://api.ocr.space/parse/image";
-const OCR_API_KEY = process.env.OCR_SPACE_API_KEY?.trim() || "helloworld";
+
+/** Read lazily so a key added after the last build still applies at runtime. */
+function ocrApiKey(): string {
+  return process.env.OCR_SPACE_API_KEY?.trim() || "helloworld";
+}
 
 /** Per-request timeout so a hung upstream can never stall /api/check. */
 const FETCH_TIMEOUT_MS = 15_000;
@@ -73,7 +77,7 @@ async function ocrImage(imageBase64: string): Promise<string> {
   for (const engine of OCR_ENGINES) {
     try {
       const form = new URLSearchParams({
-        apikey: OCR_API_KEY,
+        apikey: ocrApiKey(),
         base64Image: dataUrl,
         OCREngine: String(engine),
         scale: "true",
