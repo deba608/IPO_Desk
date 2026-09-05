@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { exportToCSV, exportToXLSX } from "@/services/export.service";
+import { getClientKey, isRateLimited } from "@/lib/rate-limit";
 
 const ExportRequestSchema = z.object({
   // Cap the payload — an unbounded array is parsed and materialized into a
@@ -33,6 +34,11 @@ function sanitizeFilename(name: string): string {
 }
 
 export async function POST(request: Request) {
+  // Workbook building is CPU-heavy — cap it like the other endpoints.
+  if (isRateLimited(getClientKey(request), 20)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   try {
     const body = await request.json();
     const validated = ExportRequestSchema.safeParse(body);

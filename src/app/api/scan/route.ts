@@ -10,6 +10,35 @@ import { getClientKey, isRateLimited } from "@/lib/rate-limit";
 const RATE_LIMIT = 5; // scans per minute (each scan = many registrar calls)
 const RATE_WINDOW_MS = 60 * 1000;
 
+export const maxDuration = 60;
+
+// A full scan fans out across every active IPO — it can legitimately take a
+// while, but the client must always get a JSON answer instead of spinning
+// until the platform kills the function.
+const SCAN_TIMEOUT_MS = 55_000;
+
+class ScanTimeoutError extends Error {
+  constructor() {
+    super("Scan timed out");
+    this.name = "ScanTimeoutError";
+  }
+}
+
+async function withScanTimeout<T>(promise: Promise<T>): Promise<T> {
+  promise.catch(() => {});
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new ScanTimeoutError()), SCAN_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const PANSchema = z
   .string()
   .trim()
@@ -21,7 +50,7 @@ const ScanRequestSchema = z.object({
     .array(PANSchema)
     .min(1, "At least one PAN is required")
     .max(50, "Maximum 50 PANs per scan"),
-  registrar: z.enum(["kfintech", "linkintime", "bigshare", "mufg"]).optional(),
+  registrar: z.enum(["kfintech", "linkintime", "bigshare", "mufg", "skyline", "purva", "maashitla"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -53,14 +82,22 @@ export async function POST(request: Request) {
 
     const uniquePANs = [...new Set(validated.data.pans)];
 
-    const result = await scanAllotment({
-      pans: uniquePANs,
-      registrar: validated.data.registrar,
-    });
+    const result = await withScanTimeout(
+      scanAllotment({
+        pans: uniquePANs,
+        registrar: validated.data.registrar,
+      })
+    );
 
     return NextResponse.json(result, { status: 200 });
   } catch (error: unknown) {
     console.error("[/api/scan] Error:", error);
+    if (error instanceof ScanTimeoutError) {
+      return NextResponse.json(
+        { error: "Scan timed out. Try fewer PANs or a single registrar." },
+        { status: 504 }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to scan allotments. Please try again." },
       { status: 500 }

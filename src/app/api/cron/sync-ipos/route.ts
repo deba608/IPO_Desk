@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { syncAllRegistrars } from "@/services/registrar-sync";
 import { loadCatalogue } from "@/features/ipo-calendar/lib/providers";
 import { bearerToken, secretsMatch } from "@/lib/server-secret";
+import { checkDbAvailability, getPrisma } from "@/services/db.service";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -49,6 +50,15 @@ export async function GET(request: NextRequest) {
         ? { count: calendarResult.value.ipos.length, source: calendarResult.value.source }
         : { error: reasonMessage(calendarResult.reason) };
 
+    // Retention: drop orphaned alerts (IPO deleted → FK set null) and anything
+    // older than 90 days. Best-effort — never fails the sync tick.
+    let alertsPruned = 0;
+    try {
+      alertsPruned = await pruneAlerts();
+    } catch (error: unknown) {
+      console.error("[cron] alert prune failed (non-fatal):", error);
+    }
+
     return NextResponse.json({
       ok: registrarResult.status === "fulfilled" || calendarResult.status === "fulfilled",
       synced: Object.values(counts).reduce((sum, n) => sum + n, 0),
@@ -58,6 +68,7 @@ export async function GET(request: NextRequest) {
           ? reasonMessage(registrarResult.reason)
           : undefined,
       calendar,
+      alertsPruned,
       syncedAt: new Date().toISOString(),
     });
   } catch (error: unknown) {
@@ -68,4 +79,16 @@ export async function GET(request: NextRequest) {
 
 function reasonMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : "Unknown error";
+}
+
+const ALERT_RETENTION_DAYS = 90;
+
+async function pruneAlerts(): Promise<number> {
+  if (!checkDbAvailability()) return 0;
+  const prisma = await getPrisma();
+  const cutoff = new Date(Date.now() - ALERT_RETENTION_DAYS * 24 * 3600 * 1000);
+  const deleted = await prisma.alert.deleteMany({
+    where: { OR: [{ ipoId: null }, { createdAt: { lt: cutoff } }] },
+  });
+  return deleted.count;
 }

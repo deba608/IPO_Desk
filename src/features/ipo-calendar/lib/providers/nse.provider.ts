@@ -24,6 +24,7 @@ import {
   Subscription,
 } from "@/types/calendar.types";
 import { CalendarProvider } from "./types";
+import { fetchWithTimeout } from "./fetch-utils";
 
 const ORIGIN = "https://www.nseindia.com";
 
@@ -109,7 +110,9 @@ function normalize(raw: RawUpcoming, board: IPOBoard): CalendarIPO | null {
       : 0;
 
   return {
-    id: `${board}-${slugify(name)}`,
+    // Year-suffixed so a same-name relist in another year can't collide with
+    // (and overwrite) the earlier record.
+    id: `${board}-${slugify(name)}-${openDate.slice(0, 4)}`,
     name,
     symbol: raw.symbol?.trim() || undefined,
     board,
@@ -135,7 +138,7 @@ export function createNseProvider(): CalendarProvider {
     credit: { name: "NSE", url: "https://www.nseindia.com/" },
     async fetchCatalogue(): Promise<CalendarIPO[]> {
       // 1. Prime session cookies from the homepage.
-      const home = await fetch(ORIGIN, {
+      const home = await fetchWithTimeout(ORIGIN, {
         headers: { "User-Agent": UA, Accept: "text/html" },
         cache: "no-store",
       });
@@ -155,7 +158,7 @@ export function createNseProvider(): CalendarProvider {
       };
 
       const getJson = async (path: string): Promise<unknown> => {
-        const res = await fetch(`${ORIGIN}${path}`, {
+        const res = await fetchWithTimeout(`${ORIGIN}${path}`, {
           headers: apiHeaders,
           cache: "no-store",
         });

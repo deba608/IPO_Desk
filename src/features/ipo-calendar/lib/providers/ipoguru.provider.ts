@@ -15,6 +15,7 @@ import {
 } from "@/types/calendar.types";
 import { RegistrarName } from "@/types/ipo.types";
 import { CalendarProvider } from "./types";
+import { fetchWithTimeout } from "./fetch-utils";
 
 const BASE_URL = "https://www.ipoguru.in/api/v1";
 
@@ -72,18 +73,43 @@ export function toOptionalNumber(v: unknown): number | undefined {
 /** "₹440 - ₹463" / "440-463" / "118" → { min, max }. */
 export function parsePriceBand(raw?: string): PriceBand {
   if (!raw) return { min: 0, max: 0 };
-  const nums = raw.match(/[\d.]+/g)?.map(Number).filter((n) => !Number.isNaN(n)) ?? [];
+  const nums = raw.match(/\d+(?:\.\d+)?/g)?.map(Number).filter((n) => !Number.isNaN(n)) ?? [];
   if (nums.length === 0) return { min: 0, max: 0 };
   if (nums.length === 1) return { min: nums[0], max: nums[0] };
   return { min: Math.min(...nums), max: Math.max(...nums) };
 }
 
-/** Normalise any sensible date string to ISO yyyy-mm-dd, else undefined. */
+const MONTHS: Record<string, string> = {
+  jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+  jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+};
+
+/**
+ * Normalise a date string to ISO yyyy-mm-dd, else undefined. Only unambiguous
+ * formats are accepted — a bare numeric "12-08-2026" is DD-MM-YYYY in Indian
+ * sources but parses as MM-DD-YYYY under `new Date` on most hosts, so it is
+ * handled explicitly and the generic Date fallback is limited to strings with
+ * a month name.
+ */
 export function toISODate(raw?: string): string | undefined {
   if (!raw) return undefined;
+  const s = raw.trim();
   // Already ISO?
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
-  const d = new Date(raw);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // dd-Mon-yyyy ("12-Aug-2026") / dd Mon yyyy
+  let m = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,9})[-\s](\d{4})$/);
+  if (m) {
+    const mon = MONTHS[m[2].slice(0, 3).toLowerCase()];
+    if (mon) return `${m[3]}-${mon}-${m[1].padStart(2, "0")}`;
+  }
+  // dd-mm-yyyy / dd/mm/yyyy / dd.mm.yyyy (Indian day-first order)
+  m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (m) {
+    return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  }
+  // Last resort: only strings with a month name (unambiguous).
+  if (!/[A-Za-z]{3,}/.test(s)) return undefined;
+  const d = new Date(s);
   if (Number.isNaN(d.getTime())) return undefined;
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
@@ -110,6 +136,9 @@ const REGISTRAR_MAP: { match: RegExp; name: RegistrarName }[] = [
   { match: /bigshare/i, name: "bigshare" },
   { match: /link\s*intime|linkintime/i, name: "linkintime" },
   { match: /mufg|intime/i, name: "mufg" },
+  { match: /skyline/i, name: "skyline" },
+  { match: /purva/i, name: "purva" },
+  { match: /maashitla/i, name: "maashitla" },
 ];
 
 export function parseRegistrar(raw?: string): RegistrarName {
@@ -150,7 +179,9 @@ export function normalize(raw: RawIpo): CalendarIPO | null {
   const board = parseBoard(raw.type);
 
   return {
-    id: `${board}-${slugify(name)}`,
+    // Year-suffixed so a same-name relist in another year can't collide with
+    // (and overwrite) the earlier record.
+    id: `${board}-${slugify(name)}-${openDate.slice(0, 4)}`,
     name,
     board,
     registrar: parseRegistrar(raw.registrar),
@@ -175,7 +206,7 @@ export function createIpoGuruProvider(apiKey: string): CalendarProvider {
     source: "live",
     credit: { name: "IPO Guru", url: "https://www.ipoguru.in/" },
     async fetchCatalogue(): Promise<CalendarIPO[]> {
-      const res = await fetch(`${BASE_URL}/ipos`, {
+      const res = await fetchWithTimeout(`${BASE_URL}/ipos`, {
         headers: { "X-API-KEY": apiKey, Accept: "application/json" },
         // Caching is handled by the provider registry; always get fresh here.
         cache: "no-store",

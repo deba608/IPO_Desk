@@ -18,6 +18,7 @@
 
 import { CalendarIPO, IPOBoard, PriceBand } from "@/types/calendar.types";
 import { CalendarProvider } from "./types";
+import { fetchWithTimeout } from "./fetch-utils";
 
 const HOST = "https://webnodejs.investorgain.com";
 const REFERER = "https://www.investorgain.com/";
@@ -123,7 +124,7 @@ async function fetchReport<T extends { reportTableData?: unknown[] }>(
   for (let i = 0; i < REPORT_PATH_PREFIXES.length; i++) {
     const prefix = REPORT_PATH_PREFIXES[i];
     try {
-      const res = await fetch(reportUrlFor(prefix, reportId), {
+      const res = await fetchWithTimeout(reportUrlFor(prefix, reportId), {
         headers: IG_HEADERS,
         cache: "no-store",
       });
@@ -197,13 +198,16 @@ function parseUpdatedOn(raw?: string): string | undefined {
   return Number.isNaN(new Date(iso).getTime()) ? undefined : iso;
 }
 
-/** "Rs 28 (28.28%) ..." → 28. "Rs -- (0.00%)" / "" → undefined. */
+/** "Rs 28 (28.28%) ..." → 28. "Rs -- (0.00%)" / "" → undefined. A genuine 0 (at par) is kept as 0. */
 function parseGmp(raw?: string): number | undefined {
   const text = stripTags(raw);
+  // "--" is the source's marker for "no GMP published" — the trailing
+  // "(0.00%)" must not be mistaken for an at-par zero.
+  if (text.includes("--")) return undefined;
   const m = text.match(/-?\d+(?:\.\d+)?/);
   if (!m) return undefined;
   const n = Number(m[0]);
-  return Number.isFinite(n) && n !== 0 ? n : undefined;
+  return Number.isFinite(n) ? n : undefined;
 }
 
 /**
@@ -234,10 +238,10 @@ function parsePriceBand(raw?: string): PriceBand {
   return { min: Math.min(...nums), max: Math.max(...nums) };
 }
 
-/** "Rs47.91 Cr" → 47.91; "-" → 0. */
+/** "Rs47.91 Cr" → 47.91; ranges take the top end; "-" → 0. */
 function parseCrore(raw?: string): number {
-  const m = stripTags(raw).match(/\d+(?:\.\d+)?/);
-  return m ? Number(m[0]) : 0;
+  const nums = stripTags(raw).match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  return nums.length ? Math.max(...nums) : 0;
 }
 
 function parseNumber(raw?: string): number {
@@ -348,7 +352,9 @@ function normalize(
   const gmpRange = parseGmpRange(row.GMP);
 
   return {
-    id: `${board}-${slugify(name)}`,
+    // Year-suffixed so a same-name relist in another year can't collide with
+    // (and overwrite) the earlier record.
+    id: `${board}-${slugify(name)}-${openDate.slice(0, 4)}`,
     name,
     board,
     registrar: "kfintech", // not in this report; display-only default
@@ -403,11 +409,16 @@ function ddmmyyyyToISO(s?: string): string | undefined {
  * concurrent band/history reads of the same page.
  */
 async function fetchDetailHtml(sourceUrl: string): Promise<string> {
-  const res = await fetch(sourceUrl, {
-    headers: { "User-Agent": UA, Accept: "text/html" },
-    // Detail pages are heavy (~130KB); let Next cache them briefly.
-    next: { revalidate: 600 },
-  });
+  const res = await fetchWithTimeout(
+    sourceUrl,
+    {
+      headers: { "User-Agent": UA, Accept: "text/html" },
+      // Detail pages are heavy (~130KB); let Next cache them briefly.
+      next: { revalidate: 600 },
+    },
+    // Detail pages are large — allow extra time over the default.
+    20_000
+  );
   if (!res.ok) throw new Error(`InvestorGain detail page responded ${res.status}`);
   return (await res.text()).replace(/\\"/g, '"');
 }

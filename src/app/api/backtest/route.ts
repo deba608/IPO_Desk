@@ -1,43 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runBacktest, BacktestCriteria } from "@/features/backtest/lib/backtest.service";
+import { getClientKey, isRateLimited } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
+/** Clamp a query number into [min, max]; fall back when missing/non-finite. */
+function num(
+  value: string | null,
+  fallback: number,
+  min: number,
+  max: number
+): number {
+  const n = value === null ? NaN : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(Math.max(n, min), max);
+}
+
+/** Clamp an optional query number; undefined stays undefined. */
+function optNum(value: string | null, min: number, max: number): number | undefined {
+  if (value === null) return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.min(Math.max(n, min), max);
+}
+
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
+  if (isRateLimited(getClientKey(request), 30)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
-  const minGmpPercent = Number(searchParams.get("minGmpPercent") ?? "0");
-  const minQibSubscription = Number(searchParams.get("minQibSubscription") ?? "0");
-  const minRetailSubscription = Number(searchParams.get("minRetailSubscription") ?? "0");
-  const minTotalSubscription = Number(searchParams.get("minTotalSubscription") ?? "0");
-  const board = (searchParams.get("board") as "all" | "mainboard" | "sme") || "all";
-  const minIssueSizeCr = searchParams.has("minIssueSizeCr")
-    ? Number(searchParams.get("minIssueSizeCr"))
-    : undefined;
-  const maxIssueSizeCr = searchParams.has("maxIssueSizeCr")
-    ? Number(searchParams.get("maxIssueSizeCr"))
-    : undefined;
-  const sector = searchParams.get("sector") ?? undefined;
+  try {
+    const searchParams = request.nextUrl.searchParams;
 
-  const criteria: BacktestCriteria = {
-    minGmpPercent: Number.isFinite(minGmpPercent) ? minGmpPercent : 0,
-    minQibSubscription: Number.isFinite(minQibSubscription) ? minQibSubscription : 0,
-    minRetailSubscription: Number.isFinite(minRetailSubscription) ? minRetailSubscription : 0,
-    minTotalSubscription: Number.isFinite(minTotalSubscription) ? minTotalSubscription : 0,
-    board: ["all", "mainboard", "sme"].includes(board) ? board : "all",
-    minIssueSizeCr: Number.isFinite(minIssueSizeCr) ? minIssueSizeCr : undefined,
-    maxIssueSizeCr: Number.isFinite(maxIssueSizeCr) ? maxIssueSizeCr : undefined,
-    sector,
-  };
+    const board = (searchParams.get("board") as "all" | "mainboard" | "sme") || "all";
+    const sector = searchParams.get("sector") ?? undefined;
 
-  const startingCapital = Number(searchParams.get("startingCapital") ?? "100000");
-  const allocationPerIpo = Number(searchParams.get("allocationPerIpo") ?? "15000");
+    const criteria: BacktestCriteria = {
+      minGmpPercent: num(searchParams.get("minGmpPercent"), 0, 0, 1000),
+      minQibSubscription: num(searchParams.get("minQibSubscription"), 0, 0, 10000),
+      minRetailSubscription: num(searchParams.get("minRetailSubscription"), 0, 0, 10000),
+      minTotalSubscription: num(searchParams.get("minTotalSubscription"), 0, 0, 10000),
+      board: ["all", "mainboard", "sme"].includes(board) ? board : "all",
+      minIssueSizeCr: optNum(searchParams.get("minIssueSizeCr"), 0, 1e7),
+      maxIssueSizeCr: optNum(searchParams.get("maxIssueSizeCr"), 0, 1e7),
+      sector: sector?.slice(0, 64),
+    };
 
-  const result = runBacktest(
-    criteria,
-    Number.isFinite(startingCapital) ? startingCapital : 100000,
-    Number.isFinite(allocationPerIpo) ? allocationPerIpo : 15000
-  );
+    const startingCapital = num(searchParams.get("startingCapital"), 100000, 1000, 1e9);
+    const allocationPerIpo = num(searchParams.get("allocationPerIpo"), 15000, 1000, 1e8);
 
-  return NextResponse.json(result);
+    const result = runBacktest(criteria, startingCapital, allocationPerIpo);
+    return NextResponse.json(result);
+  } catch (error: unknown) {
+    console.error("[/api/backtest] Error:", error);
+    return NextResponse.json(
+      { error: "Backtest failed. Please try again." },
+      { status: 500 }
+    );
+  }
 }

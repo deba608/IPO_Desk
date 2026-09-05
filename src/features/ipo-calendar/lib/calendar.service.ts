@@ -49,7 +49,7 @@ function enrich(ipo: CalendarIPO, today: string): CalendarIPOWithStatus {
       : undefined;
 
   const listingGainPercent =
-    ipo.listingPrice !== undefined
+    ipo.listingPrice !== undefined && ipo.priceBand.max > 0
       ? round1(((ipo.listingPrice - ipo.priceBand.max) / ipo.priceBand.max) * 100)
       : undefined;
 

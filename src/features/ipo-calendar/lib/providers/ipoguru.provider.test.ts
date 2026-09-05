@@ -161,7 +161,8 @@ describe("normalize", () => {
     });
     expect(out).not.toBeNull();
     expect(out).toMatchObject({
-      id: "sme-advance-technoforge",
+      // Year-suffixed so same-name relists can't collide.
+      id: "sme-advance-technoforge-2026",
       name: "Advance Technoforge",
       board: "sme",
       registrar: "kfintech", // default when null

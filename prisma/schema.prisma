@@ -24,6 +24,9 @@ enum Registrar {
   linkintime
   bigshare
   mufg
+  skyline
+  purva
+  maashitla
 }
 
 enum IPOStatus {
@@ -143,6 +146,10 @@ model Alert {
   @@index([userId])
   @@index([deviceId])
   @@index([ipoId])
+  // One alert per device × IPO × trigger — enforced where it matters
+  // (the API always sets all three). Nullable columns stay nullable for
+  // legacy rows; Postgres treats NULLs as distinct so old data migrates.
+  @@unique([deviceId, ipoId, trigger])
 }
 
 model WatchlistEntry {

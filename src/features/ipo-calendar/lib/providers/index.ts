@@ -17,11 +17,32 @@ export interface CatalogueResult {
 
 const TTL_MS = 60 * 1000;
 
-let cache: { at: number; result: CatalogueResult } | null = null;
+// globalThis so the cache survives module duplication across route bundles
+// and warm serverless instances (a module-local `let` re-scrapes on every
+// cold start and per-bundle).
+const globalStore = globalThis as unknown as {
+  __calendarCatalogueCache?: { at: number; result: CatalogueResult } | null;
+};
+if (globalStore.__calendarCatalogueCache === undefined) {
+  globalStore.__calendarCatalogueCache = null;
+}
 
-/** yyyy-mm-dd for "today" in UTC (snapshot dates are stored in UTC). */
-function todayUtcDate(): string {
-  return new Date().toISOString().slice(0, 10);
+function getCache(): { at: number; result: CatalogueResult } | null {
+  return globalStore.__calendarCatalogueCache ?? null;
+}
+
+function setCache(result: CatalogueResult): void {
+  globalStore.__calendarCatalogueCache = { at: Date.now(), result };
+}
+
+/** yyyy-mm-dd for "today" in IST (GMP moves on Indian market days). */
+function todayIstDate(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 function liveProviders(): CalendarProvider[] {
@@ -87,22 +108,26 @@ async function persistToDb(ipos: CalendarIPO[], source: DataSource): Promise<voi
         },
       });
 
-      // Record at most ONE GMP snapshot per IPO per calendar day, and only when
-      // the value actually moved. Without this, the calendar's 60s refresh (and
-      // every serverless cold start) would insert a duplicate row on each load —
-      // exploding the table and collapsing the "daily history" chart into dozens
-      // of same-hour points.
+      // One snapshot row per IPO per IST calendar day: create the day's row
+      // when missing, otherwise UPDATE it when the value moved — so intraday
+      // GMP moves are recorded without exploding the table into dozens of
+      // same-hour points.
       if (ipo.gmp !== undefined) {
         const latest = await prisma.gmpSnapshot.findFirst({
           where: { ipoId: dbIpo.id },
           orderBy: { date: "desc" },
         });
+        const today = todayIstDate();
         const sameDay =
-          latest && latest.date.toISOString().slice(0, 10) === todayUtcDate();
-        const unchanged = latest && latest.gmp === ipo.gmp;
-        if (!sameDay && !unchanged) {
+          latest?.date.toISOString().slice(0, 10) === today;
+        if (!latest || !sameDay) {
           await prisma.gmpSnapshot.create({
             data: { ipoId: dbIpo.id, gmp: ipo.gmp, source: "investorgain" },
+          });
+        } else if (latest.gmp !== ipo.gmp) {
+          await prisma.gmpSnapshot.update({
+            where: { id: latest.id },
+            data: { gmp: ipo.gmp, source: "investorgain" },
           });
         }
       }
@@ -113,8 +138,9 @@ async function persistToDb(ipos: CalendarIPO[], source: DataSource): Promise<voi
 }
 
 export async function loadCatalogue(forceRefresh = false): Promise<CatalogueResult> {
-  if (!forceRefresh && cache && Date.now() - cache.at < TTL_MS) {
-    return cache.result;
+  const cached = getCache();
+  if (!forceRefresh && cached && Date.now() - cached.at < TTL_MS) {
+    return cached.result;
   }
 
   for (const provider of liveProviders()) {
@@ -126,14 +152,17 @@ export async function loadCatalogue(forceRefresh = false): Promise<CatalogueResu
         source: provider.source,
         credit: provider.credit,
       };
-      cache = { at: Date.now(), result };
-      persistToDb(ipos, provider.source);
+      setCache(result);
+      // Awaited: on serverless the function can freeze right after the
+      // response, silently dropping fire-and-forget GMP snapshot writes.
+      await persistToDb(ipos, provider.source);
       return result;
     } catch (err) {
       console.error("[calendar] live provider failed, trying next source:", err);
     }
   }
 
-  if (cache) return cache.result;
+  const stale = getCache();
+  if (stale) return stale.result;
   return { ipos: await seedProvider.fetchCatalogue(), source: "sample" };
 }
