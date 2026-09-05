@@ -4,8 +4,17 @@ import { z } from "zod";
 import { checkAllotment } from "@/services/registrar.service";
 import { getClientKey, isRateLimited } from "@/lib/rate-limit";
 
-const RATE_LIMIT = 20; // requests per minute
+// Bulk uploads fan out into many small batch requests (frontend runs up to 3
+// in parallel), so the ceiling must fit a 500-PAN upload: 25 batches at size
+// 20, plus headroom for retries.
+const RATE_LIMIT = 60; // requests per minute
 const RATE_WINDOW_MS = 60 * 1000;
+
+// Allow the function to run up to 60s on platforms that support it (Vercel
+// Pro / Docker). Hobby-plan caps still apply, but the frontend's batching
+// keeps each request well under even a 10s budget.
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 // Absolute ceiling for the whole check pipeline. The client must always get
 // a JSON answer (even a 504) instead of spinning until the platform kills

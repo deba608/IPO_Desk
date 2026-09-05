@@ -24,9 +24,12 @@ import { useCheckHistory } from "@/hooks/useCheckHistory";
 /* ------------------------------------------------------------------ */
 
 // One giant /api/check call for hundreds of PANs would exceed serverless
-// time budgets, so large single-IPO checks are split into small sequential
-// requests and merged. Each batch is quick and progress is real.
-const BULK_BATCH_SIZE = 12;
+// time budgets, so large single-IPO checks are split into small requests.
+// Batches run with limited parallelism (each serverless invocation works
+// independently → ~3x throughput vs sequential) and merge progressively so
+// the first rows render in seconds while the rest stream in.
+const BULK_BATCH_SIZE = 20;
+const BULK_BATCH_CONCURRENCY = 3;
 
 function summarizeResults(results: AllotmentResult[]): CheckResponse["summary"] {
   return {
@@ -41,13 +44,19 @@ function summarizeResults(results: AllotmentResult[]): CheckResponse["summary"] 
 async function fetchCheckInBatches(
   pans: string[],
   ipoClientId: string,
-  onBatchDone: (done: number, total: number) => void
+  onBatchDone: (done: number, total: number) => void,
+  onPartial?: (partial: CheckResponse) => void
 ): Promise<CheckResponse> {
+  const batches: string[][] = [];
+  for (let i = 0; i < pans.length; i += BULK_BATCH_SIZE) {
+    batches.push(pans.slice(i, i + BULK_BATCH_SIZE));
+  }
   const merged: AllotmentResult[] = [];
   let ipoName = "";
   let resolvedClientId = ipoClientId;
-  for (let i = 0; i < pans.length; i += BULK_BATCH_SIZE) {
-    const batch = pans.slice(i, i + BULK_BATCH_SIZE);
+  let completed = 0;
+
+  const runBatch = async (batch: string[]): Promise<void> => {
     try {
       const response = await fetch("/api/check", {
         method: "POST",
@@ -74,8 +83,34 @@ async function fetchCheckInBatches(
         )
       );
     }
-    onBatchDone(Math.min(i + BULK_BATCH_SIZE, pans.length), pans.length);
-  }
+    completed += 1;
+    onBatchDone(
+      Math.min(completed * BULK_BATCH_SIZE, pans.length),
+      pans.length
+    );
+    // Progressive rendering: show what we have so far after every batch.
+    onPartial?.({
+      results: [...merged],
+      summary: summarizeResults(merged),
+      ipoName,
+      ipoClientId: resolvedClientId,
+      checkedAt: new Date().toISOString(),
+    });
+  };
+
+  // Limited-parallelism fan-out over batch indexes (order-independent merge).
+  let cursor = 0;
+  const workers = Array.from(
+    { length: Math.min(BULK_BATCH_CONCURRENCY, batches.length) },
+    async () => {
+      while (cursor < batches.length) {
+        const index = cursor++;
+        await runBatch(batches[index]);
+      }
+    }
+  );
+  await Promise.all(workers);
+
   return {
     results: merged,
     summary: summarizeResults(merged),
@@ -131,13 +166,16 @@ export default function Home() {
 
         let data: CheckResponse | ScanResponse;
         if (!scanMode && pans.length > BULK_BATCH_SIZE) {
-          // Large bulk upload: sequential small requests with a real progress
+          // Large bulk upload: parallel small requests with a real progress
           // bar. Stop the simulated interval first so the two don't fight.
+          // Partial merges render live — first rows appear in seconds.
           if (progressInterval !== undefined) clearInterval(progressInterval);
+          setScanResults(null);
           data = await fetchCheckInBatches(
             pans,
             selectedIPO!.id,
-            (done, total) => setProgress(10 + Math.round((done / total) * 80))
+            (done, total) => setProgress(10 + Math.round((done / total) * 80)),
+            (partial) => setResults(partial)
           );
           setProgress(100);
         } else {

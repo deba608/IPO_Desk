@@ -71,6 +71,22 @@ export class BigShareAdapter implements RegistrarAdapter {
 
   private readonly http: AxiosInstance;
 
+  /**
+   * Sticky fastest-mirror: once a mirror answers successfully it is tried
+   * first for subsequent PANs, so a dead/slow mirror costs one penalty per
+   * process lifetime instead of once per PAN in every bulk upload.
+   */
+  private fastestMirror: string | null = null;
+
+  /** Mirrors with the last-known-good one first. */
+  private orderedMirrors(): string[] {
+    if (!this.fastestMirror) return BIGSHARE_MIRRORS;
+    return [
+      this.fastestMirror,
+      ...BIGSHARE_MIRRORS.filter((m) => m !== this.fastestMirror),
+    ];
+  }
+
   constructor() {
     this.http = axios.create({
       // Keep well inside serverless function budgets; mirrors are tried in
@@ -144,55 +160,74 @@ export class BigShareAdapter implements RegistrarAdapter {
       : new Error(errorMessage(lastError) || "All Bigshare mirrors failed to fetch active IPOs");
   }
 
-  async checkAllotment(pan: string, clientId: string): Promise<AllotmentResult> {
+  async checkAllotment(
+    pan: string,
+    clientId: string,
+    preSolvedCaptcha?: { token: string; answer: string }
+  ): Promise<AllotmentResult> {
     const normalizedPan = pan.toUpperCase().trim();
     const started = Date.now();
     let lastError: unknown = null;
 
-    // Fetch a fresh CAPTCHA token + solved answer once per checkAllotment call
+    // Bulk path can hand us a pre-warmed CAPTCHA so the allotment POST
+    // starts immediately; otherwise fetch one (single-PAN path).
     let captchaToken: string;
     let captchaAnswer: string;
-    try {
-      const cf = await this.fetchCaptchaToken();
-      captchaToken = cf.token;
-      captchaAnswer = cf.answer;
-    } catch (error: unknown) {
-      const msg = errorMessage(error);
-      log("error", "pan_check_failure", `Failed to fetch CAPTCHA token: ${msg}`, {
-        meta: { clientId, registrar: this.name },
-      });
-      return {
-        pan: normalizedPan,
-        status: "error",
-        error: classifyCaptchaFailure(msg),
-      };
+    if (preSolvedCaptcha) {
+      captchaToken = preSolvedCaptcha.token;
+      captchaAnswer = preSolvedCaptcha.answer;
+    } else {
+      try {
+        const cf = await this.fetchCaptchaToken();
+        captchaToken = cf.token;
+        captchaAnswer = cf.answer;
+      } catch (error: unknown) {
+        const msg = errorMessage(error);
+        log("error", "pan_check_failure", `Failed to fetch CAPTCHA token: ${msg}`, {
+          meta: { clientId, registrar: this.name },
+        });
+        return {
+          pan: normalizedPan,
+          status: "error",
+          error: classifyCaptchaFailure(msg),
+        };
+      }
     }
 
-    for (const mirror of BIGSHARE_MIRRORS) {
+    for (const mirror of this.orderedMirrors()) {
       // Retry once per mirror with a fresh CAPTCHA if the answer is rejected.
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const response = await withRetry(() =>
-            this.http.post<BigShareCheckResponse>(
-              `https://${mirror}/Data.aspx/FetchIpodetails`,
-              {
-                Applicationno: "",
-                Company: clientId,
-                SelectionType: "PN", // PN = search by PAN
-                PanNo: normalizedPan,
-                txtcsdl: "",
-                txtDPID: "",
-                txtClId: "",
-                ddlType: "",
-                lang: "en",
-                // New: server-side CAPTCHA requirements
-                CaptchaToken: captchaToken,
-                CaptchaAnswer: captchaAnswer,
-                ResultToken: "",
-              },
-              { headers: { "Content-Type": "application/json; charset=utf-8" } }
-            )
+          // Fail fast inside bulk: the mirror loop already gives 3 mirrors ×
+          // 2 attempts of redundancy, so a long per-request retry budget here
+          // just multiplies every PAN's latency on flaky networks.
+          const response = await withRetry(
+            () =>
+              this.http.post<BigShareCheckResponse>(
+                `https://${mirror}/Data.aspx/FetchIpodetails`,
+                {
+                  Applicationno: "",
+                  Company: clientId,
+                  SelectionType: "PN", // PN = search by PAN
+                  PanNo: normalizedPan,
+                  txtcsdl: "",
+                  txtDPID: "",
+                  txtClId: "",
+                  ddlType: "",
+                  lang: "en",
+                  // New: server-side CAPTCHA requirements
+                  CaptchaToken: captchaToken,
+                  CaptchaAnswer: captchaAnswer,
+                  ResultToken: "",
+                },
+                { headers: { "Content-Type": "application/json; charset=utf-8" } }
+              ),
+            2,
+            800
           );
+
+          // Remember the working mirror so the next PAN tries it first.
+          this.fastestMirror = mirror;
 
           log("info", "api_response_time", `Bigshare PAN query completed via ${mirror}`, {
             durationMs: Date.now() - started,
@@ -323,13 +358,32 @@ export class BigShareAdapter implements RegistrarAdapter {
   }
 
   async checkBulkAllotment(pans: string[], clientId: string): Promise<AllotmentResult[]> {
-    // Each PAN needs its own CAPTCHA solve (~seconds), so run wider chunks
-    // than the default to keep bulk uploads fast. Failures stay per-PAN
-    // isolated via allSettled inside bulkCheck.
-    return bulkCheck(pans, (pan) => this.checkAllotment(pan, clientId), {
-      chunkSize: 8,
-      chunkDelayMs: 250,
-    });
+    // Each PAN needs its own CAPTCHA solve, so hide that latency by solving
+    // the first few CAPTCHAs UP FRONT in parallel — the first chunk's
+    // allotment POSTs then start immediately instead of waiting on serial
+    // captcha fetches. Pre-warmed tokens are consumed FIFO; any shortfall
+    // (failures, more PANs than warmed) falls back to per-PAN solving inside
+    // checkAllotment. Tokens are single-use but consumed within seconds, well
+    // inside their validity window. Failures stay per-PAN isolated via
+    // allSettled inside bulkCheck.
+    const PREWARM_COUNT = Math.min(Math.max(pans.length, 0), 8);
+    const pool: Array<{ token: string; answer: string }> = [];
+    if (PREWARM_COUNT > 1) {
+      const warmed = await Promise.allSettled(
+        Array.from({ length: PREWARM_COUNT }, () => this.fetchCaptchaToken())
+      );
+      for (const w of warmed) {
+        if (w.status === "fulfilled") pool.push(w.value);
+      }
+    }
+    return bulkCheck(
+      pans,
+      (pan) => this.checkAllotment(pan, clientId, pool.shift()),
+      {
+        chunkSize: 8,
+        chunkDelayMs: 100,
+      }
+    );
   }
 }
 
