@@ -218,9 +218,6 @@ export function Header() {
           >
             <Search className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 motion-reduce:transform-none" />
             <span className="hidden lg:inline">Search</span>
-            <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded border border-border/60 bg-background/60 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground/70 leading-none">
-              Ctrl + K
-            </kbd>
           </button>
           <span className="ml-1">
             <AuthButton />

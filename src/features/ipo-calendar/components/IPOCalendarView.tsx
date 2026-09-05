@@ -493,8 +493,8 @@ export function IPOCalendarView() {
               placeholder="Search..."
               className="w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground sm:w-36"
             />
-            <kbd className="hidden sm:inline-flex h-4 select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[9px] font-medium text-muted-foreground">
-              Ctrl + K
+            <kbd className="hidden h-4 select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[9px] font-medium text-muted-foreground sm:inline-flex">
+              /
             </kbd>
             {query && (
               <button
