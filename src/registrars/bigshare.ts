@@ -323,7 +323,13 @@ export class BigShareAdapter implements RegistrarAdapter {
   }
 
   async checkBulkAllotment(pans: string[], clientId: string): Promise<AllotmentResult[]> {
-    return bulkCheck(pans, (pan) => this.checkAllotment(pan, clientId));
+    // Each PAN needs its own CAPTCHA solve (~seconds), so run wider chunks
+    // than the default to keep bulk uploads fast. Failures stay per-PAN
+    // isolated via allSettled inside bulkCheck.
+    return bulkCheck(pans, (pan) => this.checkAllotment(pan, clientId), {
+      chunkSize: 8,
+      chunkDelayMs: 250,
+    });
   }
 }
 

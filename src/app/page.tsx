@@ -14,10 +14,76 @@ import { CheckerTabs } from "@/features/ipo-checker/components/CheckerTabs";
 import { ResultsDashboard } from "@/features/ipo-checker/components/ResultsDashboard";
 import { ScanResultsDashboard } from "@/features/ipo-checker/components/ScanResultsDashboard";
 import { RecentIPOsFeed } from "@/features/ipo-checker/components/RecentIPOsFeed";
-import { CheckResponse, ScanResponse } from "@/types/allotment.types";
+import { AllotmentResult, CheckResponse, ScanResponse } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
 import { useCheckHistory } from "@/hooks/useCheckHistory";
+
+/* ------------------------------------------------------------------ */
+/*  Bulk batching                                                         */
+/* ------------------------------------------------------------------ */
+
+// One giant /api/check call for hundreds of PANs would exceed serverless
+// time budgets, so large single-IPO checks are split into small sequential
+// requests and merged. Each batch is quick and progress is real.
+const BULK_BATCH_SIZE = 12;
+
+function summarizeResults(results: AllotmentResult[]): CheckResponse["summary"] {
+  return {
+    total: results.length,
+    allotted: results.filter((r) => r.status === "allotted").length,
+    notAllotted: results.filter((r) => r.status === "not_allotted").length,
+    notFound: results.filter((r) => r.status === "not_found").length,
+    errors: results.filter((r) => r.status === "error").length,
+  };
+}
+
+async function fetchCheckInBatches(
+  pans: string[],
+  ipoClientId: string,
+  onBatchDone: (done: number, total: number) => void
+): Promise<CheckResponse> {
+  const merged: AllotmentResult[] = [];
+  let ipoName = "";
+  let resolvedClientId = ipoClientId;
+  for (let i = 0; i < pans.length; i += BULK_BATCH_SIZE) {
+    const batch = pans.slice(i, i + BULK_BATCH_SIZE);
+    try {
+      const response = await fetch("/api/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pans: batch, ipoClientId }),
+      });
+      if (!response.ok) {
+        const errBody = (await response
+          .json()
+          .catch(() => null)) as { error?: string } | null;
+        throw new Error(errBody?.error ?? "Check failed");
+      }
+      const data = (await response.json()) as CheckResponse;
+      merged.push(...data.results);
+      if (!ipoName) ipoName = data.ipoName;
+      if (data.ipoClientId) resolvedClientId = data.ipoClientId;
+    } catch (error: unknown) {
+      // A failed batch must not discard the rest — record per-PAN errors
+      // and keep going so the user gets partial results plus a retry list.
+      const msg = error instanceof Error ? error.message : "Check failed";
+      merged.push(
+        ...batch.map(
+          (pan): AllotmentResult => ({ pan, status: "error", error: msg })
+        )
+      );
+    }
+    onBatchDone(Math.min(i + BULK_BATCH_SIZE, pans.length), pans.length);
+  }
+  return {
+    results: merged,
+    summary: summarizeResults(merged),
+    ipoName,
+    ipoClientId: resolvedClientId,
+    checkedAt: new Date().toISOString(),
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /*  Home Page                                                           */
@@ -63,30 +129,43 @@ export default function Home() {
           setProgress((p) => Math.min(p + (scanMode ? 2 : 5), 85));
         }, 300);
 
-        const response = await fetch(scanMode ? "/api/scan" : "/api/check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            scanMode
-              ? { pans }
-              : {
-                  pans,
-                  // Namespaced id so the backend resolves the right registrar even
-                  // when two registrars reuse the same numeric clientId
-                  ipoClientId: selectedIPO!.id,
-                }
-          ),
-        });
+        let data: CheckResponse | ScanResponse;
+        if (!scanMode && pans.length > BULK_BATCH_SIZE) {
+          // Large bulk upload: sequential small requests with a real progress
+          // bar. Stop the simulated interval first so the two don't fight.
+          if (progressInterval !== undefined) clearInterval(progressInterval);
+          data = await fetchCheckInBatches(
+            pans,
+            selectedIPO!.id,
+            (done, total) => setProgress(10 + Math.round((done / total) * 80))
+          );
+          setProgress(100);
+        } else {
+          const response = await fetch(scanMode ? "/api/scan" : "/api/check", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+              scanMode
+                ? { pans }
+                : {
+                    pans,
+                    // Namespaced id so the backend resolves the right registrar even
+                    // when two registrars reuse the same numeric clientId
+                    ipoClientId: selectedIPO!.id,
+                  }
+            ),
+          });
 
-        clearInterval(progressInterval);
-        setProgress(100);
+          clearInterval(progressInterval);
+          setProgress(100);
 
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error ?? "Check failed");
+          if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error ?? "Check failed");
+          }
+
+          data = await response.json();
         }
-
-        const data = await response.json();
 
         if (scanMode) {
           const scan = data as ScanResponse;

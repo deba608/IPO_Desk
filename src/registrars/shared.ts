@@ -46,15 +46,26 @@ export async function withRetry<T>(
   throw new Error("Max retries exceeded");
 }
 
+export interface BulkCheckOptions {
+  /** Max simultaneous checks per chunk. Higher = faster but more upstream load. */
+  chunkSize?: number;
+  /** Pause between chunks so bursts don't trip registrar rate limits. */
+  chunkDelayMs?: number;
+}
+
 /**
  * Run single-PAN checks in rate-limited chunks. Shared by all adapters so
  * bulk behaviour (concurrency, error isolation) is identical regardless of
- * registrar.
+ * registrar. Adapters with slow per-PAN work (e.g. Bigshare's CAPTCHA solve)
+ * pass a larger chunkSize to keep bulk uploads fast.
  */
 export async function bulkCheck(
   pans: string[],
-  check: (pan: string) => Promise<AllotmentResult>
+  check: (pan: string) => Promise<AllotmentResult>,
+  opts?: BulkCheckOptions
 ): Promise<AllotmentResult[]> {
+  const chunkSize = opts?.chunkSize ?? BULK_CHUNK_SIZE;
+  const chunkDelayMs = opts?.chunkDelayMs ?? BULK_CHUNK_DELAY_MS;
   const results: AllotmentResult[] = [];
 
   // Never forward malformed PANs to registrar endpoints — the adapter
@@ -66,7 +77,7 @@ export async function bulkCheck(
     return false;
   });
 
-  const batches = chunk(validPans, BULK_CHUNK_SIZE);
+  const batches = chunk(validPans, chunkSize);
 
   for (let b = 0; b < batches.length; b++) {
     const settled = await Promise.allSettled(batches[b].map((pan) => check(pan)));
@@ -87,7 +98,7 @@ export async function bulkCheck(
     });
 
     if (b < batches.length - 1) {
-      await delay(BULK_CHUNK_DELAY_MS);
+      await delay(chunkDelayMs);
     }
   }
 
