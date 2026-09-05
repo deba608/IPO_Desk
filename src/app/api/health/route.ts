@@ -27,6 +27,15 @@ export async function GET() {
     localOcrCircuitTripped: isLocalOcrUnavailable(),
     databaseConfigured: Boolean(process.env.DATABASE_URL?.trim()),
     cronSecretConfigured: Boolean(process.env.CRON_SECRET?.trim()),
+    authSecretConfigured: Boolean(process.env.AUTH_SECRET?.trim()),
+    googleConfigured: Boolean(
+      process.env.GOOGLE_CLIENT_ID?.trim() &&
+        process.env.GOOGLE_CLIENT_SECRET?.trim()
+    ),
+    resendConfigured: Boolean(process.env.RESEND_API_KEY?.trim()),
+    adminAllowlistSet:
+      Boolean(process.env.ADMIN_EMAILS?.trim()) ||
+      Boolean(process.env.ADMIN_PHONES?.trim()),
     checkedAt: new Date().toISOString(),
   });
 }
