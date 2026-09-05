@@ -179,20 +179,27 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
       return true;
     });
 
-    return [...filtered]
-      .sort((a, b) => {
-        // Both have calendar dates → sort newest openDate first
-        if (a.openDate && b.openDate) {
-          return b.openDate.localeCompare(a.openDate);
-        }
-        // One has a date → date-enriched floats to top
-        if (a.openDate) return -1;
-        if (b.openDate) return 1;
-        // Neither has a date → preserve source order (registrar's native newest-first)
-        return 0;
-      })
-      .slice(0, 30);
+    return [...filtered].sort((a, b) => {
+      // Both have calendar dates → sort newest openDate first
+      if (a.openDate && b.openDate) {
+        return b.openDate.localeCompare(a.openDate);
+      }
+      // One has a date → date-enriched floats to top
+      if (a.openDate) return -1;
+      if (b.openDate) return 1;
+      // Neither has a date → preserve source order (registrar's native newest-first)
+      return 0;
+    });
   }, [ipos, calendarMap, activeFilter]);
+
+  const FEED_PAGE = 30;
+  const [expanded, setExpanded] = useState(false);
+  // Reset expansion when the filter changes so counts stay truthful.
+  useEffect(() => {
+    setExpanded(false);
+  }, [activeFilter]);
+  const visible = expanded ? displayed : displayed.slice(0, FEED_PAGE);
+  const hiddenCount = displayed.length - visible.length;
 
   /* ── Loading state ─────────────────────────────────────────────── */
   if (loading) {
@@ -282,9 +289,9 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
       </div>
 
       {/* ── Pill strip ─────────────────────────────────────────────── */}
-      {displayed.length > 0 ? (
+      {visible.length > 0 ? (
         <div className="flex gap-2 overflow-x-auto pt-1 pb-1" style={{ scrollbarWidth: "none" }}>
-          {displayed.map((ipo) => {
+          {visible.map((ipo) => {
             const c = REGISTRAR_COLORS[ipo.registrar] ?? REGISTRAR_COLORS.kfintech;
             return (
               <button
@@ -330,6 +337,15 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
               </button>
             );
           })}
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="shrink-0 rounded-full border border-dashed border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            >
+              +{hiddenCount} more
+            </button>
+          )}
         </div>
       ) : (
         <div className="pt-4 text-center">

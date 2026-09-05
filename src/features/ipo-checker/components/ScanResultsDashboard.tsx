@@ -7,6 +7,7 @@ import {
   XCircle,
   AlertCircle,
   ChevronDown,
+  Download,
   Trophy,
   SearchX,
   Layers,
@@ -33,10 +34,34 @@ const REGISTRAR_LABELS: Record<string, string> = {
   maashitla: "Maashitla",
 };
 
+const CARDS_PER_PAGE = 10;
+const ROWS_PER_CARD = 20;
+
+function downloadCsv(filename: string, header: string[], rows: string[][]): void {
+  const esc = (v: unknown): string => {
+    const s = String(v ?? "");
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = [header, ...rows].map((r) => r.map(esc).join(",")).join("\r\n");
+  const url = URL.createObjectURL(
+    new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" })
+  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function ScanResultsDashboard({ results, onCheckAgain }: { results: ScanResponse; onCheckAgain?: () => void }) {
   const { iposWithAllotment, totalAllotted, scanned, ipos, errors, pansChecked } =
     results;
   const [isSharing, setIsSharing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [visibleCards, setVisibleCards] = useState(CARDS_PER_PAGE);
+  const { getLabel } = usePanLabels();
 
   const handleShare = async () => {
     setIsSharing(true);
@@ -67,6 +92,43 @@ export function ScanResultsDashboard({ results, onCheckAgain }: { results: ScanR
     }
   };
 
+  const handleExport = () => {
+    if (ipos.length === 0) {
+      toast.error("Nothing to export");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const rows: string[][] = [];
+      for (const ipo of ipos) {
+        for (const r of ipo.results) {
+          rows.push([
+            ipo.ipoName,
+            REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar,
+            r.pan,
+            getLabel(r.pan),
+            r.name ?? "",
+            r.appliedShares?.toString() ?? "",
+            r.allottedShares?.toString() ?? "",
+            r.status,
+            r.error ?? "",
+          ]);
+        }
+      }
+      const date = new Date().toISOString().split("T")[0];
+      downloadCsv(
+        `ipo-scan-${date}.csv`,
+        ["IPO", "Registrar", "PAN", "Label", "Name", "Applied", "Allotted", "Status", "Remarks"],
+        rows
+      );
+      toast.success(`Exported ${rows.length} rows`);
+    } catch {
+      toast.error("Export failed. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -79,20 +141,36 @@ export function ScanResultsDashboard({ results, onCheckAgain }: { results: ScanR
             {new Date(results.checkedAt).toLocaleString("en-IN")}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleShare}
-          disabled={isSharing}
-          className="shrink-0 gap-2"
-        >
-          {isSharing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Share2 className="h-4 w-4" />
-          )}
-          Share
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={isExporting || ipos.length === 0}
+            className="gap-2"
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            disabled={isSharing}
+            className="gap-2"
+          >
+            {isSharing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Share2 className="h-4 w-4" />
+            )}
+            Share
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -134,7 +212,7 @@ export function ScanResultsDashboard({ results, onCheckAgain }: { results: ScanR
         </p>
       )}
 
-      {/* Per-IPO cards */}
+      {/* Per-IPO cards (paginated — a wide scan can return dozens) */}
       {ipos.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-12 text-center">
           <SearchX className="mb-3 h-8 w-8 text-muted-foreground" />
@@ -144,11 +222,26 @@ export function ScanResultsDashboard({ results, onCheckAgain }: { results: ScanR
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {ipos.map((ipo) => (
-            <IPOScanCard key={ipo.ipoId} ipo={ipo} />
-          ))}
-        </div>
+        <>
+          <div className="space-y-3">
+            {ipos.slice(0, visibleCards).map((ipo) => (
+              <IPOScanCard key={ipo.ipoId} ipo={ipo} />
+            ))}
+          </div>
+          {visibleCards < ipos.length && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setVisibleCards((v) => v + CARDS_PER_PAGE)
+                }
+              >
+                Show more ({ipos.length - visibleCards} remaining)
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Check Again CTA */}
@@ -172,12 +265,18 @@ export function ScanResultsDashboard({ results, onCheckAgain }: { results: ScanR
 function IPOScanCard({ ipo }: { ipo: ScanIPOResult }) {
   const hasAllotment = ipo.summary.allotted > 0;
   const [open, setOpen] = useState(hasAllotment);
+  const [showAllRows, setShowAllRows] = useState(false);
   const { getLabel } = usePanLabels();
 
-  // Allotted rows first, then not_allotted; drop not_found noise.
+  // Allotted first, then applied, then per-PAN errors; not_found is noise.
   const rows = ipo.results
-    .filter((r) => r.status === "allotted" || r.status === "not_allotted")
-    .sort((a, b) => (a.status === "allotted" ? -1 : 1) - (b.status === "allotted" ? -1 : 1));
+    .filter((r) => r.status !== "not_found")
+    .sort(
+      (a, b) =>
+        Number(b.status === "allotted") - Number(a.status === "allotted")
+    );
+  const errorRows = rows.filter((r) => r.status === "error");
+  const displayRows = showAllRows ? rows : rows.slice(0, ROWS_PER_CARD);
 
   return (
     <div
@@ -244,9 +343,10 @@ function IPOScanCard({ ipo }: { ipo: ScanIPOResult }) {
       {open && (
         <div className="border-t border-border px-4 py-3">
           <div className="space-y-1.5">
-            {rows.map((r) => {
+            {displayRows.map((r) => {
               const label = getLabel(r.pan);
               const allotted = r.status === "allotted";
+              const errored = r.status === "error";
               return (
                 <div
                   key={r.pan}
@@ -255,6 +355,8 @@ function IPOScanCard({ ipo }: { ipo: ScanIPOResult }) {
                   <div className="flex min-w-0 items-center gap-2">
                     {allotted ? (
                       <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                    ) : errored ? (
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-400" />
                     ) : (
                       <XCircle className="h-3.5 w-3.5 shrink-0 text-rose-400" />
                     )}
@@ -274,19 +376,41 @@ function IPOScanCard({ ipo }: { ipo: ScanIPOResult }) {
                     )}
                   </div>
                   <span
+                    title={r.error}
                     className={cn(
                       "shrink-0 font-mono text-xs tabular-nums",
-                      allotted ? "font-semibold text-emerald-400" : "text-muted-foreground"
+                      allotted
+                        ? "font-semibold text-emerald-400"
+                        : errored
+                          ? "max-w-[240px] truncate text-amber-400"
+                          : "text-muted-foreground"
                     )}
                   >
                     {allotted
                       ? `${(r.allottedShares ?? 0).toLocaleString("en-IN")} shares`
-                      : "Not allotted"}
+                      : errored
+                        ? (r.error ?? "Check failed")
+                        : "Not allotted"}
                   </span>
                 </div>
               );
             })}
           </div>
+          {errorRows.length > 0 && (
+            <p className="mt-2 text-[11px] text-amber-400/90">
+              {errorRows.length} check{errorRows.length === 1 ? "" : "s"} in this
+              IPO failed — retry them individually.
+            </p>
+          )}
+          {!showAllRows && rows.length > ROWS_PER_CARD && (
+            <button
+              type="button"
+              onClick={() => setShowAllRows(true)}
+              className="mt-2 text-xs text-primary hover:underline"
+            >
+              Show all {rows.length} rows
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -163,22 +163,30 @@ export function runBacktest(
     ) {
       return false;
     }
-    if (
-      criteria.sector &&
-      !ipo.sector.toLowerCase().includes(criteria.sector.toLowerCase())
-    ) {
-      return false;
+    if (criteria.sector) {
+      // Whole-token match ("tech" must not match "Fintech"): the query
+      // matches when it equals the sector or one of its tokens.
+      const query = criteria.sector.toLowerCase().trim();
+      const tokens = ipo.sector.toLowerCase().split(/[^a-z0-9]+/);
+      if (query !== ipo.sector.toLowerCase() && !tokens.includes(query)) {
+        return false;
+      }
     }
     return true;
   });
 
-  // Calculate benchmark metrics (entire dataset)
+  // Calculate benchmark metrics (entire dataset). Guarded: an emptied
+  // dataset must yield zeros, never NaN.
   const benchWins = all.filter((i) => i.listingGainPercent > 0).length;
-  const benchWinRate = Math.round((benchWins / all.length) * 1000) / 10;
+  const benchWinRate =
+    all.length > 0 ? Math.round((benchWins / all.length) * 1000) / 10 : 0;
   const benchAvgGain =
-    Math.round(
-      (all.reduce((sum, i) => sum + i.listingGainPercent, 0) / all.length) * 10
-    ) / 10;
+    all.length > 0
+      ? Math.round(
+          (all.reduce((sum, i) => sum + i.listingGainPercent, 0) / all.length) *
+            10
+        ) / 10
+      : 0;
 
   if (matched.length === 0) {
     return {
@@ -230,20 +238,22 @@ export function runBacktest(
     (a, b) => a.listingGainPercent - b.listingGainPercent
   );
   const mid = Math.floor(gainSorted.length / 2);
-  const medianGain =
+  const medianRaw =
     gainSorted.length % 2 !== 0
       ? gainSorted[mid].listingGainPercent
-      : Math.round(
-          ((gainSorted[mid - 1].listingGainPercent +
-            gainSorted[mid].listingGainPercent) /
-            2) *
-            10
-        ) / 10;
+      : (gainSorted[mid - 1].listingGainPercent +
+          gainSorted[mid].listingGainPercent) /
+        2;
+  // Round consistently on both odd and even paths.
+  const medianGain = Math.round(medianRaw * 10) / 10;
 
   const bestIpo = gainSorted[gainSorted.length - 1];
   const worstIpo = gainSorted[0];
 
-  // Capital simulation
+  // Capital simulation. Model assumption (documented, not capped): every
+  // matched IPO receives the full allocationPerIpo regardless of remaining
+  // capital — profit scales linearly with match count. A capped
+  // concurrent-allocation model would need a capital-constraint rule.
   let simulatedProfit = 0;
   for (const ipo of sorted) {
     const profitOnTrade = allocationPerIpo * (ipo.listingGainPercent / 100);
@@ -266,38 +276,32 @@ export function runBacktest(
   ).length;
   const megaGain = sorted.filter((i) => i.listingGainPercent > 100).length;
 
-  const distribution: ReturnDistributionTier[] = [
-    {
-      range: "Negative (< 0%)",
-      count: neg,
-      percentage: Math.round((neg / sorted.length) * 100),
-      color: "#f43f5e",
-    },
-    {
-      range: "0% to 15%",
-      count: low,
-      percentage: Math.round((low / sorted.length) * 100),
-      color: "#eab308",
-    },
-    {
-      range: "15% to 50%",
-      count: midGain,
-      percentage: Math.round((midGain / sorted.length) * 100),
-      color: "#10b981",
-    },
-    {
-      range: "50% to 100%",
-      count: highGain,
-      percentage: Math.round((highGain / sorted.length) * 100),
-      color: "#06b6d4",
-    },
-    {
-      range: "Multibagger (> 100%)",
-      count: megaGain,
-      percentage: Math.round((megaGain / sorted.length) * 100),
-      color: "#8b5cf6",
-    },
+  // Largest-remainder percentages so the tiers always sum to exactly 100
+  // (independent rounding could yield 99/101).
+  const tierDefs: Array<{ range: string; count: number; color: string }> = [
+    { range: "Negative (< 0%)", count: neg, color: "#f43f5e" },
+    { range: "0% to 15%", count: low, color: "#eab308" },
+    { range: "15% to 50%", count: midGain, color: "#10b981" },
+    { range: "50% to 100%", count: highGain, color: "#06b6d4" },
+    { range: "Multibagger (> 100%)", count: megaGain, color: "#8b5cf6" },
   ];
+  const exact = tierDefs.map((t) => (t.count / sorted.length) * 100);
+  const floored = exact.map(Math.floor);
+  let remainder = 100 - floored.reduce((a, b) => a + b, 0);
+  const order = exact
+    .map((e, i) => ({ i, frac: e - Math.floor(e) }))
+    .sort((a, b) => b.frac - a.frac);
+  for (const { i } of order) {
+    if (remainder <= 0) break;
+    floored[i] += 1;
+    remainder -= 1;
+  }
+  const distribution: ReturnDistributionTier[] = tierDefs.map((t, i) => ({
+    range: t.range,
+    count: t.count,
+    percentage: floored[i],
+    color: t.color,
+  }));
 
   return {
     criteria,
