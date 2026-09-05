@@ -142,26 +142,19 @@ export function Header() {
         <Link
           href="/"
           aria-label="IPO Desk — home"
-          className="group flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="group flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <span className="shrink-0 rounded-xl bg-gradient-to-br from-primary via-primary/70 to-violet-500/70 p-[1.5px] shadow-[0_0_16px_-4px_var(--primary)] transition-shadow duration-300 group-hover:shadow-[0_0_20px_-2px_var(--primary)]">
-            <Image
-              src="/logo.png"
-              alt=""
-              width={34}
-              height={34}
-              className="rounded-[10px] transition-transform duration-300 ease-out group-hover:scale-105 group-hover:rotate-3 group-active:scale-95 motion-reduce:transform-none"
-              style={{ width: 31, height: "auto" }}
-              priority
-            />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-base font-bold tracking-tight sm:text-lg">
-              IPO Desk
-            </span>
-            <span className="hidden text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70 sm:block">
-              Allotment Checker
-            </span>
+          <Image
+            src="/logo.png"
+            alt=""
+            width={34}
+            height={34}
+            className="rounded-lg shrink-0 transition-transform duration-300 ease-out group-hover:scale-105 group-hover:rotate-3 group-active:scale-95 motion-reduce:transform-none"
+            style={{ width: 34, height: "auto" }}
+            priority
+          />
+          <span className="text-base font-bold tracking-tight sm:text-lg">
+            IPO Desk
           </span>
         </Link>
 
