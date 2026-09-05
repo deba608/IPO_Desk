@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,8 +12,6 @@ type NavItem = {
   href: string;
   label: string;
   icon: typeof Calendar;
-  /** Resting icon tint (active state always uses the primary color). */
-  iconClass: string;
   isActive: (pathname: string) => boolean;
 };
 
@@ -22,28 +20,24 @@ const NAV_ITEMS: NavItem[] = [
     href: "/",
     label: "Allotment Checker",
     icon: SearchCode,
-    iconClass: "text-primary",
     isActive: (p) => p === "/",
   },
   {
     href: "/calendar",
     label: "Calendar",
     icon: Calendar,
-    iconClass: "text-emerald-400",
     isActive: (p) => p === "/calendar" || p.startsWith("/ipo/"),
   },
   {
     href: "/backtest",
     label: "Backtest",
     icon: ChartLine,
-    iconClass: "text-violet-400",
     isActive: (p) => p === "/backtest",
   },
   {
     href: "/history",
     label: "History",
     icon: History,
-    iconClass: "text-amber-400",
     isActive: (p) => p === "/history",
   },
 ];
@@ -53,49 +47,11 @@ function openCommandPalette() {
   window.dispatchEvent(new Event("open-command-palette"));
 }
 
-/** Spring-like ease used for the sliding indicator + scroll shrink. */
-const EASE = "cubic-bezier(0.22,1,0.36,1)";
-
 export function Header() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-
-  // Sliding active-pill indicator: measure the active link's box and move a
-  // single shared element to it, so switching tabs glides instead of snapping.
-  const navRef = useRef<HTMLDivElement>(null);
-  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-  const [indicator, setIndicator] = useState<{
-    left: number;
-    width: number;
-    show: boolean;
-    animate: boolean;
-  }>({ left: 0, width: 0, show: false, animate: false });
-
-  const activeIndex = NAV_ITEMS.findIndex((it) => it.isActive(pathname));
-
-  useLayoutEffect(() => {
-    const measure = () => {
-      const el = activeIndex >= 0 ? linkRefs.current[activeIndex] : null;
-      if (!el) {
-        setIndicator((s) => ({ ...s, show: false }));
-        return;
-      }
-      setIndicator((prev) => ({
-        left: el.offsetLeft,
-        width: el.offsetWidth,
-        show: true,
-        // Don't animate the very first placement (avoid a slide-in from 0).
-        animate: prev.show,
-      }));
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [activeIndex, pathname]);
-
-  // Strengthen the border + lift a shadow + shrink the bar once scrolled.
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
     onScroll();
@@ -103,9 +59,7 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // While the mobile menu is open: close on Escape, close if the viewport grows
-  // to desktop (panel is md:hidden, so it would otherwise leave scroll locked),
-  // and lock body scroll.
+  // Close mobile menu on Escape / desktop resize, lock body scroll while open.
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
@@ -125,99 +79,66 @@ export function Header() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 border-b bg-background/70 backdrop-blur-xl backdrop-saturate-150 transition-shadow duration-300 [padding-top:env(safe-area-inset-top)]",
-        scrolled
-          ? "border-border shadow-[0_1px_0_0_rgba(255,255,255,0.04),0_12px_32px_-12px_rgba(0,0,0,0.7)]"
-          : "border-border/40"
+        "sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+        scrolled ? "border-border shadow-sm" : "border-border/60"
       )}
     >
-      <div
-        className={cn(
-          "mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 transition-[height] duration-300 motion-reduce:transition-none sm:px-6",
-          scrolled ? "h-14" : "h-16"
-        )}
-        style={{ transitionTimingFunction: EASE }}
-      >
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         {/* Brand */}
         <Link
           href="/"
           aria-label="IPO Desk — home"
-          className="group flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="flex shrink-0 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <Image
             src="/logo.png"
             alt=""
-            width={34}
-            height={34}
-            className="rounded-lg shrink-0 transition-transform duration-300 ease-out group-hover:scale-105 group-hover:rotate-3 group-active:scale-95 motion-reduce:transform-none"
-            style={{ width: 34, height: "auto" }}
+            width={32}
+            height={32}
+            className="rounded-md"
+            style={{ width: 32, height: "auto" }}
             priority
           />
-          <span className="text-base font-bold tracking-tight sm:text-lg">
+          <span className="text-[17px] font-semibold tracking-tight">
             IPO Desk
           </span>
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-1 md:flex">
-          {/* Sliding indicator + the links share one relative box */}
-          <div ref={navRef} className="relative flex items-center gap-1">
-            <span
-              aria-hidden
-              className={cn(
-                "pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-lg bg-gradient-to-r from-primary/20 via-primary/10 to-violet-500/10 ring-1 ring-inset ring-primary/25",
-                indicator.show ? "opacity-100" : "opacity-0",
-                indicator.animate
-                  ? "transition-all duration-300 motion-reduce:transition-none"
-                  : ""
-              )}
-              style={{
-                left: indicator.left,
-                width: indicator.width,
-                height: 40,
-                transitionTimingFunction: EASE,
-              }}
-            />
-            {NAV_ITEMS.map((item, i) => {
-              const { href, label, icon: Icon, iconClass, isActive } = item;
-              const active = isActive(pathname);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  title={label}
-                  ref={(el) => {
-                    linkRefs.current[i] = el;
-                  }}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "group relative z-10 flex h-10 items-center gap-2 rounded-lg px-2.5 text-sm font-medium outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:px-3",
-                    active
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 group-active:scale-90 motion-reduce:transform-none",
-                      active ? "text-primary" : iconClass
-                    )}
-                  />
-                  <span className="hidden lg:inline">{label}</span>
-                </Link>
-              );
-            })}
-          </div>
+        <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+          {NAV_ITEMS.map((item) => {
+            const { href, label, icon: Icon, isActive } = item;
+            const active = isActive(pathname);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                  active
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            );
+          })}
 
-          {/* Search trigger */}
+          <div className="mx-2 h-5 w-px bg-border" aria-hidden />
+
           <button
             type="button"
             onClick={openCommandPalette}
-            aria-label="Open search (Ctrl + K)"
-            className="group ml-1 flex h-10 items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground outline-none transition-all duration-200 hover:border-primary/40 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95 motion-reduce:active:scale-100"
+            className="flex h-9 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Search className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 motion-reduce:transform-none" />
-            <span className="hidden lg:inline">Search</span>
+            <Search className="h-4 w-4" />
+            <span>Search</span>
+            <kbd className="hidden rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-block">
+              Ctrl K
+            </kbd>
           </button>
           <span className="ml-1">
             <AuthButton />
@@ -231,7 +152,7 @@ export function Header() {
             type="button"
             onClick={openCommandPalette}
             aria-label="Open search"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-95 motion-reduce:active:scale-100"
+            className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Search className="h-5 w-5" />
           </button>
@@ -241,72 +162,46 @@ export function Header() {
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {/* Morphing hamburger ↔ close */}
-            <span className="relative block h-5 w-5">
-              <Menu
-                className={cn(
-                  "absolute inset-0 h-5 w-5 transition-all duration-300 motion-reduce:transition-none",
-                  menuOpen
-                    ? "rotate-90 scale-50 opacity-0"
-                    : "rotate-0 scale-100 opacity-100"
-                )}
-                style={{ transitionTimingFunction: EASE }}
-              />
-              <X
-                className={cn(
-                  "absolute inset-0 h-5 w-5 transition-all duration-300 motion-reduce:transition-none",
-                  menuOpen
-                    ? "rotate-0 scale-100 opacity-100"
-                    : "-rotate-90 scale-50 opacity-0"
-                )}
-                style={{ transitionTimingFunction: EASE }}
-              />
-            </span>
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile menu panel */}
-      <div
-        id="mobile-nav"
-        className={cn(
-          "overflow-y-auto border-border/60 bg-background/95 backdrop-blur-xl transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none md:hidden",
-          menuOpen ? "max-h-[70dvh] border-t opacity-100" : "max-h-0 opacity-0"
-        )}
-      >
-        <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 sm:px-6">
-          {NAV_ITEMS.map(({ href, label, icon: Icon, iconClass, isActive }, i) => {
-            const active = isActive(pathname);
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setMenuOpen(false)}
-                aria-current={active ? "page" : undefined}
-                style={{
-                  transitionDelay: menuOpen ? `${i * 45 + 60}ms` : "0ms",
-                }}
-                className={cn(
-                  "flex h-12 transform items-center gap-3 rounded-lg px-3 text-sm font-medium outline-none transition-[transform,opacity,background-color,color] duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
-                  menuOpen
-                    ? "translate-y-0 opacity-100"
-                    : "-translate-y-1 opacity-0",
-                  active
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted"
-                )}
-              >
-                <Icon
-                  className={cn("h-5 w-5", active ? "text-primary" : iconClass)}
-                />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div
+          id="mobile-nav"
+          className="border-t border-border/60 bg-background md:hidden"
+        >
+          <nav
+            className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 sm:px-6"
+            aria-label="Mobile"
+          >
+            {NAV_ITEMS.map(({ href, label, icon: Icon, isActive }) => {
+              const active = isActive(pathname);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                    active
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
