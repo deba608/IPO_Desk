@@ -98,17 +98,60 @@ describe("Purva adapter", () => {
     const adapter = new PurvaAdapter();
     // @ts-expect-error accessing private property for unit testing
     vi.spyOn(adapter.http, "get").mockResolvedValueOnce({
+      status: 200,
       data: PURVA_FORM_HTML,
       headers: { "set-cookie": ["csrftoken=xyz; path=/"] },
     });
     // @ts-expect-error accessing private property for unit testing
     vi.spyOn(adapter.http, "post").mockResolvedValueOnce({
+      status: 200,
       data: PURVA_NOT_FOUND_HTML,
       headers: {},
     });
 
     const res = await adapter.checkAllotment("ABCDE1234F", "91");
     expect(res.status).toBe("not_found");
+  });
+
+  it("follows the Django 302 + messages-cookie redirect (live-portal regression)", async () => {
+    // Live behaviour (verified 2026-09-06): the PAN POST answers
+    // `302 Location: /investor-service/ipo-query` with
+    // `Set-Cookie: messages=...`; the verdict renders only on the
+    // redirected GET. Dropping that cookie produced a blank form and the
+    // "unrecognized response format" error for every PAN.
+    const adapter = new PurvaAdapter();
+    // @ts-expect-error accessing private property for unit testing
+    vi.spyOn(adapter.http, "get")
+      .mockResolvedValueOnce({
+        status: 200,
+        data: PURVA_FORM_HTML,
+        headers: { "set-cookie": ["csrftoken=xyz; path=/"] },
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: PURVA_NOT_FOUND_HTML,
+        headers: {},
+      });
+    // @ts-expect-error accessing private property for unit testing
+    const post = vi.spyOn(adapter.http, "post").mockResolvedValueOnce({
+      status: 302,
+      data: "",
+      headers: {
+        location: "/investor-service/ipo-query",
+        "set-cookie": ["messages=1:abc:def; HttpOnly; Path=/"],
+      },
+    });
+
+    const res = await adapter.checkAllotment("ABCDE1234F", "91");
+    expect(res.status).toBe("not_found");
+    expect(post).toHaveBeenCalledTimes(1);
+    // The redirected GET must carry the messages cookie from the 302 hop.
+    // @ts-expect-error accessing private property for unit testing
+    const getMock = adapter.http.get as ReturnType<typeof vi.fn>;
+    const redirectCall = getMock.mock.calls[1][1] as {
+      headers?: Record<string, string>;
+    };
+    expect(redirectCall.headers?.["Cookie"] ?? "").toContain("messages=1:abc:def");
   });
 });
 

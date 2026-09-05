@@ -1,8 +1,10 @@
 // src/registrars/shared.ts
 // Shared utilities for registrar adapters: retry with exponential backoff,
-// chunked bulk execution (rate-limit protection), and XML helpers for the
-// ASP.NET WebMethod responses several registrars return.
+// chunked bulk execution (rate-limit protection), cookie-jar sessions for
+// Django/PHP form flows, and XML helpers for the ASP.NET WebMethod responses
+// several registrars return.
 
+import { AxiosInstance } from "axios";
 import { AllotmentResult } from "@/types/allotment.types";
 
 export const BULK_CHUNK_SIZE = 5; // max simultaneous requests per registrar
@@ -144,4 +146,148 @@ export function findField(
 ): string | undefined {
   const key = Object.keys(record).find((k) => pattern.test(k));
   return key !== undefined ? record[key] : undefined;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Cookie-jar session for HTML form flows                              */
+/* ------------------------------------------------------------------ */
+
+export interface SessionResponse {
+  status: number;
+  data: string;
+}
+
+export interface SessionRequestOptions {
+  headers?: Record<string, string>;
+}
+
+export interface CookieSession {
+  get(url: string, opts?: SessionRequestOptions): Promise<SessionResponse>;
+  post(
+    url: string,
+    body: string,
+    opts?: SessionRequestOptions
+  ): Promise<SessionResponse>;
+}
+
+/**
+ * Cookie-jar session over an axios instance for Django/PHP form flows.
+ *
+ * Why this exists (Purva lesson, 2026-09-06): Django answers a form POST
+ * with `302 + Set-Cookie: messages=... + Location: <same page>` and renders
+ * the verdict ("No record found" banner / result table) only on the NEXT
+ * GET. Axios follows the 302 internally but drops the intermediate
+ * Set-Cookie, so the final page is a blank form — every check then fails
+ * with "unrecognized response format". This session follows redirects
+ * manually (maxRedirects: 0 + validateStatus) and replays the accumulated
+ * jar on every hop, exactly like a browser / CookieJar client.
+ *
+ * Same-origin only by construction: adapters talk to one portal host.
+ * POST → 301/302/303 becomes GET, matching browser behaviour.
+ */
+export function createCookieSession(
+  http: AxiosInstance,
+  maxRedirects = 5
+): CookieSession {
+  const jar = new Map<string, string>();
+
+  function storeCookies(setCookie: unknown): void {
+    const list = Array.isArray(setCookie)
+      ? setCookie
+      : typeof setCookie === "string"
+        ? [setCookie]
+        : [];
+    for (const entry of list) {
+      const pair = String(entry).split(";")[0].trim();
+      const eq = pair.indexOf("=");
+      if (eq > 0) {
+        const name = pair.slice(0, eq).trim();
+        const value = pair.slice(eq + 1).trim();
+        if (name) {
+          if (value) jar.set(name, value);
+          else jar.delete(name);
+        }
+      }
+    }
+  }
+
+  function cookieHeader(): string {
+    return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
+  }
+
+  async function request(
+    method: "get" | "post",
+    url: string,
+    body?: string,
+    headers: Record<string, string> = {},
+    redirectCount = 0
+  ): Promise<SessionResponse> {
+    const merged: Record<string, string> = { ...headers };
+    const jarCookies = cookieHeader();
+    if (jarCookies) {
+      merged["Cookie"] = merged["Cookie"]
+        ? `${merged["Cookie"]}; ${jarCookies}`
+        : jarCookies;
+    }
+
+    const response =
+      method === "get"
+        ? await http.get<string>(url, {
+            headers: merged,
+            maxRedirects: 0,
+            validateStatus: () => true,
+          })
+        : await http.post<string>(url, body ?? "", {
+            headers: merged,
+            maxRedirects: 0,
+            validateStatus: () => true,
+          });
+
+    storeCookies(
+      (response.headers as unknown as Record<string, unknown>)?.["set-cookie"]
+    );
+
+    const status = response.status;
+    const location = (
+      response.headers as unknown as Record<string, unknown>
+    )?.["location"];
+    if (
+      status >= 300 &&
+      status < 400 &&
+      typeof location === "string" &&
+      location &&
+      redirectCount < maxRedirects
+    ) {
+      const nextUrl = new URL(location, url).toString();
+      const followAsGet =
+        method === "get" || [301, 302, 303].includes(status);
+      return request(
+        followAsGet ? "get" : "post",
+        nextUrl,
+        followAsGet ? undefined : body,
+        headers,
+        redirectCount + 1
+      );
+    }
+
+    if (status >= 400) {
+      // Axios-shaped failure so withRetry() and the adapters' catch blocks
+      // (err.response.status → 429 / API-error mapping) behave exactly as
+      // they do for direct axios calls.
+      const failure = new Error(`Request failed with status code ${status}`);
+      (failure as { response?: unknown }).response = {
+        status,
+        headers: response.headers,
+        data: response.data,
+      };
+      throw failure;
+    }
+
+    return { status, data: response.data ?? "" };
+  }
+
+  return {
+    get: (url, opts) => request("get", url, undefined, opts?.headers),
+    post: (url, body, opts) => request("post", url, body, opts?.headers),
+  };
 }

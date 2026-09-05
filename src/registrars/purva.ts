@@ -17,7 +17,7 @@ import { RegistrarAdapter } from "./adapter.interface";
 import { AllotmentResult } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { log } from "@/services/logger.service";
-import { bulkCheck, withRetry } from "./shared";
+import { bulkCheck, createCookieSession, withRetry } from "./shared";
 
 const PURVA_BASE_URL = "https://www.purvashare.com";
 const PURVA_QUERY_PATH = "/investor-service/ipo-query";
@@ -27,15 +27,6 @@ const BROWSER_UA =
 
 function stripTags(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function cookiesFromHeaders(headers: unknown): string {
-  const raw = (headers as { "set-cookie"?: string[] })?.["set-cookie"];
-  if (!Array.isArray(raw)) return "";
-  return raw
-    .map((c) => c.split(";")[0].trim())
-    .filter(Boolean)
-    .join("; ");
 }
 
 function extractCsrfToken(html: string): string | null {
@@ -109,13 +100,17 @@ export class PurvaAdapter implements RegistrarAdapter {
   async checkAllotment(pan: string, clientId: string): Promise<AllotmentResult> {
     const normalizedPan = pan.toUpperCase().trim();
     const started = Date.now();
+    // Cookie-jar session: the portal answers the PAN POST with
+    // `302 + Set-Cookie: messages=...` and renders the verdict only on the
+    // redirected GET. Manual Cookie forwarding loses that cookie (see
+    // createCookieSession), so every check used to end on a blank form.
+    const session = createCookieSession(this.http);
 
     try {
-      // Step 1: load the query form → CSRF token + session cookie.
+      // Step 1: load the query form → CSRF token (+ session cookie into jar).
       const formResponse = await withRetry(() =>
-        this.http.get<string>(`${PURVA_BASE_URL}${PURVA_QUERY_PATH}`)
+        session.get(`${PURVA_BASE_URL}${PURVA_QUERY_PATH}`)
       );
-      const cookies = cookiesFromHeaders(formResponse.headers);
       const csrfToken = extractCsrfToken(formResponse.data ?? "");
       if (!csrfToken) {
         log("warn", "pan_check_failure", "Purva query form had no CSRF token", {
@@ -128,9 +123,10 @@ export class PurvaAdapter implements RegistrarAdapter {
         };
       }
 
-      // Step 2: submit the PAN query in the same session.
+      // Step 2: submit the PAN query; the session follows the 302 with the
+      // full cookie jar and returns the rendered result page.
       const response = await withRetry(() =>
-        this.http.post<string>(
+        session.post(
           `${PURVA_BASE_URL}${PURVA_QUERY_PATH}`,
           new URLSearchParams({
             csrfmiddlewaretoken: csrfToken,
@@ -141,7 +137,6 @@ export class PurvaAdapter implements RegistrarAdapter {
           {
             headers: {
               "Content-Type": "application/x-www-form-urlencoded",
-              ...(cookies ? { Cookie: cookies } : {}),
               Referer: `${PURVA_BASE_URL}${PURVA_QUERY_PATH}`,
             },
           }

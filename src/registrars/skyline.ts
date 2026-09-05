@@ -22,7 +22,7 @@ import { RegistrarAdapter } from "./adapter.interface";
 import { AllotmentResult } from "@/types/allotment.types";
 import { IPO } from "@/types/ipo.types";
 import { log } from "@/services/logger.service";
-import { bulkCheck, withRetry } from "./shared";
+import { bulkCheck, createCookieSession, withRetry } from "./shared";
 
 const SKYLINE_BASE_URL = "https://www.skylinerta.com";
 
@@ -31,16 +31,6 @@ const BROWSER_UA =
 
 function stripTags(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-/** Keep only `name=value` pairs from Set-Cookie headers for replay. */
-function cookiesFromHeaders(headers: unknown): string {
-  const raw = (headers as { "set-cookie"?: string[] })?.["set-cookie"];
-  if (!Array.isArray(raw)) return "";
-  return raw
-    .map((c) => c.split(";")[0].trim())
-    .filter(Boolean)
-    .join("; ");
 }
 
 function extractCsrfToken(html: string): string | null {
@@ -153,17 +143,20 @@ export class SkylineAdapter implements RegistrarAdapter {
   async checkAllotment(pan: string, clientId: string): Promise<AllotmentResult> {
     const normalizedPan = pan.toUpperCase().trim();
     const started = Date.now();
+    // Cookie-jar session (same helper as Purva): persists the PHP session
+    // across the form → search steps and survives any redirect hops that
+    // would otherwise drop intermediate Set-Cookie headers.
+    const session = createCookieSession(this.http);
 
     try {
       // Step 1: load the search form for this company → csrf token + session.
       const formResponse = await withRetry(() =>
-        this.http.post<string>(
+        session.post(
           `${SKYLINE_BASE_URL}/display_application.php`,
           new URLSearchParams({ company: clientId }).toString(),
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         )
       );
-      const cookies = cookiesFromHeaders(formResponse.headers);
       const csrfToken = extractCsrfToken(formResponse.data ?? "");
       if (!csrfToken) {
         log("warn", "pan_check_failure", "Skyline search form had no CSRF token", {
@@ -178,7 +171,7 @@ export class SkylineAdapter implements RegistrarAdapter {
 
       // Step 2: submit the PAN search in the same session.
       const response = await withRetry(() =>
-        this.http.post<string>(
+        session.post(
           `${SKYLINE_BASE_URL}/display_application.php`,
           new URLSearchParams({
             company: clientId,
@@ -191,7 +184,6 @@ export class SkylineAdapter implements RegistrarAdapter {
           {
             headers: {
               "Content-Type": "application/x-www-form-urlencoded",
-              ...(cookies ? { Cookie: cookies } : {}),
               Referer: `${SKYLINE_BASE_URL}/display_application.php`,
             },
           }
