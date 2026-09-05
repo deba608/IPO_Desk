@@ -58,8 +58,3 @@ export async function findIPO(idOrClientId: string): Promise<IPO | undefined> {
   negativeCache.set(idOrClientId, Date.now());
   return refreshed;
 }
-
-export async function getRegistrarForIPO(idOrClientId: string): Promise<string> {
-  const ipo = await findIPO(idOrClientId);
-  return ipo?.registrar ?? "kfintech";
-}

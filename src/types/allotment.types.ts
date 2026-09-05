@@ -64,13 +64,6 @@ export interface ScanResponse {
   checkedAt: string;
 }
 
-export interface ExportRequest {
-  results: AllotmentResult[];
-  format: "csv" | "xlsx";
-  ipoName: string;
-  checkedAt: string;
-}
-
 // Raw KFintech API response
 export interface KFinTechAllotmentRecord {
   Name: string;

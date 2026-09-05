@@ -5,10 +5,6 @@ export function isValidPAN(pan: string): boolean {
   return PAN_REGEX.test(pan.toUpperCase().trim());
 }
 
-export function normalizePAN(pan: string): string {
-  return pan.toUpperCase().trim();
-}
-
 export function parsePANsFromText(text: string): {
   valid: string[];
   invalid: string[];

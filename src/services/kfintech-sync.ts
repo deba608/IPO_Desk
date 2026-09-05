@@ -273,8 +273,3 @@ export async function getActiveIPOs(forceRefresh = false): Promise<IPO[]> {
 
   return syncActiveIPOs();
 }
-
-/** ISO timestamp of the last successful sync, or null if never synced. */
-export function getLastSyncedAt(): string | null {
-  return state.lastSyncedAt > 0 ? new Date(state.lastSyncedAt).toISOString() : null;
-}

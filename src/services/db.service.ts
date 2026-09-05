@@ -12,8 +12,4 @@ export function checkDbAvailability(): boolean {
   return isAvailable;
 }
 
-export function resetDbCheck(): void {
-  isAvailable = null;
-}
-
 export { getPrisma } from "@/lib/prisma";
