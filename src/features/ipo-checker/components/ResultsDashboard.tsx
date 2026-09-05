@@ -81,7 +81,7 @@ export function ResultsDashboard({ results, onCheckAgain }: ResultsDashboardProp
                   .then(() => toast.success("PAN copied!"))
                   .catch(() => toast.error("Could not copy PAN"));
               }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+              className="opacity-100 transition-opacity text-muted-foreground hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
             >
               <Copy className="h-3 w-3" />
             </button>
@@ -314,13 +314,14 @@ export function ResultsDashboard({ results, onCheckAgain }: ResultsDashboardProp
             ) : (
               <Download className="h-4 w-4" />
             )}
-            Export Excel
+            <span className="hidden min-[420px]:inline">Export Excel</span>
+            <span className="min-[420px]:hidden">Excel</span>
           </Button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 lg:grid-cols-5">
         <SummaryCard
           label="Total Checked"
           value={total}
@@ -595,7 +596,7 @@ function EditableLabel({
       >
         <Tag className="h-3 w-3" />
         {value}
-        <Pencil className="h-2.5 w-2.5 opacity-0 transition-opacity group-hover/lbl:opacity-70" />
+        <Pencil className="h-2.5 w-2.5 opacity-70 transition-opacity sm:opacity-0 sm:group-hover/lbl:opacity-70" />
       </button>
     );
   }
@@ -604,7 +605,7 @@ function EditableLabel({
     <button
       type="button"
       onClick={start}
-      className="inline-flex items-center gap-1 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+      className="inline-flex items-center gap-1 text-xs text-muted-foreground opacity-100 transition-opacity hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
     >
       <Tag className="h-3 w-3" />
       Label
@@ -628,12 +629,12 @@ function SummaryCard({
   bgClass = "bg-card border-border",
 }: SummaryCardProps) {
   return (
-    <div className={`rounded-xl border p-4 ${bgClass}`}>
+    <div className={`rounded-xl border p-3 sm:p-4 ${bgClass}`}>
       <div className={`flex items-center gap-2 text-xs mb-2 ${color} opacity-70`}>
         {icon}
         {label}
       </div>
-      <div className={`text-3xl font-bold tabular-nums ${color}`}>
+      <div className={`text-2xl font-bold tabular-nums sm:text-3xl ${color}`}>
         {value.toLocaleString()}
       </div>
     </div>

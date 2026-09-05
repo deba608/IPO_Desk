@@ -416,7 +416,7 @@ export function IPOCalendarView() {
               type="button"
               onClick={() => setTab(key)}
               className={cn(
-                "rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+                "rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3.5 sm:py-2 sm:text-sm",
                 tab === key
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
@@ -442,7 +442,7 @@ export function IPOCalendarView() {
           type="button"
           onClick={() => setTab("watchlist")}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+            "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3.5 sm:py-2 sm:text-sm",
             tab === "watchlist"
               ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
               : "border-border text-muted-foreground hover:border-amber-500/40 hover:text-amber-400"
@@ -483,15 +483,15 @@ export function IPOCalendarView() {
         </div>
 
         {/* Search + Sort + View Toggle */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 focus-within:border-primary relative">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 focus-within:border-primary relative sm:flex-none">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search..."
-              className="w-20 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground sm:w-36"
+              className="w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground sm:w-36"
             />
             <kbd className="hidden sm:inline-flex h-4 select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[9px] font-medium text-muted-foreground">
               Ctrl + K

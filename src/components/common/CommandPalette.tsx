@@ -280,8 +280,8 @@ export function CommandPalette() {
             </Command.List>
 
             {/* Footer / Shortcut info */}
-            <div className="flex items-center justify-between border-t border-slate-800 bg-slate-900/50 px-4 py-3 text-[11px] text-slate-500 select-none">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between gap-2 border-t border-slate-800 bg-slate-900/50 px-4 py-3 text-[11px] text-slate-500 select-none">
+              <div className="hidden min-w-0 items-center gap-1.5 sm:flex">
                 <span className="rounded bg-slate-800 px-1 py-0.5 font-mono text-[9px] text-slate-300">↑↓</span>
                 <span>Navigate</span>
                 <span className="rounded bg-slate-800 px-1 py-0.5 font-mono text-[9px] text-slate-300 ml-2">↵</span>

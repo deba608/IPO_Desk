@@ -210,7 +210,7 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
   return (
     <div>
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 pb-2.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-2.5">
         {/* Title */}
         <div className="flex items-center gap-2 shrink-0">
           <span className="relative flex h-2 w-2 shrink-0">

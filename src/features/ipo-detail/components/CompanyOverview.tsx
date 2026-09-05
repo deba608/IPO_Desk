@@ -41,7 +41,7 @@ export function CompanyOverview({ ipo }: Props) {
           </li>
         </ul>
 
-        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/50 pt-2.5 text-[11px]">
+        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/50 pt-2.5 text-[11px] [&>*]:min-w-0 [&>*]:break-words">
           <div>
             <span className="text-muted-foreground">Fresh Issue: </span>
             <span className="font-semibold text-foreground">~{formatCrore(freshIssueEst)}</span>

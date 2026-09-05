@@ -147,7 +147,7 @@ export function BacktestWorkspace() {
         <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <div className="mb-2 flex items-center gap-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
                 <Sparkles className="mr-1 h-3 w-3" /> Strategy Simulation Engine
               </Badge>
@@ -516,7 +516,7 @@ export function BacktestWorkspace() {
                         stroke="#737373"
                         fontSize={9}
                         tickLine={false}
-                        interval={0}
+                        interval="preserveStartEnd"
                         tickFormatter={(val) => {
                           if (val.includes("< 0%")) return "< 0%";
                           if (val.includes("0% to 15%")) return "0-15%";

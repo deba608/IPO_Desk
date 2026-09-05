@@ -155,7 +155,7 @@ export function SyncMonitor({ passcode }: { passcode: string }) {
 
         {/* Sync Result notification */}
         {lastSyncResult && (
-          <div className="mt-4 flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs text-emerald-400">
+          <div className="mt-4 flex flex-col gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs text-emerald-400 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>

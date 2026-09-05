@@ -49,12 +49,12 @@ export function PeerComparison({ ipo }: Props) {
 
   return (
     <div className="space-y-3 text-xs">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-muted-foreground">
           Valuation comparison against listed industry peers (P/E at upper band):
         </p>
         <span
-          className={`rounded px-2 py-0.5 font-semibold ${
+          className={`w-fit rounded px-2 py-0.5 font-semibold ${
             isAttractivelyPriced
               ? "bg-emerald-500/10 text-emerald-400"
               : "bg-amber-500/10 text-amber-400"

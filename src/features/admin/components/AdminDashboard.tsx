@@ -144,7 +144,7 @@ export function AdminDashboard() {
       </div>
 
       {/* ── Navigation Tabs ───────────────────────────────────── */}
-      <div className="flex border-b border-border/60">
+      <div className="no-scrollbar flex overflow-x-auto border-b border-border/60">
         {[
           { id: "sync" as AdminTab, label: "Pipelines & Sync", icon: Activity },
           { id: "logs" as AdminTab, label: "Live Log Stream", icon: Terminal },
@@ -157,7 +157,7 @@ export function AdminDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold transition-colors ${
+              className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-xs font-semibold transition-colors ${
                 active
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"

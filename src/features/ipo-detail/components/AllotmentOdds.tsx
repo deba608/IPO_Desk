@@ -158,7 +158,7 @@ export function AllotmentOdds({
         </div>
 
         {/* Secondary stats */}
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 [&>*]:min-w-0">
           <div className="rounded-md bg-background/60 px-2.5 py-1.5">
             <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
               <Target className="h-3 w-3" /> Expected lots

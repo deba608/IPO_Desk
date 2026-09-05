@@ -24,11 +24,11 @@ export function FinancialsTable({ ipo }: Props) {
 
   return (
     <div className="space-y-3 text-xs">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-muted-foreground">
           Restated consolidated financial performance (in ₹ Crore):
         </p>
-        <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-400">
+        <span className="flex w-fit items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-400">
           <TrendingUp className="h-3 w-3" /> ~{cagr}% 2-Yr Revenue CAGR
         </span>
       </div>

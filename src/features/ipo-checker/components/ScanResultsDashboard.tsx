@@ -70,7 +70,7 @@ export function ScanResultsDashboard({ results, onCheckAgain }: { results: ScanR
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-bold sm:text-2xl">Scan Results</h2>
           <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
@@ -250,7 +250,7 @@ function IPOScanCard({ ipo }: { ipo: ScanIPOResult }) {
               return (
                 <div
                   key={r.pan}
-                  className="flex items-center justify-between gap-3 text-sm"
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     {allotted ? (
@@ -309,7 +309,7 @@ function SummaryCard({
   bgClass = "bg-card border-border",
 }: SummaryCardProps) {
   return (
-    <div className={`rounded-xl border p-4 ${bgClass}`}>
+    <div className={`rounded-xl border p-3 sm:p-4 ${bgClass}`}>
       <div className={`mb-2 flex items-center gap-2 text-xs ${color} opacity-70`}>
         {icon}
         {label}

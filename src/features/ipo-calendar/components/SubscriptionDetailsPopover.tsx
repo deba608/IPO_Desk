@@ -40,8 +40,10 @@ export function SubscriptionDetailsPopover({ subscription, trigger }: Subscripti
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-64 bg-slate-900 border-slate-800 text-slate-100 p-4 shadow-xl"
+        className="w-64 max-w-[calc(100vw-2rem)] bg-slate-900 border-slate-800 text-slate-100 p-4 shadow-xl"
         align="center"
+        side="top"
+        collisionPadding={16}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

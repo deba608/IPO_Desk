@@ -99,7 +99,7 @@ export default function HistoryPage() {
         ) : (
           <>
             {/* Stats */}
-            <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
               <StatCard
                 label="Total Checks"
                 value={stats.total}
@@ -182,7 +182,7 @@ export default function HistoryPage() {
                         type="button"
                         aria-label="Remove entry"
                         onClick={() => remove(e.id)}
-                        className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                        className="shrink-0 text-muted-foreground opacity-100 transition-opacity hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -214,12 +214,12 @@ function StatCard({
   bgClass = "bg-card border-border",
 }: StatCardProps) {
   return (
-    <div className={`rounded-xl border p-4 ${bgClass}`}>
+    <div className={`rounded-xl border p-3 sm:p-4 ${bgClass}`}>
       <div className={`mb-2 flex items-center gap-2 text-xs ${color} opacity-70`}>
         {icon}
         {label}
       </div>
-      <div className={`text-2xl font-bold tabular-nums sm:text-3xl ${color}`}>
+      <div className={`text-xl font-bold tabular-nums sm:text-2xl ${color}`}>
         {typeof value === "number" ? value.toLocaleString("en-IN") : value}
       </div>
     </div>

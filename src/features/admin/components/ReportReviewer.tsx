@@ -69,12 +69,12 @@ export function ReportReviewer() {
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Select Issue:</span>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0 text-xs text-muted-foreground">Select Issue:</span>
             <select
               value={selectedIpoId || ""}
               onChange={(e) => setSelectedIpoId(e.target.value)}
-              className="h-8 rounded-lg border border-border bg-background px-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
+              className="h-8 min-w-0 max-w-full truncate rounded-lg border border-border bg-background px-2.5 text-xs text-foreground focus:border-primary focus:outline-none"
             >
               {ipos.map((i) => (
                 <option key={i.id} value={i.id}>

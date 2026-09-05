@@ -124,7 +124,7 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
             </span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
           <button
             type="button"
             aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
@@ -159,7 +159,7 @@ export function IPOCalendarCard({ ipo }: { ipo: CalendarIPOWithStatus }) {
       </div>
 
       {/* Metrics grid */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-3 min-[400px]:grid-cols-2">
         <Metric
           icon={IndianRupee}
           label="Price Band"
