@@ -23,6 +23,9 @@ const REGISTRAR_LABELS: Record<string, string> = {
   mufg:       "MUFG",
   linkintime: "LinkIn",
   bigshare:   "Bigshare",
+  skyline:    "Skyline",
+  purva:      "Purva",
+  maashitla:  "Maashitla",
 };
 
 /* ── Lifecycle chip styling ───────────────────────────────────────── */
