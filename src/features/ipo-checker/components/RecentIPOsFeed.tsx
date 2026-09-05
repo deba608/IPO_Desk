@@ -193,11 +193,10 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
   }, [ipos, calendarMap, activeFilter]);
 
   const FEED_PAGE = 30;
-  const [expanded, setExpanded] = useState(false);
-  // Reset expansion when the filter changes so counts stay truthful.
-  useEffect(() => {
-    setExpanded(false);
-  }, [activeFilter]);
+  // Which filter tab is expanded (null = none). Tying expansion to the tab
+  // itself resets it on filter change with no effect/setState dance.
+  const [expandedFilter, setExpandedFilter] = useState<string | null>(null);
+  const expanded = expandedFilter === activeFilter;
   const visible = expanded ? displayed : displayed.slice(0, FEED_PAGE);
   const hiddenCount = displayed.length - visible.length;
 
@@ -340,7 +339,7 @@ export function RecentIPOsFeed({ onSelect }: RecentIPOsFeedProps) {
           {hiddenCount > 0 && (
             <button
               type="button"
-              onClick={() => setExpanded(true)}
+              onClick={() => setExpandedFilter(activeFilter)}
               className="shrink-0 rounded-full border border-dashed border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
             >
               +{hiddenCount} more
