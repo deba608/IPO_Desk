@@ -24,6 +24,14 @@ const FETCH_TIMEOUT_MS = 15_000;
 /** OCR engines to try in order; Engine 2 + upscale handles small captchas best. */
 const OCR_ENGINES = [2, 1, 3] as const;
 
+/** Same-engine retries on HTTP 429 (bulk bursts) with linear backoff. */
+const RATE_LIMIT_RETRIES = 2;
+const RATE_LIMIT_DELAY_MS = 2000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export interface CaptchaSolution {
   token: string;
   answer: string;
@@ -81,8 +89,34 @@ async function ocrImage(imageBase64: string): Promise<string> {
         body: form.toString(),
       });
       if (!response.ok) {
-        lastError = `OCR API returned HTTP ${response.status}`;
-        continue;
+        // Bulk bursts can hit the free-tier rate limit — back off and retry
+        // the same engine instead of burning through the engine fallback.
+        if (response.status === 429) {
+          for (let retry = 1; retry <= RATE_LIMIT_RETRIES; retry++) {
+            await delay(RATE_LIMIT_DELAY_MS * retry);
+            const retryRes = await fetchWithTimeout(OCR_API_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": USER_AGENT,
+              },
+              body: form.toString(),
+            });
+            if (retryRes.ok) {
+              const retryBody = (await retryRes.json()) as OcrSpaceResponse;
+              const retryText = retryBody?.ParsedResults?.[0]?.ParsedText ?? "";
+              const retryAnswer = extractAnswer(retryText);
+              if (retryAnswer) return retryAnswer;
+              break;
+            }
+            if (retryRes.status !== 429) break;
+          }
+          lastError = "OCR API rate limit exceeded (HTTP 429)";
+          continue;
+        } else {
+          lastError = `OCR API returned HTTP ${response.status}`;
+          continue;
+        }
       }
       const body = (await response.json()) as OcrSpaceResponse;
       if (body?.IsErroredOnProcessing) {
