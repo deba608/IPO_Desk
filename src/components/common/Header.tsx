@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, History, SearchCode, Search, Menu, X } from "lucide-react";
+import { Calendar, History, SearchCode, Search, Menu, X, ChartLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AuthButton } from "@/components/auth/AuthButton";
 
@@ -31,6 +31,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: Calendar,
     iconClass: "text-emerald-400",
     isActive: (p) => p === "/calendar" || p.startsWith("/ipo/"),
+  },
+  {
+    href: "/backtest",
+    label: "Backtest",
+    icon: ChartLine,
+    iconClass: "text-violet-400",
+    isActive: (p) => p === "/backtest",
   },
   {
     href: "/history",
@@ -118,10 +125,10 @@ export function Header() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 bg-background/80 backdrop-blur-xl transition-shadow duration-300",
+        "sticky top-0 z-40 border-b bg-background/70 backdrop-blur-xl backdrop-saturate-150 transition-shadow duration-300 [padding-top:env(safe-area-inset-top)]",
         scrolled
-          ? "border-b border-border shadow-[0_1px_0_0_rgba(255,255,255,0.03),0_8px_24px_-12px_rgba(0,0,0,0.6)]"
-          : "border-b border-border/40"
+          ? "border-border shadow-[0_1px_0_0_rgba(255,255,255,0.04),0_12px_32px_-12px_rgba(0,0,0,0.7)]"
+          : "border-border/40"
       )}
     >
       <div
@@ -135,19 +142,26 @@ export function Header() {
         <Link
           href="/"
           aria-label="IPO Desk — home"
-          className="group flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="group flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <Image
-            src="/logo.png"
-            alt=""
-            width={34}
-            height={34}
-            className="rounded-lg shrink-0 transition-transform duration-300 ease-out group-hover:scale-105 group-hover:rotate-3 group-active:scale-95 motion-reduce:transform-none"
-            style={{ width: 34, height: "auto" }}
-            priority
-          />
-          <span className="text-base font-bold tracking-tight sm:text-lg">
-            IPO Desk
+          <span className="shrink-0 rounded-xl bg-gradient-to-br from-primary via-primary/70 to-violet-500/70 p-[1.5px] shadow-[0_0_16px_-4px_var(--primary)] transition-shadow duration-300 group-hover:shadow-[0_0_20px_-2px_var(--primary)]">
+            <Image
+              src="/logo.png"
+              alt=""
+              width={34}
+              height={34}
+              className="rounded-[10px] transition-transform duration-300 ease-out group-hover:scale-105 group-hover:rotate-3 group-active:scale-95 motion-reduce:transform-none"
+              style={{ width: 31, height: "auto" }}
+              priority
+            />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-base font-bold tracking-tight sm:text-lg">
+              IPO Desk
+            </span>
+            <span className="hidden text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70 sm:block">
+              Allotment Checker
+            </span>
           </span>
         </Link>
 
@@ -158,7 +172,7 @@ export function Header() {
             <span
               aria-hidden
               className={cn(
-                "pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-lg bg-primary/15 ring-1 ring-inset ring-primary/20",
+                "pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-lg bg-gradient-to-r from-primary/20 via-primary/10 to-violet-500/10 ring-1 ring-inset ring-primary/25",
                 indicator.show ? "opacity-100" : "opacity-0",
                 indicator.animate
                   ? "transition-all duration-300 motion-reduce:transition-none"
@@ -178,12 +192,13 @@ export function Header() {
                 <Link
                   key={href}
                   href={href}
+                  title={label}
                   ref={(el) => {
                     linkRefs.current[i] = el;
                   }}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group relative z-10 flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "group relative z-10 flex h-10 items-center gap-2 rounded-lg px-2.5 text-sm font-medium outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:px-3",
                     active
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -191,11 +206,11 @@ export function Header() {
                 >
                   <Icon
                     className={cn(
-                      "h-4 w-4 transition-transform duration-200 ease-out group-hover:scale-110 group-active:scale-90 motion-reduce:transform-none",
+                      "h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 group-active:scale-90 motion-reduce:transform-none",
                       active ? "text-primary" : iconClass
                     )}
                   />
-                  {label}
+                  <span className="hidden lg:inline">{label}</span>
                 </Link>
               );
             })}
@@ -267,8 +282,8 @@ export function Header() {
       <div
         id="mobile-nav"
         className={cn(
-          "overflow-hidden border-border/60 bg-background/95 backdrop-blur-xl transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none md:hidden",
-          menuOpen ? "max-h-72 border-t opacity-100" : "max-h-0 opacity-0"
+          "overflow-y-auto border-border/60 bg-background/95 backdrop-blur-xl transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none md:hidden",
+          menuOpen ? "max-h-[70dvh] border-t opacity-100" : "max-h-0 opacity-0"
         )}
       >
         <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 sm:px-6">
