@@ -16,12 +16,28 @@ import {
   todayISO,
 } from "@/features/ipo-calendar/lib/calendar.service";
 import { formatCrore, formatINR } from "@/features/ipo-calendar/lib/format";
+import nextDynamic from "next/dynamic";
 import { SubscriptionBars } from "@/features/ipo-detail/components/SubscriptionBars";
 import { AllotmentOdds } from "@/features/ipo-detail/components/AllotmentOdds";
 import { Timeline } from "@/features/ipo-detail/components/Timeline";
 import { AddToCalendar } from "@/features/ipo-detail/components/AddToCalendar";
-import { GMPDetailView } from "@/features/ipo-detail/components/GMPDetailView";
-import { ResearchReport } from "@/features/ipo-detail/components/ResearchReport";
+
+// recharts-heavy sections load after the core IPO facts (code-split).
+// (named nextDynamic: this route already exports `dynamic = "force-dynamic"`.)
+const GMPDetailView = nextDynamic(
+  () =>
+    import("@/features/ipo-detail/components/GMPDetailView").then(
+      (m) => m.GMPDetailView
+    ),
+  { loading: () => <p className="py-6 text-center text-xs text-muted-foreground">Loading GMP chart…</p> }
+);
+const ResearchReport = nextDynamic(
+  () =>
+    import("@/features/ipo-detail/components/ResearchReport").then(
+      (m) => m.ResearchReport
+    ),
+  { loading: () => <p className="py-6 text-center text-xs text-muted-foreground">Loading research report…</p> }
+);
 import { AlertSettings } from "@/features/ipo-detail/components/AlertSettings";
 import { Header } from "@/components/common/Header";
 

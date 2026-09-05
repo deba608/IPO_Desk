@@ -65,7 +65,7 @@ const seedIpos = [
     exchanges: ["NSE"],
   },
   {
-    slug: "mainboard-tech pioneers-2026",
+    slug: "mainboard-tech-pioneers-2026",
     name: "Tech Pioneers India Ltd",
     symbol: "TECHP",
     board: "mainboard" as const,

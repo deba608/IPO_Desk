@@ -1,6 +1,16 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { Header } from "@/components/common/Header";
-import { BacktestWorkspace } from "@/features/backtest/components/BacktestWorkspace";
+
+// recharts is heavy — split it off the initial page bundle; the workspace
+// (and its charts) loads right after.
+const BacktestWorkspace = dynamic(
+  () =>
+    import("@/features/backtest/components/BacktestWorkspace").then(
+      (m) => m.BacktestWorkspace
+    ),
+  { loading: () => <p className="py-10 text-center text-sm text-muted-foreground">Loading backtest engine…</p> }
+);
 
 export const metadata: Metadata = {
   title: "IPO Strategy Backtesting Engine — Quantitative Rules & Historical Returns",

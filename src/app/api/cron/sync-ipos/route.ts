@@ -1,6 +1,7 @@
 // src/app/api/cron/sync-ipos/route.ts
-// Scheduled sync endpoint — invoked by Vercel Cron every 6 hours
-// (see vercel.json). Can also be hit manually to force a refresh.
+// Scheduled sync endpoint — invoked by Vercel Cron daily at midnight UTC
+// (see vercel.json; Hobby plans only allow daily crons). Can also be hit
+// manually to force a refresh.
 //
 // Two independent syncs run each tick:
 //   1. Registrar allotment adapters (KFintech, Bigshare, …) via syncAllRegistrars.
