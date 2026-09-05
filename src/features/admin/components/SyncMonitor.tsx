@@ -100,16 +100,22 @@ export function SyncMonitor({ passcode }: { passcode: string }) {
           "x-admin-passcode": passcode,
         },
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      // Guarded parse: platform timeouts return HTML, not JSON.
+      let data: { success?: boolean; durationMs?: number; calendar?: { total?: number }; error?: string } | null = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+      if (res.ok && data?.success) {
         setLastSyncResult({
           timestamp: new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }),
-          durationMs: data.durationMs,
+          durationMs: data.durationMs ?? 0,
           totalIpos: data.calendar?.total,
           success: true,
         });
       } else {
-        setErrorMsg(data.error || "Sync request failed");
+        setErrorMsg(data?.error || `Sync request failed (HTTP ${res.status})`);
       }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Network error");
@@ -203,7 +209,8 @@ export function SyncMonitor({ passcode }: { passcode: string }) {
             <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-3 text-[11px] text-muted-foreground">
               <span className="truncate max-w-[170px]">{reg.type}</span>
               <span className="flex items-center gap-1 font-mono text-[10px]">
-                <Clock className="h-3 w-3" /> {reg.lastSync}
+                <Clock className="h-3 w-3" />{" "}
+                {lastSyncResult ? `${lastSyncResult.timestamp} IST` : "not run yet"}
               </span>
             </div>
           </div>

@@ -16,8 +16,12 @@ export function ReportReviewer() {
   const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => {
-    void fetch("/api/calendar")
-      .then((res) => res.json())
+    const controller = new AbortController();
+    void fetch("/api/calendar", { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server responded ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         const list: CalendarIPOWithStatus[] = data.ipos || [];
         setIpos(list);
@@ -25,16 +29,33 @@ export function ReportReviewer() {
           setSelectedIpoId(list[0].id);
         }
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setIpos([]);
+      });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
     if (!selectedIpoId) return;
-    void fetch(`/api/ipo/${selectedIpoId}/report`)
-      .then((res) => res.json())
+    // Aborted on selection change / unmount, so a slow earlier response can
+    // never overwrite a newer one.
+    const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- selection change must clear the stale report + spin
+    setLoadingReport(true);
+    setReport(null);
+    void fetch(`/api/ipo/${selectedIpoId}/report`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server responded ${res.status}`);
+        return res.json();
+      })
       .then((data) => setReport(data))
-      .catch(() => setReport(null))
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setReport(null);
+      })
       .finally(() => setLoadingReport(false));
+    return () => controller.abort();
   }, [selectedIpoId]);
 
   return (

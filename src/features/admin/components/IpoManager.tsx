@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -15,46 +15,60 @@ import { CalendarIPOWithStatus } from "@/types/calendar.types";
 export function IpoManager() {
   const [ipos, setIpos] = useState<CalendarIPOWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [boardFilter, setBoardFilter] = useState<"all" | "mainboard" | "sme">("all");
   const [lifecycleFilter, setLifecycleFilter] = useState<string>("all");
+  // Serializes overlapping loads so a double-clicked Refresh can't race.
+  const loadingRef = useRef(false);
 
-  const loadCatalogue = async () => {
+  const loadCatalogue = useCallback(async (signal?: AbortSignal) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch("/api/calendar");
-      if (res.ok) {
-        const data = await res.json();
-        setIpos(data.ipos || []);
+      const res = await fetch("/api/calendar", { signal });
+      if (!res.ok) {
+        throw new Error(`Server responded ${res.status}`);
       }
-    } catch {
-      // ignore
+      const data = await res.json();
+      setIpos(data.ipos || []);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setError(err instanceof Error ? err.message : "Failed to load catalogue");
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    void fetch("/api/calendar")
-      .then((r) => r.json())
-      .then((data) => setIpos(data.ipos || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
   }, []);
 
-  const filteredIpos = ipos.filter((ipo) => {
-    if (boardFilter !== "all" && ipo.board !== boardFilter) return false;
-    if (lifecycleFilter !== "all" && ipo.lifecycle !== lifecycleFilter) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        ipo.name.toLowerCase().includes(q) ||
-        ipo.registrar.toLowerCase().includes(q) ||
-        ipo.leadManagers.some((lm) => lm.toLowerCase().includes(q))
-      );
-    }
-    return true;
-  });
+  useEffect(() => {
+    const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount reuses the manual-refresh loader
+    void loadCatalogue(controller.signal);
+    return () => controller.abort();
+  }, [loadCatalogue]);
+
+  const filteredIpos = useMemo(
+    () =>
+      ipos.filter((ipo) => {
+        if (boardFilter !== "all" && ipo.board !== boardFilter) return false;
+        if (lifecycleFilter !== "all" && ipo.lifecycle !== lifecycleFilter) return false;
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          return (
+            (ipo.name ?? "").toLowerCase().includes(q) ||
+            (ipo.registrar ?? "").toLowerCase().includes(q) ||
+            (ipo.leadManagers ?? []).some((lm) =>
+              (lm ?? "").toLowerCase().includes(q)
+            )
+          );
+        }
+        return true;
+      }),
+    [ipos, boardFilter, lifecycleFilter, searchQuery]
+  );
 
   return (
     <div className="space-y-4">
@@ -111,14 +125,21 @@ export function IpoManager() {
           </div>
 
           <button
-            onClick={loadCatalogue}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-card px-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => loadCatalogue()}
+            disabled={loading}
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-card px-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
           >
             <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs text-rose-400">
+          Catalogue error: {error}
+        </div>
+      )}
 
       {/* ── IPO Table ─────────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">

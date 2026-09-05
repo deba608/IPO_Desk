@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Search,
   RefreshCw,
@@ -22,60 +22,71 @@ interface LogEntry {
 export function LogViewer({ passcode }: { passcode: string }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState<"all" | "info" | "warn" | "error">("all");
 
-  const fetchLogs = useCallback(async () => {
-    try {
-      const res = await fetch("/api/logs?limit=300", {
-        headers: {
-          Authorization: `Bearer ${passcode}`,
-        },
-      });
-      if (res.ok) {
+  const fetchLogs = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const res = await fetch("/api/logs?limit=300", {
+          headers: {
+            Authorization: `Bearer ${passcode}`,
+          },
+          signal,
+        });
+        if (!res.ok) {
+          throw new Error(`Server responded ${res.status}`);
+        }
         const data = await res.json();
         setLogs(data.logs || []);
+        setError(null);
+      } catch (err: unknown) {
+        // Aborts on unmount / passcode change are not errors.
+        if (err instanceof Error && err.name === "AbortError") return;
+        setError(err instanceof Error ? err.message : "Failed to load logs");
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, [passcode]);
+    },
+    [passcode]
+  );
 
+  // Single initial load (the old code fetched twice on mount).
   useEffect(() => {
-    void fetch("/api/logs?limit=300", {
-      headers: {
-        Authorization: `Bearer ${passcode}`,
-      },
-    })
-      .then((res) => (res.ok ? res.json() : Promise.resolve(null)))
-      .then((data) => {
-        if (data) setLogs(data.logs || []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [passcode]);
+    const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount must reset the loading flag
+    setLoading(true);
+    void fetchLogs(controller.signal);
+    return () => controller.abort();
+  }, [fetchLogs]);
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const interval = setInterval(fetchLogs, 5000);
+    // Skip polling when the tab is hidden — no point burning requests.
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") void fetchLogs();
+    }, 5000);
     return () => clearInterval(interval);
   }, [autoRefresh, fetchLogs]);
 
-  const filteredLogs = logs.filter((log) => {
-    if (levelFilter !== "all" && log.level !== levelFilter) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        log.message.toLowerCase().includes(q) ||
-        log.event.toLowerCase().includes(q) ||
-        log.level.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  const filteredLogs = useMemo(
+    () =>
+      logs.filter((log) => {
+        if (levelFilter !== "all" && log.level !== levelFilter) return false;
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          return (
+            log.message.toLowerCase().includes(q) ||
+            log.event.toLowerCase().includes(q) ||
+            log.level.toLowerCase().includes(q)
+          );
+        }
+        return true;
+      }),
+    [logs, levelFilter, searchQuery]
+  );
 
   return (
     <div className="space-y-4">
@@ -111,6 +122,7 @@ export function LogViewer({ passcode }: { passcode: string }) {
             <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             <input
               type="text"
+              aria-label="Search logs"
               placeholder="Search logs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -134,7 +146,7 @@ export function LogViewer({ passcode }: { passcode: string }) {
           </button>
 
           <button
-            onClick={fetchLogs}
+            onClick={() => fetchLogs()}
             className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             Refresh
@@ -154,7 +166,18 @@ export function LogViewer({ passcode }: { passcode: string }) {
           <span>Showing latest {filteredLogs.length} events</span>
         </div>
 
-        <div className="max-h-[500px] overflow-y-auto divide-y divide-zinc-800/40 p-2 text-xs">
+        {error && (
+          <div className="border-b border-border/40 bg-rose-500/10 px-4 py-2 text-[11px] text-rose-400">
+            Log stream error: {error}
+          </div>
+        )}
+
+        <div
+          role="log"
+          aria-live="polite"
+          aria-label="Server log stream"
+          className="max-h-[500px] overflow-y-auto divide-y divide-zinc-800/40 p-2 text-xs"
+        >
           {filteredLogs.length > 0 ? (
             filteredLogs.map((entry, index) => {
               const isErr = entry.level === "error";
@@ -169,7 +192,7 @@ export function LogViewer({ passcode }: { passcode: string }) {
 
               return (
                 <div
-                  key={index}
+                  key={`${entry.timestamp}-${entry.event}-${index}`}
                   className="flex flex-col gap-1 px-3 py-2 text-[11px] transition-colors hover:bg-zinc-900/40 sm:flex-row sm:items-start sm:gap-3"
                 >
                   <span className="shrink-0 text-zinc-500">{time}</span>

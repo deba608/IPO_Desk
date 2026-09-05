@@ -67,6 +67,9 @@ const REGISTRAR_LABELS: Record<string, string> = {
   mufg: "MUFG Intime",
   linkintime: "Link Intime",
   bigshare: "Bigshare",
+  skyline: "Skyline",
+  purva: "Purva Sharegistry",
+  maashitla: "Maashitla",
 };
 
 const LIST_REFRESH_MS = 60 * 1000;

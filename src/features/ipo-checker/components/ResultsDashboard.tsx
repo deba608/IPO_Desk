@@ -142,6 +142,21 @@ export function ResultsDashboard({ results, onCheckAgain }: ResultsDashboardProp
           return row.original.status === filterValue;
         },
       },
+      {
+        accessorKey: "error",
+        header: "Remarks",
+        cell: ({ row }) =>
+          row.original.error ? (
+            <span
+              title={row.original.error}
+              className="block max-w-[220px] truncate text-xs text-rose-400"
+            >
+              {row.original.error}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
     ],
     [labels, setLabel]
   );
@@ -166,28 +181,42 @@ export function ResultsDashboard({ results, onCheckAgain }: ResultsDashboardProp
   const handleExport = async (format: "csv" | "xlsx") => {
     setIsExporting(format);
     try {
+      // Export what the user actually sees (filters/sort/search applied),
+      // not the unfiltered result set.
+      const visibleRows = table.getFilteredRowModel().rows.map((r) => ({
+        ...r.original,
+        label: labels[r.original.pan],
+      }));
+      if (visibleRows.length === 0) throw new Error("Nothing to export");
+
       const response = await fetch("/api/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(30000),
         body: JSON.stringify({
-          results: results.results.map((r) => ({
-            ...r,
-            label: labels[r.pan],
-          })),
+          results: visibleRows,
           format,
           ipoName: results.ipoName,
           checkedAt: results.checkedAt,
         }),
       });
 
-      if (!response.ok) throw new Error("Export failed");
+      if (!response.ok) {
+        const errBody = (await response
+          .json()
+          .catch(() => null)) as { error?: string } | null;
+        throw new Error(errBody?.error ?? "Export failed");
+      }
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
 
-      const date = new Date(results.checkedAt).toISOString().split("T")[0];
+      const checked = new Date(results.checkedAt);
+      const date = Number.isNaN(checked.getTime())
+        ? new Date().toISOString().split("T")[0]
+        : checked.toISOString().split("T")[0];
       a.download = `allotment-${date}.${format}`;
       document.body.appendChild(a);
       a.click();
@@ -195,8 +224,10 @@ export function ResultsDashboard({ results, onCheckAgain }: ResultsDashboardProp
       URL.revokeObjectURL(url);
 
       toast.success(`Exported as ${format.toUpperCase()}`);
-    } catch {
-      toast.error("Export failed. Please try again.");
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : "Export failed. Please try again."
+      );
     } finally {
       setIsExporting(null);
     }
