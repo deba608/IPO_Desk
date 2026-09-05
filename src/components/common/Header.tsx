@@ -136,9 +136,6 @@ export function Header() {
           >
             <Search className="h-4 w-4" />
             <span>Search</span>
-            <kbd className="hidden rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-block">
-              Ctrl K
-            </kbd>
           </button>
           <span className="ml-1">
             <AuthButton />
