@@ -12,69 +12,53 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-interface RegistrarHealth {
+// Static labels only — live numbers (IPO counts, last run) come from the
+// most recent manual sync result below. Nothing here is hardcoded telemetry.
+interface RegistrarMeta {
   name: string;
   code: string;
-  status: "active" | "degraded" | "standby";
-  lastSync: string;
   type: string;
 }
 
-const REGISTRARS_LIST: RegistrarHealth[] = [
+const REGISTRARS_LIST: RegistrarMeta[] = [
   {
     name: "KFintech (KFin Technologies)",
     code: "kfintech",
-    status: "active",
-    lastSync: "2 mins ago",
     type: "Allotment & Discovery API",
   },
   {
     name: "Link Intime India",
     code: "linkintime",
-    status: "active",
-    lastSync: "5 mins ago",
     type: "Allotment & Discovery API",
   },
   {
     name: "Bigshare Services",
     code: "bigshare",
-    status: "active",
-    lastSync: "7 mins ago",
     type: "Session-Token Captcha Scraper",
   },
   {
     name: "MUFG Intime (formerly Link Intime)",
     code: "mufg",
-    status: "active",
-    lastSync: "3 mins ago",
     type: "Dynamic Form Scraper",
   },
   {
     name: "Skyline Financial Services",
     code: "skyline",
-    status: "active",
-    lastSync: "Just now",
     type: "Session-Token Form Scraper",
   },
   {
     name: "Purva Sharegistry",
     code: "purva",
-    status: "active",
-    lastSync: "Just now",
     type: "Django CSRF Form Scraper",
   },
   {
     name: "Maashitla Securities",
     code: "maashitla",
-    status: "active",
-    lastSync: "Just now",
     type: "JSON Allotment API",
   },
   {
     name: "InvestorGain / IPO Guru",
     code: "investorgain",
-    status: "active",
-    lastSync: "Just now",
     type: "Live GMP & Subscription Feed",
   },
 ];
@@ -85,6 +69,7 @@ export function SyncMonitor() {
     timestamp: string;
     durationMs: number;
     totalIpos?: number;
+    byRegistrar?: Record<string, number>;
     success: boolean;
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -101,7 +86,13 @@ export function SyncMonitor() {
         },
       });
       // Guarded parse: platform timeouts return HTML, not JSON.
-      let data: { success?: boolean; durationMs?: number; calendar?: { total?: number }; error?: string } | null = null;
+      let data: {
+        success?: boolean;
+        durationMs?: number;
+        calendar?: { total?: number };
+        registrarResults?: Record<string, number>;
+        error?: string;
+      } | null = null;
       try {
         data = await res.json();
       } catch {
@@ -112,6 +103,7 @@ export function SyncMonitor() {
           timestamp: new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }),
           durationMs: data.durationMs ?? 0,
           totalIpos: data.calendar?.total,
+          byRegistrar: data.registrarResults ?? undefined,
           success: true,
         });
       } else {
@@ -179,42 +171,57 @@ export function SyncMonitor() {
       </div>
 
       {/* ── Registrar Adapters Status Grid ─────────────────── */}
+      {/* Counts + timestamps come from the last manual sync only — before the
+          first run every card honestly reports "no data yet". */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {REGISTRARS_LIST.map((reg) => (
-          <div
-            key={reg.code}
-            className="rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-border/80"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Server className="h-4 w-4" />
+        {REGISTRARS_LIST.map((reg) => {
+          const count = lastSyncResult?.byRegistrar?.[reg.code];
+          return (
+            <div
+              key={reg.code}
+              className="rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-border/80"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Server className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-semibold text-foreground">
+                      {reg.name}
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground font-mono">
+                      {reg.code}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-foreground">
-                    {reg.name}
-                  </h3>
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    {reg.code}
-                  </p>
-                </div>
+
+                {count === undefined ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    No data yet
+                  </span>
+                ) : count > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    {count} IPOs
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                    0 IPOs
+                  </span>
+                )}
               </div>
 
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Active
-              </span>
+              <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-3 text-[11px] text-muted-foreground">
+                <span className="truncate max-w-[170px]">{reg.type}</span>
+                <span className="flex items-center gap-1 font-mono text-[10px]">
+                  <Clock className="h-3 w-3" />{" "}
+                  {lastSyncResult ? `${lastSyncResult.timestamp} IST` : "not run yet"}
+                </span>
+              </div>
             </div>
-
-            <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-3 text-[11px] text-muted-foreground">
-              <span className="truncate max-w-[170px]">{reg.type}</span>
-              <span className="flex items-center gap-1 font-mono text-[10px]">
-                <Clock className="h-3 w-3" />{" "}
-                {lastSyncResult ? `${lastSyncResult.timestamp} IST` : "not run yet"}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Database Persistence Status Card */}
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">

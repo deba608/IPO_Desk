@@ -6,18 +6,17 @@ import {
   Lock,
   Activity,
   Terminal,
-  Building2,
-  Sparkles,
   KeyRound,
   ArrowRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SyncMonitor } from "./SyncMonitor";
 import { LogViewer } from "./LogViewer";
-import { IpoManager } from "./IpoManager";
-import { ReportReviewer } from "./ReportReviewer";
 
-type AdminTab = "sync" | "logs" | "ipos" | "reports";
+// Kept deliberately to two tabs: triggering syncs + reading logs are the
+// only admin operations. The IPO catalogue is the public calendar page;
+// research reports are inspected on the IPO detail pages.
+type AdminTab = "sync" | "logs";
 
 export function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -235,8 +234,6 @@ export function AdminDashboard() {
         {[
           { id: "sync" as AdminTab, label: "Pipelines & Sync", icon: Activity },
           { id: "logs" as AdminTab, label: "Live Log Stream", icon: Terminal },
-          { id: "ipos" as AdminTab, label: "IPO Master Catalog", icon: Building2 },
-          { id: "reports" as AdminTab, label: "AI & Score Reports", icon: Sparkles },
         ].map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
@@ -261,8 +258,6 @@ export function AdminDashboard() {
       <div>
         {activeTab === "sync" && <SyncMonitor />}
         {activeTab === "logs" && <LogViewer />}
-        {activeTab === "ipos" && <IpoManager />}
-        {activeTab === "reports" && <ReportReviewer />}
       </div>
     </div>
   );
