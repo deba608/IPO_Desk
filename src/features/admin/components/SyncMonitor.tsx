@@ -50,6 +50,27 @@ const REGISTRARS_LIST: RegistrarHealth[] = [
     type: "Dynamic Form Scraper",
   },
   {
+    name: "Skyline Financial Services",
+    code: "skyline",
+    status: "active",
+    lastSync: "Just now",
+    type: "Session-Token Form Scraper",
+  },
+  {
+    name: "Purva Sharegistry",
+    code: "purva",
+    status: "active",
+    lastSync: "Just now",
+    type: "Django CSRF Form Scraper",
+  },
+  {
+    name: "Maashitla Securities",
+    code: "maashitla",
+    status: "active",
+    lastSync: "Just now",
+    type: "JSON Allotment API",
+  },
+  {
     name: "InvestorGain / IPO Guru",
     code: "investorgain",
     status: "active",
@@ -112,7 +133,7 @@ export function SyncMonitor({ passcode }: { passcode: string }) {
               </Badge>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Manually trigger background sync across all 4 Indian registrars and force reload the latest InvestorGain GMP cache.
+              Manually trigger background sync across all 7 Indian registrars and force reload the latest InvestorGain GMP cache.
             </p>
           </div>
 

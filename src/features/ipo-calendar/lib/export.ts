@@ -6,6 +6,9 @@ const REGISTRAR_LABELS: Record<string, string> = {
   mufg: "MUFG Intime",
   linkintime: "Link Intime",
   bigshare: "Bigshare",
+  skyline: "Skyline",
+  purva: "Purva Sharegistry",
+  maashitla: "Maashitla",
 };
 
 function downloadBlob(blob: Blob, filename: string): void {

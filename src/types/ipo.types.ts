@@ -1,5 +1,12 @@
 // src/types/ipo.types.ts
-export type RegistrarName = "kfintech" | "linkintime" | "bigshare" | "mufg";
+export type RegistrarName =
+  | "kfintech"
+  | "linkintime"
+  | "bigshare"
+  | "mufg"
+  | "skyline"
+  | "purva"
+  | "maashitla";
 
 export interface IPO {
   /** Stable identifier: `${registrar}-${clientId}` */

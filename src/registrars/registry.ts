@@ -8,12 +8,18 @@ import { kfinTechAdapter } from "./kfintech";
 import { linkInTimeAdapter } from "./linkintime";
 import { bigShareAdapter } from "./bigshare";
 import { mufgAdapter } from "./mufg";
+import { skylineAdapter } from "./skyline";
+import { purvaAdapter } from "./purva";
+import { maashitlaAdapter } from "./maashitla";
 
 export const REGISTRAR_REGISTRY: Record<string, RegistrarAdapter> = {
   kfintech: kfinTechAdapter,
   linkintime: linkInTimeAdapter,
   bigshare: bigShareAdapter,
   mufg: mufgAdapter,
+  skyline: skylineAdapter,
+  purva: purvaAdapter,
+  maashitla: maashitlaAdapter,
 };
 
 export function getAdapter(registrarName: string): RegistrarAdapter {

@@ -7,7 +7,14 @@ import { createInvestorGainProvider } from "./investorgain.provider";
 import { checkDbAvailability, getPrisma } from "@/services/db.service";
 
 type Board = "mainboard" | "sme";
-type Registrar = "kfintech" | "linkintime" | "bigshare" | "mufg";
+type Registrar =
+  | "kfintech"
+  | "linkintime"
+  | "bigshare"
+  | "mufg"
+  | "skyline"
+  | "purva"
+  | "maashitla";
 
 export interface CatalogueResult {
   ipos: CalendarIPO[];
@@ -59,7 +66,16 @@ function mapBoard(b: string): Board {
 }
 
 function mapRegistrar(r: string): Registrar {
-  if (r === "kfintech" || r === "mufg" || r === "bigshare" || r === "linkintime") return r;
+  if (
+    r === "kfintech" ||
+    r === "mufg" ||
+    r === "bigshare" ||
+    r === "linkintime" ||
+    r === "skyline" ||
+    r === "purva" ||
+    r === "maashitla"
+  )
+    return r;
   return "kfintech";
 }
 
