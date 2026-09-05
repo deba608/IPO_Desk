@@ -347,10 +347,10 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
               "animate-in fade-in-0 zoom-in-95 duration-150"
             )}
           >
-            {/* Filter bar */}
-            <div className="border-b border-border p-2 flex flex-wrap items-center gap-1.5">
+            {/* Filter bar — single row: chips scroll horizontally, type tabs stay right */}
+            <div className="border-b border-border p-2 flex items-center gap-1.5">
               {/* Registrar filter */}
-              <div className="flex flex-wrap gap-1.5">
+              <div className="no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto">
                 {["all", ...registrars].map((registrar) => {
                   const count =
                     registrar === "all"
@@ -364,7 +364,7 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
                       onClick={() => setRegistrarFilter(registrar)}
                       aria-pressed={active}
                       className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        "shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs transition-colors",
                         active
                           ? "border-primary bg-primary/10 font-medium text-primary"
                           : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
@@ -379,10 +379,10 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
               </div>
 
               {/* Divider */}
-              <span className="mx-1 h-4 w-px bg-border shrink-0" />
+              <span className="h-4 w-px shrink-0 bg-border" />
 
               {/* Type filter — right end */}
-              <div className="ml-auto flex rounded-md border border-border bg-muted/20 p-0.5">
+              <div className="ml-auto flex shrink-0 rounded-md border border-border bg-muted/20 p-0.5">
                 {(["all", "mainboard", "sme"] as const).map((type) => {
                   const count = type === "all"
                     ? ipos.length

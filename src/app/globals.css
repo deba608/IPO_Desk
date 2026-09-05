@@ -113,6 +113,13 @@ body {
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
+/* Hide scrollbar while preserving scroll (chip rows, tab bars) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* ── Micro-animation keyframes ─────────────────────────── */
 
 /* Slow floating blob drift */
