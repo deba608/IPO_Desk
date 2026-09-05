@@ -19,7 +19,7 @@ const LinkSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (isRateLimited(getClientKey(request), 30)) {
+  if (isRateLimited(`alerts-link:${getClientKey(request)}`, 30)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

@@ -68,7 +68,7 @@ const CheckRequestSchema = z.object({
 
 export async function POST(request: Request) {
   // Rate limiting
-  if (isRateLimited(getClientKey(request), RATE_LIMIT, RATE_WINDOW_MS)) {
+  if (isRateLimited(`check:${getClientKey(request)}`, RATE_LIMIT, RATE_WINDOW_MS)) {
     return NextResponse.json(
       { error: "Too many requests. Please wait before retrying." },
       { status: 429 }

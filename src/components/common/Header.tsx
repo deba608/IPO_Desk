@@ -59,6 +59,12 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Close mobile menu on route change (palette nav, back/forward, push).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: external navigation must reset menu + unlock scroll
+    setMenuOpen(false);
+  }, [pathname]);
+
   // Close mobile menu on Escape / desktop resize, lock body scroll while open.
   useEffect(() => {
     if (!menuOpen) return;
@@ -79,7 +85,7 @@ export function Header() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+        "sticky top-0 z-40 border-b bg-background/80 backdrop-blur",
         scrolled ? "border-border shadow-sm" : "border-border/60"
       )}
     >
@@ -121,20 +127,20 @@ export function Header() {
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 {label}
               </Link>
             );
           })}
 
-          <div className="mx-2 h-5 w-px bg-border" aria-hidden />
+          <div className="mx-2 h-5 w-px bg-border" aria-hidden="true" />
 
           <button
             type="button"
             onClick={openCommandPalette}
             className="flex h-9 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-4 w-4" aria-hidden="true" />
             <span>Search</span>
           </button>
           <span className="ml-1">
@@ -151,17 +157,21 @@ export function Header() {
             aria-label="Open search"
             className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-5 w-5" aria-hidden="true" />
           </button>
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
-            aria-controls="mobile-nav"
+            aria-controls={menuOpen ? "mobile-nav" : undefined}
             className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {menuOpen ? (
+              <X className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
@@ -173,7 +183,7 @@ export function Header() {
           className="border-t border-border/60 bg-background md:hidden"
         >
           <nav
-            className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 sm:px-6"
+            className="mx-auto flex max-w-6xl flex-col gap-1 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6"
             aria-label="Mobile"
           >
             {NAV_ITEMS.map(({ href, label, icon: Icon, isActive }) => {
@@ -191,7 +201,7 @@ export function Header() {
                       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   )}
                 >
-                  <Icon className="h-[18px] w-[18px]" />
+                  <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
                   {label}
                 </Link>
               );

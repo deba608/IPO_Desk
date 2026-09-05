@@ -70,6 +70,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#6366f1",
 };
 
@@ -83,8 +84,14 @@ export default function RootLayout({
       <body
         className="antialiased min-h-screen bg-background"
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground"
+        >
+          Skip to content
+        </a>
         <AuthSessionProvider>
-          {children}
+          <div id="main-content">{children}</div>
         </AuthSessionProvider>
         <CommandPalette />
         <Toaster

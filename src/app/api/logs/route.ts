@@ -9,11 +9,11 @@ import { isAdminRequest } from "@/services/admin-auth";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  // Debug endpoint — in production require CRON_SECRET Bearer or an
-  // OTP-issued admin session cookie; otherwise it stays disabled rather
-  // than leaking sync failures publicly.
+  // Debug endpoint — require CRON_SECRET Bearer or an OTP-issued admin
+  // session cookie in every env (fail closed). Local dev can opt out with
+  // ALLOW_UNAUTH_LOGS_IN_DEV=true.
   const secret = process.env.CRON_SECRET;
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.ALLOW_UNAUTH_LOGS_IN_DEV !== "true") {
     const bearerOk = secret
       ? secretsMatch(bearerToken(request.headers.get("authorization")), secret)
       : false;

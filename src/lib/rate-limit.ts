@@ -1,6 +1,9 @@
 // src/lib/rate-limit.ts
 // Simple in-memory fixed-window limiter. Adequate for a single instance;
-// swap for Upstash Redis when running multi-instance.
+// swap for Upstash Redis / Vercel KV when running multi-instance or
+// serverless (each isolate has its own Map, so limits are per-instance).
+// Callers MUST namespace keys per route (e.g. `otp-request:<ip>`) so
+// unrelated endpoints never share a bucket.
 
 type Bucket = { count: number; resetAt: number };
 
@@ -40,14 +43,22 @@ export function isRateLimited(
 }
 
 /**
- * Best-effort client key. x-real-ip is preferred because it is set by the
- * platform proxy; the leftmost x-forwarded-for entry is client-spoofable
- * unless every proxy in front sanitizes it.
+ * Best-effort client key. Trust platform-set headers first
+ * (cf-connecting-ip, true-client-ip, x-real-ip, x-vercel-forwarded-for);
+ * x-forwarded-for leftmost is client-spoofable unless every proxy in front
+ * sanitizes it, so it is only a last resort. Returns "unknown" when no IP
+ * is present — callers must still namespace keys per route.
  */
 export function getClientKey(request: Request): string {
-  return (
+  const direct =
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("true-client-ip")?.trim() ||
     request.headers.get("x-real-ip")?.trim() ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown"
-  );
+    request.headers.get("x-vercel-forwarded-for")?.trim();
+  if (direct) return direct;
+  const forwarded = request.headers
+    .get("x-forwarded-for")
+    ?.split(",")[0]
+    ?.trim();
+  return forwarded || "unknown";
 }

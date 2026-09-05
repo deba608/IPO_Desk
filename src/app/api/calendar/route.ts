@@ -6,14 +6,14 @@ import { bearerToken, secretsMatch } from "@/lib/server-secret";
 export const dynamic = "force-dynamic";
 
 // ?refresh=true triggers live provider scraping + DB snapshot writes per hit —
-// gate it behind CRON_SECRET like the other refresh paths. Without a secret
-// configured, refresh requests fall back to the cached calendar.
+// gate it behind CRON_SECRET via Bearer header only (never ?secret=).
+// Without a secret configured, refresh requests fall back to cached data.
 function isAuthorizedRefresh(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
-  return (
-    secretsMatch(bearerToken(request.headers.get("authorization")), secret) ||
-    secretsMatch(request.nextUrl.searchParams.get("secret"), secret)
+  return secretsMatch(
+    bearerToken(request.headers.get("authorization")),
+    secret
   );
 }
 

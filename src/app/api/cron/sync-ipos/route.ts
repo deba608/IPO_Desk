@@ -21,13 +21,16 @@ export const maxDuration = 60;
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
 
-  // Fail closed in production: an unset secret would leave this endpoint
-  // open to anyone wanting to hammer the registrar scrapes on demand.
-  if (!cronSecret && process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 503 }
-    );
+  // Fail closed in every env: an unset secret would leave this endpoint open
+  // to anyone wanting to hammer the registrar scrapes on demand. For local
+  // dev set ALLOW_UNAUTH_CRON_IN_DEV=true explicitly.
+  if (!cronSecret) {
+    if (process.env.ALLOW_UNAUTH_CRON_IN_DEV !== "true") {
+      return NextResponse.json(
+        { error: "CRON_SECRET not configured" },
+        { status: 503 }
+      );
+    }
   }
 
   if (cronSecret) {

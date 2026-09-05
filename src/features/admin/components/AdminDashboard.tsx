@@ -92,7 +92,12 @@ export function AdminDashboard() {
     }
   };
 
-  const handleLock = () => {
+  const handleLock = async () => {
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch {
+      // Cookie clear is best-effort; still drop local state.
+    }
     setIsAuthenticated(false);
     setStep("identifier");
     setIdentifier("");

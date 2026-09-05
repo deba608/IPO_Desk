@@ -54,7 +54,7 @@ const ScanRequestSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (isRateLimited(getClientKey(request), RATE_LIMIT, RATE_WINDOW_MS)) {
+  if (isRateLimited(`scan:${getClientKey(request)}`, RATE_LIMIT, RATE_WINDOW_MS)) {
     return NextResponse.json(
       { error: "Too many scans. Please wait before retrying." },
       { status: 429 }

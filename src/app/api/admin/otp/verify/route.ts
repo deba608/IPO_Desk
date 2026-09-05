@@ -23,7 +23,7 @@ const VerifySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (isRateLimited(getClientKey(request), 20, 60 * 1000)) {
+  if (isRateLimited(`otp-verify:${getClientKey(request)}`, 20, 60 * 1000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
@@ -49,14 +49,12 @@ export async function POST(request: Request) {
 
   const checked = await verifyChallenge(raw, kind, validated.data.code);
   if (!checked.ok) {
+    // Generic on purpose: expired/locked/wrong are indistinguishable so the
+    // endpoint never reveals challenge state.
     const message =
-      checked.reason === "expired"
-        ? "Code expired. Request a new one."
-        : checked.reason === "locked"
-          ? "Too many wrong attempts. Request a new code."
-          : checked.reason === "unconfigured"
-            ? "Admin login is not configured."
-            : "Invalid code";
+      checked.reason === "unconfigured"
+        ? "Admin login is not configured."
+        : "Invalid code";
     return NextResponse.json({ error: message }, { status: 401 });
   }
 
@@ -76,5 +74,7 @@ export async function POST(request: Request) {
     maxAge: 30 * 60,
     path: "/",
   });
+  // Note: cookie name intentionally stable (ipodesk_admin). Rotating to
+  // __Host- would invalidate existing sessions; do it with a migration window.
   return NextResponse.json({ ok: true });
 }

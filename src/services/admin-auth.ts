@@ -9,7 +9,7 @@
 // Mobile numbers in the allowlist are accepted by the request endpoint but
 // SMS delivery is not configured — it answers 501 directing to email.
 
-import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomInt, timingSafeEqual } from "crypto";
 import { checkDbAvailability, getPrisma } from "./db.service";
 
 const OTP_LENGTH = 6;
@@ -29,13 +29,13 @@ function sha256Hex(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
-/** Session/OTP signing secret. Absent → admin OTP is disabled (fail closed). */
+/**
+ * Session/OTP signing secret. AUTH_SECRET only — never fall back to
+ * CRON_SECRET (key separation: one leak must not forge admin sessions).
+ * Absent → admin OTP is disabled (fail closed).
+ */
 function signingSecret(): string | null {
-  return (
-    process.env.AUTH_SECRET?.trim() ||
-    process.env.CRON_SECRET?.trim() ||
-    null
-  );
+  return process.env.AUTH_SECRET?.trim() || null;
 }
 
 export type IdentifierKind = "email" | "phone";
@@ -80,9 +80,22 @@ interface Challenge {
 
 const memStore = globalThis as unknown as {
   __adminOtp?: Map<string, Challenge>;
+  __adminOtpRate?: Map<string, number[]>;
 };
 memStore.__adminOtp ??= new Map();
+memStore.__adminOtpRate ??= new Map();
 const memChallenges = memStore.__adminOtp;
+/**
+ * Hourly request timestamps per identifier. Kept in memory INDEPENDENT of the
+ * DB challenge row (the DB schema has no requestedAt column), so the
+ * OTP_MAX_REQUESTS_PER_HOUR limit is enforced whether or not DATABASE_URL is
+ * set. Best-effort on multi-instance (use Redis for strict enforcement).
+ */
+const memHourlyRequests = memStore.__adminOtpRate;
+
+function pruneHourly(timestamps: number[], now: number): number[] {
+  return timestamps.filter((t) => now - t < 3600 * 1000);
+}
 
 async function readChallenge(key: string): Promise<Challenge | null> {
   if (checkDbAvailability()) {
@@ -146,7 +159,7 @@ async function clearChallenge(key: string): Promise<void> {
 function randomCode(): string {
   let code = "";
   for (let i = 0; i < OTP_LENGTH; i++) {
-    code += Math.floor(Math.random() * 10).toString();
+    code += randomInt(0, 10).toString();
   }
   return code;
 }
@@ -170,33 +183,38 @@ export async function createChallenge(
   const key = sha256Hex(`${kind}:${identifier}`);
   const existing = await readChallenge(key);
 
-  if (existing) {
-    if (now < existing.resendAfter) {
-      return { ok: false, reason: "rate_limited" };
-    }
-    const recent = (existing.requestedAt ?? []).filter(
-      (t) => now - t < 3600 * 1000
-    );
-    if (recent.length >= OTP_MAX_REQUESTS_PER_HOUR) {
-      return { ok: false, reason: "rate_limited" };
-    }
+  if (existing && now < existing.resendAfter) {
+    return { ok: false, reason: "rate_limited" };
+  }
+  // Hourly cap enforced from the in-memory ledger (works with or without DB).
+  const hourly = pruneHourly(memHourlyRequests.get(key) ?? [], now);
+  if (hourly.length >= OTP_MAX_REQUESTS_PER_HOUR) {
+    return { ok: false, reason: "rate_limited" };
   }
 
   const code = randomCode();
-  const prev = existing?.requestedAt ?? [];
+  const prev = pruneHourly(existing?.requestedAt ?? [], now);
   await writeChallenge(key, {
     codeHash: sha256Hex(code),
     attempts: 0,
     resendAfter: now + OTP_RESEND_COOLDOWN_MS,
     expiresAt: now + OTP_TTL_MS,
-    requestedAt: [...prev.filter((t) => now - t < 3600 * 1000), now],
+    requestedAt: [...prev, now],
   });
+  memHourlyRequests.set(key, [...hourly, now]);
   return { ok: true, code, identifier, kind };
 }
 
 export type OtpVerifyResult =
   | { ok: true }
-  | { ok: false; reason: "invalid" | "expired" | "locked" | "unconfigured" };
+  | { ok: false; reason: "invalid" | "unconfigured" };
+
+/** Dummy hash compare so miss vs wrong-code timing is indistinguishable. */
+function dummyCompare(): void {
+  const a = sha256Hex("dummy-a");
+  const b = sha256Hex("dummy-b");
+  timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 export async function verifyChallenge(
   identifier: string,
@@ -206,14 +224,18 @@ export async function verifyChallenge(
   if (!signingSecret()) return { ok: false, reason: "unconfigured" };
   const key = sha256Hex(`${kind}:${identifier}`);
   const existing = await readChallenge(key);
-  if (!existing) return { ok: false, reason: "invalid" };
+  // Single generic "invalid" for miss/expired/locked/wrong — no state oracle.
+  if (!existing) {
+    dummyCompare();
+    return { ok: false, reason: "invalid" };
+  }
   if (Date.now() > existing.expiresAt) {
     await clearChallenge(key);
-    return { ok: false, reason: "expired" };
+    return { ok: false, reason: "invalid" };
   }
   if (existing.attempts >= OTP_MAX_ATTEMPTS) {
     await clearChallenge(key);
-    return { ok: false, reason: "locked" };
+    return { ok: false, reason: "invalid" };
   }
   const match =
     existing.codeHash.length === sha256Hex(code).length &&
@@ -225,7 +247,7 @@ export async function verifyChallenge(
     existing.attempts += 1;
     if (existing.attempts >= OTP_MAX_ATTEMPTS) {
       await clearChallenge(key);
-      return { ok: false, reason: "locked" };
+      return { ok: false, reason: "invalid" };
     }
     await writeChallenge(key, existing);
     return { ok: false, reason: "invalid" };

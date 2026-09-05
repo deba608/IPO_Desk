@@ -35,7 +35,7 @@ function sanitizeFilename(name: string): string {
 
 export async function POST(request: Request) {
   // Workbook building is CPU-heavy — cap it like the other endpoints.
-  if (isRateLimited(getClientKey(request), 20)) {
+  if (isRateLimited(`export:${getClientKey(request)}`, 20)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

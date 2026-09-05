@@ -35,7 +35,7 @@ function resendClient(): Resend | null {
 }
 
 export async function POST(request: Request) {
-  if (isRateLimited(getClientKey(request), 10, 60 * 1000)) {
+  if (isRateLimited(`otp-request:${getClientKey(request)}`, 10, 60 * 1000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

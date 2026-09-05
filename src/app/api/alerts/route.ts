@@ -93,7 +93,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (isRateLimited(getClientKey(request), 30)) {
+  if (isRateLimited(`alerts-write:${getClientKey(request)}`, 30)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
@@ -164,7 +164,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  if (isRateLimited(getClientKey(request), 30)) {
+  if (isRateLimited(`alerts-write:${getClientKey(request)}`, 30)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
@@ -206,7 +206,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (isRateLimited(getClientKey(request), 30)) {
+  if (isRateLimited(`alerts-write:${getClientKey(request)}`, 30)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

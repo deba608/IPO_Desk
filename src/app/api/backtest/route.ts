@@ -25,7 +25,7 @@ function optNum(value: string | null, min: number, max: number): number | undefi
 }
 
 export async function GET(request: NextRequest) {
-  if (isRateLimited(getClientKey(request), 30)) {
+  if (isRateLimited(`backtest:${getClientKey(request)}`, 30)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

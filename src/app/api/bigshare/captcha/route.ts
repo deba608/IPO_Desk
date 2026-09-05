@@ -4,17 +4,16 @@ import { getClientKey, isRateLimited } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
   // Each hit burns shared OCR quota and upstream Bigshare calls — cap it.
-  if (isRateLimited(getClientKey(request), 30)) {
+  if (isRateLimited(`bigshare-captcha:${getClientKey(request)}`, 30)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   try {
     const solution = await solveBigShareCaptcha();
     return NextResponse.json(solution);
-  } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : String(e);
+  } catch {
     return NextResponse.json(
-      { error: "Captcha solving error", detail: errorMsg },
+      { error: "Captcha unavailable. Try again." },
       { status: 500 }
     );
   }
