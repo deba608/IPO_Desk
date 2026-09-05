@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Required by the Dockerfile, which serves .next/standalone/server.js.
   output: "standalone",
+  // Pin the workspace root: a stray package-lock.json in a parent directory
+  // makes Turbopack infer the wrong root (wrong file watching / env loading).
+  turbopack: {
+    root: __dirname,
+  },
   async headers() {
     return [
       {
