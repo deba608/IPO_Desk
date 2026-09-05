@@ -79,7 +79,7 @@ const REGISTRARS_LIST: RegistrarHealth[] = [
   },
 ];
 
-export function SyncMonitor({ passcode }: { passcode: string }) {
+export function SyncMonitor() {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncResult, setLastSyncResult] = useState<{
     timestamp: string;
@@ -93,11 +93,11 @@ export function SyncMonitor({ passcode }: { passcode: string }) {
     setSyncing(true);
     setErrorMsg(null);
     try {
+      // Authenticated by the admin session cookie — no secret headers needed.
       const res = await fetch("/api/admin/sync", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-passcode": passcode,
         },
       });
       // Guarded parse: platform timeouts return HTML, not JSON.

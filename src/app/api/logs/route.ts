@@ -4,15 +4,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLogs, LogEvent } from "@/services/logger.service";
 import { bearerToken, secretsMatch } from "@/lib/server-secret";
+import { isAdminRequest } from "@/services/admin-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  // Debug endpoint — in production require CRON_SECRET; without one it is
-  // disabled entirely rather than leaking sync failures publicly.
+  // Debug endpoint — in production require CRON_SECRET Bearer or an
+  // OTP-issued admin session cookie; otherwise it stays disabled rather
+  // than leaking sync failures publicly.
   const secret = process.env.CRON_SECRET;
   if (process.env.NODE_ENV === "production") {
-    if (!secret || !secretsMatch(bearerToken(request.headers.get("authorization")), secret)) {
+    const bearerOk = secret
+      ? secretsMatch(bearerToken(request.headers.get("authorization")), secret)
+      : false;
+    if (!bearerOk && !isAdminRequest(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }

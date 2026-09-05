@@ -119,11 +119,48 @@ model User {
   email     String   @unique
   name      String?
   avatarUrl String?
+  // Optional mobile, set when the user verifies a phone number (admin OTP
+  // allowlist matches on it). Never a password — this app has no passwords.
+  phone     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  accounts        Account[]
   alerts          Alert[]
   watchlistEntries WatchlistEntry[]
+}
+
+// OAuth account links for Auth.js v5 (Google). Required by @auth/prisma-adapter.
+model Account {
+  id                String @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// Passwordless admin OTP challenges. Only hashes are stored — the code itself
+// never touches the database. One live challenge per identifier (upsert).
+model AdminOtpChallenge {
+  id              String   @id @default(cuid())
+  identifierHash  String   @unique
+  codeHash        String
+  attempts        Int      @default(0)
+  resendAfter     DateTime
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
 }
 
 model Alert {
@@ -150,6 +187,8 @@ model Alert {
   // (the API always sets all three). Nullable columns stay nullable for
   // legacy rows; Postgres treats NULLs as distinct so old data migrates.
   @@unique([deviceId, ipoId, trigger])
+  // Same dedup for signed-in owners (userId rows carry NULL deviceId).
+  @@unique([userId, ipoId, trigger])
 }
 
 model WatchlistEntry {

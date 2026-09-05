@@ -3,28 +3,21 @@ import { syncAllRegistrars } from "@/services/registrar-sync";
 import { getCalendar } from "@/features/ipo-calendar/lib/calendar.service";
 import { log } from "@/services/logger.service";
 import { bearerToken, secretsMatch } from "@/lib/server-secret";
+import { isAdminRequest } from "@/services/admin-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // Fail closed: without a configured secret this endpoint stays disabled
-    // in every environment — never fall back to a default passcode.
-    const configuredSecret =
-      process.env.ADMIN_PASSCODE || process.env.CRON_SECRET;
-    if (!configuredSecret) {
-      return NextResponse.json(
-        { error: "Admin access not configured" },
-        { status: 503 }
-      );
-    }
-
-    // Constant-time comparison of either credential style; no env bypass.
-    const passcode = request.headers.get("x-admin-passcode");
+    // Two independent gates: programmatic access via CRON_SECRET Bearer, or
+    // an OTP-issued admin session cookie. The legacy x-admin-passcode is
+    // gone — admin login is passwordless OTP only.
+    const configuredSecret = process.env.CRON_SECRET;
     const token = bearerToken(request.headers.get("authorization"));
     const isAuthorized =
-      secretsMatch(passcode, configuredSecret) ||
-      secretsMatch(token, configuredSecret);
+      (configuredSecret
+        ? secretsMatch(token, configuredSecret)
+        : false) || isAdminRequest(request);
 
     if (!isAuthorized) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });

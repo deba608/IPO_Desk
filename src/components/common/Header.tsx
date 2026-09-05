@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, History, SearchCode, Search, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AuthButton } from "@/components/auth/AuthButton";
 
 type NavItem = {
   href: string;
@@ -213,10 +214,14 @@ export function Header() {
               Ctrl + K
             </kbd>
           </button>
+          <span className="ml-1">
+            <AuthButton />
+          </span>
         </nav>
 
         {/* Mobile controls */}
         <div className="flex items-center gap-1 md:hidden">
+          <AuthButton compact />
           <button
             type="button"
             onClick={openCommandPalette}

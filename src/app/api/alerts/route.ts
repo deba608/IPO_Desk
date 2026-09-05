@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { checkDbAvailability, getPrisma } from "@/services/db.service";
 import { getClientKey, isRateLimited } from "@/lib/rate-limit";
+import { ownerFilter, resolveAlertOwner } from "@/services/alert-owner";
 
 export const dynamic = "force-dynamic";
 
@@ -41,16 +42,22 @@ const ToggleAlertSchema = z.object({
   enabled: z.boolean(),
 });
 
-// Alerts are scoped to an anonymous per-device id (x-device-id header) so one
-// client can never read or mutate another client's alerts. When real auth
-// lands, this becomes the userId check. This is scoping, not authentication —
-// device ids are self-asserted.
+// Ownership: signed-in Google users own by userId; everyone else by the
+// anonymous x-device-id header (one client can never touch another's rows).
+// Device ids are self-asserted scoping, not authentication.
 const DEVICE_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 
-function requireDeviceId(request: Request): string | null {
+function readDeviceId(request: Request): string | null {
   const deviceId = request.headers.get("x-device-id")?.trim();
   if (!deviceId || !DEVICE_ID_RE.test(deviceId)) return null;
   return deviceId;
+}
+
+function unauthorized() {
+  return NextResponse.json(
+    { error: "Sign in or provide a valid x-device-id header" },
+    { status: 401 }
+  );
 }
 
 function dbUnavailable() {
@@ -61,13 +68,8 @@ function dbUnavailable() {
 }
 
 export async function GET(request: Request) {
-  const deviceId = requireDeviceId(request);
-  if (!deviceId) {
-    return NextResponse.json(
-      { error: "Missing or invalid x-device-id header" },
-      { status: 401 }
-    );
-  }
+  const owner = await resolveAlertOwner(readDeviceId(request));
+  if (!owner) return unauthorized();
 
   if (!checkDbAvailability()) {
     return dbUnavailable();
@@ -75,7 +77,7 @@ export async function GET(request: Request) {
   try {
     const prisma = await getPrisma();
     const alerts = await prisma.alert.findMany({
-      where: { deviceId },
+      where: ownerFilter(owner),
       orderBy: { createdAt: "desc" },
       take: 100,
       // Name + slug: the UI matches alerts to IPOs by public slug while the
@@ -95,13 +97,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const deviceId = requireDeviceId(request);
-  if (!deviceId) {
-    return NextResponse.json(
-      { error: "Missing or invalid x-device-id header" },
-      { status: 401 }
-    );
-  }
+  const owner = await resolveAlertOwner(readDeviceId(request));
+  if (!owner) return unauthorized();
 
   try {
     let body: unknown;
@@ -131,8 +128,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unknown ipoId" }, { status: 400 });
     }
 
-    // Cap per-device alert count so a device can't grow the table unbounded.
-    const existing = await prisma.alert.count({ where: { deviceId } });
+    // Cap per-owner alert count so one owner can't grow the table unbounded.
+    const existing = await prisma.alert.count({ where: ownerFilter(owner) });
     if (existing >= 100) {
       return NextResponse.json(
         { error: "Alert limit reached (100). Delete some alerts first." },
@@ -145,7 +142,7 @@ export async function POST(request: Request) {
     // surfaced in the UI.
     const alert = await prisma.alert.create({
       data: {
-        deviceId,
+        ...ownerFilter(owner),
         ipoId: ipo.id,
         trigger: validated.data.trigger,
         threshold: validated.data.threshold,
@@ -154,8 +151,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ alert });
   } catch (error) {
-    // P2002 = duplicate (deviceId, ipoId, trigger) — tell the client instead
-    // of 500ing.
+    // P2002 = duplicate owner+ipo+trigger — tell the client instead of 500ing.
     if ((error as { code?: string }).code === "P2002") {
       return NextResponse.json(
         { error: "This alert already exists" },
@@ -172,13 +168,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const deviceId = requireDeviceId(request);
-  if (!deviceId) {
-    return NextResponse.json(
-      { error: "Missing or invalid x-device-id header" },
-      { status: 401 }
-    );
-  }
+  const owner = await resolveAlertOwner(readDeviceId(request));
+  if (!owner) return unauthorized();
 
   try {
     let body: unknown;
@@ -201,7 +192,7 @@ export async function PATCH(request: Request) {
     // Ownership check is part of the predicate — a foreign id 404s instead
     // of toggling someone else's row.
     const updated = await prisma.alert.updateMany({
-      where: { id: validated.data.id, deviceId },
+      where: { id: validated.data.id, ...ownerFilter(owner) },
       data: { enabled: validated.data.enabled },
     });
     if (updated.count === 0) {
@@ -219,13 +210,8 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const deviceId = requireDeviceId(request);
-  if (!deviceId) {
-    return NextResponse.json(
-      { error: "Missing or invalid x-device-id header" },
-      { status: 401 }
-    );
-  }
+  const owner = await resolveAlertOwner(readDeviceId(request));
+  if (!owner) return unauthorized();
 
   try {
     const { searchParams } = new URL(request.url);
@@ -239,11 +225,11 @@ export async function DELETE(request: Request) {
     }
 
     const prisma = await getPrisma();
-    // deleteMany (not delete): there is no compound unique on (id, deviceId),
+    // deleteMany (not delete): there is no compound unique on (id, owner),
     // and the ownership check belongs in the predicate — a foreign id 404s
     // instead of deleting someone else's row.
     const deleted = await prisma.alert.deleteMany({
-      where: { id, deviceId },
+      where: { id, ...ownerFilter(owner) },
     });
     if (deleted.count === 0) {
       return NextResponse.json({ error: "Alert not found" }, { status: 404 });

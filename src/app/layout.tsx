@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import { CommandPalette } from "@/components/common/CommandPalette";
+import { AuthSessionProvider } from "@/components/auth/AuthSessionProvider";
 import "./globals.css";
 
 const siteUrl = "https://ipodesk.com";
@@ -82,7 +83,9 @@ export default function RootLayout({
       <body
         className="antialiased min-h-screen bg-background"
       >
-        {children}
+        <AuthSessionProvider>
+          {children}
+        </AuthSessionProvider>
         <CommandPalette />
         <Toaster
           position="top-right"

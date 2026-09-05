@@ -19,7 +19,7 @@ interface LogEntry {
   meta?: Record<string, string | number | boolean>;
 }
 
-export function LogViewer({ passcode }: { passcode: string }) {
+export function LogViewer() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,12 +30,8 @@ export function LogViewer({ passcode }: { passcode: string }) {
   const fetchLogs = useCallback(
     async (signal?: AbortSignal) => {
       try {
-        const res = await fetch("/api/logs?limit=300", {
-          headers: {
-            Authorization: `Bearer ${passcode}`,
-          },
-          signal,
-        });
+        // Authenticated by the admin session cookie — no secret headers needed.
+        const res = await fetch("/api/logs?limit=300", { signal });
         if (!res.ok) {
           throw new Error(`Server responded ${res.status}`);
         }
@@ -50,7 +46,7 @@ export function LogViewer({ passcode }: { passcode: string }) {
         setLoading(false);
       }
     },
-    [passcode]
+    []
   );
 
   // Single initial load (the old code fetched twice on mount).
