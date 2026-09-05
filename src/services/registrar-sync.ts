@@ -27,6 +27,30 @@ const FAILED_RETRY_COOLDOWN_MS = 60 * 1000;
 // (a single empty response is far more likely a parser break than reality).
 const EMPTY_RESULTS_BEFORE_ACCEPT = 3;
 
+// Hard cap per registrar sync so one stalled upstream can never hold a
+// user-facing request (IPO list or allotment check) hostage. On timeout the
+// normal fallback chain below serves stale cache → disk snapshot → empty.
+const SYNC_TIMEOUT_MS = 15_000;
+
+/**
+ * Race a promise against a timer. A loser that settles late is pre-handled
+ * so it can never surface as an unhandled rejection.
+ */
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  promise.catch(() => {});
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("sync timed out")), ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface RegistrarSyncState {
   ipos: IPO[];
   lastSyncedAt: number; // epoch ms of last successful sync (0 = never)
@@ -89,7 +113,7 @@ async function syncRegistrar(registrar: string): Promise<IPO[]> {
   state.lastAttemptAt = started;
   state.syncing = (async () => {
     try {
-      const ipos = await adapter.getActiveIPOs();
+      const ipos = await withTimeout(adapter.getActiveIPOs(), SYNC_TIMEOUT_MS);
 
       // A parser break or site redesign returning zero rows must not wipe a
       // known-good catalogue and serve "fresh" emptiness for a full TTL.

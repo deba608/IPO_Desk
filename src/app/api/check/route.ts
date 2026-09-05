@@ -7,6 +7,33 @@ import { getClientKey, isRateLimited } from "@/lib/rate-limit";
 const RATE_LIMIT = 20; // requests per minute
 const RATE_WINDOW_MS = 60 * 1000;
 
+// Absolute ceiling for the whole check pipeline. The client must always get
+// a JSON answer (even a 504) instead of spinning until the platform kills
+// the function — "loading forever" is never an acceptable outcome.
+const CHECK_TIMEOUT_MS = 50_000;
+
+class CheckTimeoutError extends Error {
+  constructor() {
+    super("Check timed out");
+    this.name = "CheckTimeoutError";
+  }
+}
+
+async function withCheckTimeout<T>(promise: Promise<T>): Promise<T> {
+  promise.catch(() => {});
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new CheckTimeoutError()), CHECK_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Zod validation schema
 const PANSchema = z
   .string()
@@ -61,16 +88,24 @@ export async function POST(request: Request) {
     // Deduplicate PANs
     const uniquePANs = [...new Set(validated.data.pans)];
 
-    const result = await checkAllotment({
-      pans: uniquePANs,
-      ipoClientId: validated.data.ipoClientId,
-    });
+    const result = await withCheckTimeout(
+      checkAllotment({
+        pans: uniquePANs,
+        ipoClientId: validated.data.ipoClientId,
+      })
+    );
 
     return NextResponse.json(result, { status: 200 });
   } catch (error: unknown) {
     // Log the details server-side; never echo internal error messages
     // (registrar URLs, adapter internals) back to the client.
     console.error("[/api/check] Error:", error);
+    if (error instanceof CheckTimeoutError) {
+      return NextResponse.json(
+        { error: "Check timed out. Please try again with fewer PANs." },
+        { status: 504 }
+      );
+    }
     const errMsg = error instanceof Error ? error.message : "";
     if (errMsg.includes("not found")) {
       return NextResponse.json({ error: "IPO not found" }, { status: 404 });
