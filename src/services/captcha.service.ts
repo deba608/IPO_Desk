@@ -91,10 +91,14 @@ function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
  * 6-digit run; falls back to the digit soup only when it is exactly 6 long.
  */
 function extractAnswer(raw: string): string | null {
+  // Prefer an exact 6-digit run; \d{6} also handles embedded extras (e.g. "1234567").
   const sixRun = raw.match(/\d{6}/);
   if (sixRun) return sixRun[0];
+  // Non-contiguous digits (OCR inserts spaces/punctuation between digits):
+  // strip non-digits and take the first 6 when there are enough.
   const digits = raw.replace(/\D/g, "");
-  return digits.length === 6 ? digits : null;
+  if (digits.length >= 6) return digits.slice(0, 6);
+  return null;
 }
 
 /** Single OCR.Space attempt with one engine. Throws typed errors. */
@@ -182,38 +186,59 @@ async function ocrImage(imageBase64: string): Promise<string> {
   throw new Error(details ? `${lastError} || ${details}` : lastError);
 }
 
+/** Same mirror list as the allotment adapter — tried in order on fetch failure. */
+const BIGSHARE_CAPTCHA_MIRRORS = [
+  "ipo.bigshareonline.com",
+  "ipo1.bigshareonline.com",
+  "ipo2.bigshareonline.com",
+];
+
 /**
- * Fetch and solve a fresh Bigshare CAPTCHA. Tries the local ddddocr solver
- * first (fast, no quota); falls back to remote OCR.Space. Throws when the
- * CAPTCHA service is unreachable or ALL OCR paths fail.
+ * Fetch and solve a fresh Bigshare CAPTCHA. Iterates mirrors in order so a
+ * downed primary doesn't block solves when ipo1/ipo2 are still up. Tries the
+ * local ddddocr solver first (fast, no quota); falls back to remote OCR.Space.
+ * Throws when ALL mirrors are unreachable or ALL OCR paths fail.
  */
 export async function solveBigShareCaptcha(): Promise<CaptchaSolution> {
-  const response = await fetchWithTimeout(
-    "https://ipo.bigshareonline.com/Captcha.ashx",
-    { headers: { "User-Agent": USER_AGENT } }
-  );
-  if (!response.ok) {
-    throw new Error(`CAPTCHA service returned HTTP ${response.status}`);
-  }
-  const body = (await response.json()) as CaptchaResponse;
-  if (!body?.token || !body?.image) {
-    throw new Error("CAPTCHA service returned an incomplete response");
+  let lastError: unknown;
+
+  for (const mirror of BIGSHARE_CAPTCHA_MIRRORS) {
+    try {
+      const response = await fetchWithTimeout(
+        `https://${mirror}/Captcha.ashx`,
+        { headers: { "User-Agent": USER_AGENT } }
+      );
+      if (!response.ok) {
+        throw new Error(`CAPTCHA service returned HTTP ${response.status}`);
+      }
+      const body = (await response.json()) as CaptchaResponse;
+      if (!body?.token || !body?.image) {
+        throw new Error("CAPTCHA service returned an incomplete response");
+      }
+
+      const rawImage = body.image.includes(",")
+        ? (body.image.split(",")[1] ?? "")
+        : body.image;
+      if (!rawImage) {
+        throw new Error("CAPTCHA service returned an empty image");
+      }
+
+      // Local solver first — on Docker/VPS this avoids a ~1.5-3s remote round
+      // trip plus free-tier 429 backoffs during bulk bursts.
+      const local = await tryLocalOcr(rawImage);
+      if (local) return { token: body.token, answer: local };
+
+      const answer = await ocrImage(rawImage);
+      return { token: body.token, answer };
+    } catch (error: unknown) {
+      lastError = error;
+      // Try the next mirror if this one is unreachable or returns an error.
+    }
   }
 
-  const rawImage = body.image.includes(",")
-    ? (body.image.split(",")[1] ?? "")
-    : body.image;
-  if (!rawImage) {
-    throw new Error("CAPTCHA service returned an empty image");
-  }
-
-  // Local solver first — on Docker/VPS this avoids a ~1.5-3s remote round
-  // trip plus free-tier 429 backoffs during bulk bursts.
-  const local = await tryLocalOcr(rawImage);
-  if (local) return { token: body.token, answer: local };
-
-  const answer = await ocrImage(rawImage);
-  return { token: body.token, answer };
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("All Bigshare CAPTCHA mirrors failed");
 }
 
 /**

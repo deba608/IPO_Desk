@@ -31,6 +31,9 @@ const BIGSHARE_MIRRORS = [
   "ipo2.bigshareonline.com",
 ];
 
+/** Conservative validity window — Bigshare tokens are valid for ~60 s. */
+const CAPTCHA_TOKEN_VALIDITY_MS = 45_000;
+
 function stripTags(html: string): string {
   return html.replace(/<[^>]*>/g, "");
 }
@@ -222,8 +225,8 @@ export class BigShareAdapter implements RegistrarAdapter {
                 },
                 { headers: { "Content-Type": "application/json; charset=utf-8" } }
               ),
-            2,
-            800
+            3,
+            500
           );
 
           // Remember the working mirror so the next PAN tries it first.
@@ -267,7 +270,7 @@ export class BigShareAdapter implements RegistrarAdapter {
             throw new Error("CAPTCHA rejected on retry");
           }
 
-          if (status === "NOTFOUND" || status === "NO_RECORD") {
+          if (status === "NOTFOUND" || status === "NO_RECORD" || status === "NO_DATA" || status === "NODATA") {
             return { pan: normalizedPan, status: "not_found" };
           }
           // status === "OK" or undefined - continue to parse fields
@@ -285,8 +288,8 @@ export class BigShareAdapter implements RegistrarAdapter {
             return { pan: normalizedPan, status: "not_found" };
           }
 
-          // A schema shift (missing/renamed fields) must surface as an error,
-          // not fall through to a silent not_allotted.
+          // A schema shift (completely missing/renamed fields) must surface as an
+          // error so it is distinguishable from a legitimate "not applied" response.
           if (
             record.DPID === undefined &&
             record.ALLOTED === undefined &&
@@ -302,6 +305,12 @@ export class BigShareAdapter implements RegistrarAdapter {
             };
           }
 
+          // All data fields are present but empty — PAN was not applied to this
+          // issue. Returning not_allotted (0 shares) here would be misleading.
+          if (!record.DPID && !record.ALLOTED && !record.APPLIED) {
+            return { pan: normalizedPan, status: "not_found" };
+          }
+
           const allottedShares = toCount(record.ALLOTED) ?? 0;
           const applied = toCount(record.APPLIED);
 
@@ -315,10 +324,21 @@ export class BigShareAdapter implements RegistrarAdapter {
         } catch (error: unknown) {
           lastError = error;
           log("warn", "pan_check_failure", `Bigshare check failed on mirror ${mirror}: ${errorMessage(error)}`);
+          const httpStatus = (error as { response?: { status?: number } }).response?.status;
+          // HTTP 400 may indicate a stale/invalid CAPTCHA token — Bigshare sometimes
+          // rejects at the HTTP layer instead of via Status:"CAPTCHA" in the body.
+          // Refresh the token before moving to the next mirror so a stale token
+          // does not poison all remaining mirrors.
+          if (httpStatus === 400 && attempt === 0) {
+            try {
+              const cf2 = await this.fetchCaptchaToken();
+              captchaToken = cf2.token;
+              captchaAnswer = cf2.answer;
+            } catch { /* ignore; next mirror will fall back to per-PAN solve */ }
+          }
           // A definitive 4xx (bad request, forbidden) will fail on every mirror
           // the same way — don't burn the retry budget on the remaining ones.
-          const status = (error as { response?: { status?: number } }).response?.status;
-          if (status && status >= 400 && status < 500 && status !== 429) break;
+          if (httpStatus && httpStatus >= 400 && httpStatus < 500 && httpStatus !== 429) break;
           // A CAPTCHA rejection isn't worth retrying further on this mirror.
           if (errorMessage(error).includes("CAPTCHA")) break;
         }
@@ -363,22 +383,43 @@ export class BigShareAdapter implements RegistrarAdapter {
     // allotment POSTs then start immediately instead of waiting on serial
     // captcha fetches. Pre-warmed tokens are consumed FIFO; any shortfall
     // (failures, more PANs than warmed) falls back to per-PAN solving inside
-    // checkAllotment. Tokens are single-use but consumed within seconds, well
-    // inside their validity window. Failures stay per-PAN isolated via
-    // allSettled inside bulkCheck.
+    // checkAllotment. Tokens are single-use and must be consumed within their
+    // validity window. Failures stay per-PAN isolated via allSettled inside bulkCheck.
     const PREWARM_COUNT = Math.min(Math.max(pans.length, 0), 8);
-    const pool: Array<{ token: string; answer: string }> = [];
+
+    interface PooledCaptcha { token: string; answer: string; capturedAt: number }
+    const pool: PooledCaptcha[] = [];
+
     if (PREWARM_COUNT > 1) {
       const warmed = await Promise.allSettled(
         Array.from({ length: PREWARM_COUNT }, () => this.fetchCaptchaToken())
       );
+      // Stamp all tokens with the same acquisition time — they were fetched
+      // concurrently so any individual skew is negligible.
+      const capturedAt = Date.now();
       for (const w of warmed) {
-        if (w.status === "fulfilled") pool.push(w.value);
+        if (w.status === "fulfilled") pool.push({ ...w.value, capturedAt });
       }
     }
+
+    // Only supply a pre-warmed token when it is still within its validity window;
+    // stale tokens trigger a Status:"CAPTCHA" rejection, wasting an extra OCR call.
+    const popFreshCaptcha = (): { token: string; answer: string } | undefined => {
+      while (pool.length > 0) {
+        const candidate = pool.shift()!;
+        if (Date.now() - candidate.capturedAt < CAPTCHA_TOKEN_VALIDITY_MS) {
+          return { token: candidate.token, answer: candidate.answer };
+        }
+        log("warn", "pan_check_failure", "Discarded stale pre-warmed CAPTCHA token", {
+          meta: { registrar: this.name },
+        });
+      }
+      return undefined;
+    };
+
     return bulkCheck(
       pans,
-      (pan) => this.checkAllotment(pan, clientId, pool.shift()),
+      (pan) => this.checkAllotment(pan, clientId, popFreshCaptcha()),
       {
         chunkSize: 8,
         chunkDelayMs: 100,
