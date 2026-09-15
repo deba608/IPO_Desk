@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -75,13 +76,41 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+const siteUrl = "https://ipodesk.com";
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const ipo = await findCalendarIPO(id);
   if (!ipo) return { title: "IPO not found" };
+  const canonicalUrl = `${siteUrl}/ipo/${id}`;
   return {
     title: `${ipo.name} IPO — Price Band, GMP, Subscription & Dates`,
-    description: `${ipo.name} IPO details: price band ${bandLabel(ipo.priceBand)}, lot size ${ipo.lotSize}, issue size ${formatCrore(ipo.issueSizeCr)}, subscription, GMP and listing dates.`,
+    description: `${ipo.name} IPO details: price band ${bandLabel(ipo.priceBand)}, lot size ${ipo.lotSize}, issue size ${formatCrore(ipo.issueSizeCr)}, subscription, GMP and listing dates. Check allotment status on IPO Desk.`,
+    keywords: [
+      `${ipo.name} IPO`,
+      `${ipo.name} IPO allotment`,
+      `${ipo.name} IPO GMP`,
+      `${ipo.name} IPO subscription status`,
+      `${ipo.name} IPO listing date`,
+      `${ipo.name} IPO price band`,
+      "India IPO 2026",
+    ],
+    alternates: {
+      canonical: canonicalUrl,
+      languages: { "en-IN": canonicalUrl },
+    },
+    openGraph: {
+      title: `${ipo.name} IPO — Price Band, GMP & Allotment`,
+      description: `Price band ${bandLabel(ipo.priceBand)}, lot size ${ipo.lotSize}, issue size ${formatCrore(ipo.issueSizeCr)}. Check allotment & live GMP on IPO Desk.`,
+      url: canonicalUrl,
+      images: [{ url: `${siteUrl}/og-banner.jpg`, width: 1200, height: 630, alt: `${ipo.name} IPO` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${ipo.name} IPO — Price Band, GMP & Allotment`,
+      description: `Price band ${bandLabel(ipo.priceBand)}. Live GMP & allotment checker on IPO Desk.`,
+      images: [`${siteUrl}/og-banner.jpg`],
+    },
   };
 }
 
@@ -124,8 +153,60 @@ export default async function IPODetailPage({ params }: PageProps) {
   const estListing =
     ipo.gmp !== undefined ? ipo.priceBand.max + ipo.gmp : undefined;
 
+  // ── JSON-LD structured data ───────────────────────────────────
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+      { "@type": "ListItem", position: 2, name: "IPO Calendar", item: `${siteUrl}/calendar` },
+      { "@type": "ListItem", position: 3, name: `${ipo.name} IPO`, item: `${siteUrl}/ipo/${id}` },
+    ],
+  };
+
+  const eventSchema = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: `${ipo.name} IPO`,
+    description: `${ipo.name} IPO: price band ${bandLabel(ipo.priceBand)}, lot size ${ipo.lotSize} shares, issue size ${formatCrore(ipo.issueSizeCr)}. ${ipo.board === "mainboard" ? "Mainboard" : "SME"} IPO on ${ipo.exchanges.join(" & ")}.`,
+    startDate: ipo.openDate,
+    endDate: ipo.listingDate ?? ipo.closeDate,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+    location: {
+      "@type": "VirtualLocation",
+      url: `${siteUrl}/ipo/${id}`,
+    },
+    organizer: {
+      "@type": "Organization",
+      name: "IPO Desk",
+      url: siteUrl,
+    },
+    offers: {
+      "@type": "Offer",
+      price: ipo.priceBand.max,
+      priceCurrency: "INR",
+      url: `${siteUrl}/ipo/${id}`,
+      availability: ipo.lifecycle === "open"
+        ? "https://schema.org/InStock"
+        : "https://schema.org/SoldOut",
+    },
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* ── JSON-LD Structured Data ────────────────────────────── */}
+      <Script
+        id={`schema-breadcrumb-${id}`}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <Script
+        id={`schema-event-${id}`}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema) }}
+      />
+
       <Header />
 
       <main className="flex-1 container mx-auto max-w-5xl px-4 py-5">

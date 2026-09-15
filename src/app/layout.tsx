@@ -13,15 +13,27 @@ export const metadata: Metadata = {
     template: "%s | IPO Desk",
   },
   description:
-    "Check IPO allotment status for single or multiple PANs instantly. Free IPO allotment checker supporting KFintech IPOs. Upload Excel for bulk checking and export results to CSV.",
+    "Check IPO allotment status instantly for any PAN. Free IPO checker for KFintech, Link Intime, Bigshare & MUFG IPOs. Bulk PAN upload, Excel export, live GMP, IPO calendar & AI research reports for Indian investors.",
   keywords: [
     "IPO allotment check",
+    "IPO allotment status",
     "PAN check IPO",
     "KFintech allotment",
+    "Link Intime allotment",
+    "Bigshare allotment",
+    "MUFG allotment",
     "IPO status checker",
     "bulk PAN checker",
-    "IPO allotment status",
     "India IPO checker",
+    "IPO GMP today",
+    "grey market premium IPO",
+    "IPO calendar India 2026",
+    "upcoming IPO India",
+    "IPO subscription status",
+    "mainboard IPO",
+    "SME IPO",
+    "IPO listing gain",
+    "IPO allotment date",
     "IPO Desk",
   ],
   authors: [{ name: "IPO Desk" }],
@@ -49,20 +61,34 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.json",
   openGraph: {
-    title: "IPO Desk — IPO Allotment Checker",
-    description: "Check IPO allotment status for multiple PANs instantly",
+    title: "IPO Desk — IPO Allotment Checker & Research Platform",
+    description:
+      "Check IPO allotment status for multiple PANs instantly. Live GMP, AI research reports, subscription tracker & IPO calendar for Indian investors.",
     url: siteUrl,
     siteName: "IPO Desk",
     type: "website",
     locale: "en_IN",
+    images: [
+      {
+        url: `${siteUrl}/og-banner.jpg`,
+        width: 1200,
+        height: 630,
+        alt: "IPO Desk — India's Smartest IPO Research & Allotment Platform",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "IPO Desk — IPO Allotment Checker",
-    description: "Check IPO allotment status for multiple PANs instantly",
+    title: "IPO Desk — IPO Allotment Checker & Research Platform",
+    description:
+      "Check IPO allotment for any PAN. Live GMP, AI research, subscription tracker & IPO calendar.",
+    images: [`${siteUrl}/og-banner.jpg`],
   },
   alternates: {
     canonical: siteUrl,
+    languages: {
+      "en-IN": siteUrl,
+    },
   },
   category: "finance",
 };
@@ -80,7 +106,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en-IN" className="dark">
       <body
         className="antialiased min-h-screen bg-background"
       >

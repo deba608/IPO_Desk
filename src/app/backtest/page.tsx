@@ -12,10 +12,39 @@ const BacktestWorkspace = dynamic(
   { loading: () => <p className="py-10 text-center text-sm text-muted-foreground">Loading backtest engine…</p> }
 );
 
+const siteUrl = "https://ipodesk.com";
+
 export const metadata: Metadata = {
   title: "IPO Strategy Backtesting Engine — Quantitative Rules & Historical Returns",
   description:
-    "Test your IPO bidding strategies against verified historical data. Analyze win rates, listing day gains, and subscription filters for Indian mainboard & SME IPOs.",
+    "Test your IPO bidding strategies against verified historical data. Analyse win rates, listing day gains, and subscription filters for Indian mainboard & SME IPOs from 2023–2026.",
+  keywords: [
+    "IPO backtesting",
+    "IPO strategy simulator",
+    "IPO listing gain calculator",
+    "IPO win rate India",
+    "GMP based IPO strategy",
+    "QIB subscription IPO filter",
+    "IPO historical returns India",
+    "mainboard SME IPO analysis",
+  ],
+  alternates: {
+    canonical: `${siteUrl}/backtest`,
+    languages: { "en-IN": `${siteUrl}/backtest` },
+  },
+  openGraph: {
+    title: "IPO Strategy Backtesting Engine — IPO Desk",
+    description:
+      "Backtest IPO strategies against real Indian IPO data. Win rates, listing gains & subscription filters.",
+    url: `${siteUrl}/backtest`,
+    images: [{ url: `${siteUrl}/og-banner.jpg`, width: 1200, height: 630, alt: "IPO Desk Backtesting" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "IPO Strategy Backtesting Engine — IPO Desk",
+    description: "Simulate your IPO bidding strategy against 2023–2026 Indian IPO data.",
+    images: [`${siteUrl}/og-banner.jpg`],
+  },
 };
 
 export default function BacktestPage() {

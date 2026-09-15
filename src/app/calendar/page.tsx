@@ -3,11 +3,41 @@ import { CalendarRange } from "lucide-react";
 import { IPOCalendarView } from "@/features/ipo-calendar/components/IPOCalendarView";
 import { Header } from "@/components/common/Header";
 
+const siteUrl = "https://ipodesk.com";
+
 export const metadata: Metadata = {
-  title: "IPO Calendar — Upcoming, Open, Closed & Listed IPOs",
+  title: "IPO Calendar 2026 — Upcoming, Open, Closed & Listed IPOs India",
   description:
-    "Track all mainboard and SME IPOs in India: upcoming, open, closed and recently listed. Price band, lot size, issue size, dates, registrar, lead managers and GMP at a glance.",
-  alternates: { canonical: "https://ipodesk.com/calendar" },
+    "Track all mainboard and SME IPOs in India for 2026: upcoming, open, closed and recently listed. Price band, lot size, issue size, dates, registrar, lead managers and live GMP at a glance.",
+  keywords: [
+    "IPO calendar 2026",
+    "upcoming IPO India",
+    "open IPO today",
+    "IPO listing date",
+    "mainboard IPO calendar",
+    "SME IPO calendar",
+    "IPO GMP today",
+    "IPO allotment date",
+    "new IPO India 2026",
+    "IPO subscription status",
+  ],
+  alternates: {
+    canonical: `${siteUrl}/calendar`,
+    languages: { "en-IN": `${siteUrl}/calendar` },
+  },
+  openGraph: {
+    title: "IPO Calendar 2026 — All Indian IPOs in One Place",
+    description:
+      "Live IPO calendar: track upcoming, open, closed & listed mainboard and SME IPOs with GMP, subscription data, price band, lot size and listing dates.",
+    url: `${siteUrl}/calendar`,
+    images: [{ url: `${siteUrl}/og-banner.jpg`, width: 1200, height: 630, alt: "IPO Desk Calendar" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "IPO Calendar 2026 — All Indian IPOs",
+    description: "Live IPO calendar with GMP, subscription & listing dates for all mainboard & SME IPOs.",
+    images: [`${siteUrl}/og-banner.jpg`],
+  },
 };
 
 export default function CalendarPage() {
