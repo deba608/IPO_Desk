@@ -83,38 +83,65 @@ export default function HomePage() {
       />
 
       {/*
-        * SEO hero content — this <h1> is the SINGLE H1 for the homepage.
-        * The interactive hero heading in client-page.tsx is an <h2> styled
-        * identically (client bundle loads with ssr:false, so crawlers without
-        * JS only see this server-rendered H1).
+        * SEO hero content — visible, crawlable section with the single H1.
+        * Renders ABOVE the interactive client UI so Google reads real copy
+        * without executing JavaScript. The interactive heading in
+        * client-page.tsx uses an <h2> styled identically.
         */}
-      <div className="sr-only">
-        <h1>IPO Allotment Status Check — Free PAN Checker for Indian IPOs</h1>
-        <p>
-          Check IPO allotment status instantly using your PAN number. IPO Desk supports all major
-          Indian registrars: KFintech, Link Intime, Bigshare, and MUFG. Upload an Excel file for
-          bulk PAN checking across hundreds of applicants in seconds.
-        </p>
-        <p>
-          Beyond allotment checking, IPO Desk provides live Grey Market Premium (GMP) data, a
-          comprehensive IPO calendar tracking upcoming, open, closed, and listed IPOs, AI-generated
-          research reports with investment scores, subscription status (QIB, NII, Retail), and a
-          unique IPO strategy backtesting engine.
-        </p>
-        <nav aria-label="Main features">
-          <ul>
-            <li>
-              <a href="/calendar">IPO Calendar — Upcoming &amp; Open IPOs 2026</a>
-            </li>
-            <li>
-              <a href="/apply">Family IPO Checklist — Track Bids Across Accounts</a>
-            </li>
-            <li>
-              <a href="/backtest">IPO Strategy Backtesting Engine</a>
-            </li>
-          </ul>
-        </nav>
-      </div>
+      <section className="relative overflow-hidden border-b border-border/40 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-10 sm:py-14">
+        <div className="container mx-auto max-w-4xl">
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            India&apos;s #1 Free IPO Platform · IPODESK
+          </div>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+            IPO Allotment Status Check —{" "}
+            <span className="gradient-text">Free PAN Checker</span>
+          </h1>
+          <p className="mt-4 max-w-2xl text-base text-muted-foreground">
+            Check IPO allotment status instantly using your PAN number. IPO Desk (IPODESK) supports
+            all major Indian registrars: KFintech, Link Intime, Bigshare, and MUFG. Upload an Excel
+            file for bulk PAN checking across hundreds of applicants in seconds.
+          </p>
+          <nav aria-label="Key features" className="mt-6 flex flex-wrap gap-3">
+            <a
+              href="/calendar"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              📅 IPO Calendar 2026
+            </a>
+            <a
+              href="/ipo-allotment-check"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              ✅ How to Check Allotment
+            </a>
+            <a
+              href="/ipo-gmp-today"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              📈 IPO GMP Today
+            </a>
+            <a
+              href="/upcoming-ipo"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              🚀 Upcoming IPOs
+            </a>
+            <a
+              href="/apply"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              👨‍👩‍👧 Family IPO Checklist
+            </a>
+            <a
+              href="/backtest"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              🔬 Strategy Backtesting
+            </a>
+          </nav>
+        </div>
+      </section>
 
       {/* ── Full interactive homepage UI (client-side) ───────────── */}
       <ClientPageLoader />

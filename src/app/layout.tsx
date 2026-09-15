@@ -1,9 +1,31 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Toaster } from "sonner";
 import { CommandPalette } from "@/components/common/CommandPalette";
 import { AuthSessionProvider } from "@/components/auth/AuthSessionProvider";
-import { siteUrl } from "@/lib/siteConfig";
+import { siteUrl, siteName, siteAlternateName } from "@/lib/siteConfig";
 import "./globals.css";
+
+// Organization JSON-LD — tells Google the brand name, alternate name (IPODESK),
+// and logo. This powers the Knowledge Panel and brand search results.
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: siteName,
+  alternateName: siteAlternateName,
+  url: siteUrl,
+  logo: {
+    "@type": "ImageObject",
+    url: `${siteUrl}/icon-512.png`,
+    width: 512,
+    height: 512,
+  },
+  sameAs: [
+    siteUrl,
+  ],
+  description:
+    "India's smartest IPO research and allotment platform. Free IPO allotment checker, live GMP, IPO calendar, AI research reports and strategy backtesting for Indian investors.",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -16,6 +38,7 @@ export const metadata: Metadata = {
   keywords: [
     "IPO allotment check",
     "IPO allotment status",
+    "check IPO allotment status",
     "PAN check IPO",
     "KFintech allotment",
     "Link Intime allotment",
@@ -25,15 +48,17 @@ export const metadata: Metadata = {
     "bulk PAN checker",
     "India IPO checker",
     "IPO GMP today",
+    "IPO GMP live",
     "grey market premium IPO",
     "IPO calendar India 2026",
-    "upcoming IPO India",
+    "upcoming IPO India 2026",
     "IPO subscription status",
     "mainboard IPO",
     "SME IPO",
     "IPO listing gain",
     "IPO allotment date",
     "IPO Desk",
+    "IPODESK",
   ],
   authors: [{ name: "IPO Desk" }],
   creator: "IPO Desk",
@@ -87,6 +112,7 @@ export const metadata: Metadata = {
     canonical: siteUrl,
     languages: {
       "en-IN": siteUrl,
+      "x-default": siteUrl,
     },
   },
   category: "finance",
@@ -118,6 +144,12 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        {/* Organization schema — injected once at root so every page carries brand signals */}
+        <Script
+          id="schema-organization"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
         <AuthSessionProvider>
           <div id="main-content">{children}</div>
         </AuthSessionProvider>
