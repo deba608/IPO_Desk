@@ -104,7 +104,7 @@ export function Header() {
         >
           <Image
             src="/logo.png"
-            alt=""
+            alt="IPO Desk logo"
             width={32}
             height={32}
             className="rounded-md"

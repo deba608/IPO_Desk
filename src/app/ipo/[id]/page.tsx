@@ -194,6 +194,55 @@ export default async function IPODetailPage({ params }: PageProps) {
     },
   };
 
+  // FAQ rich-result — mirrors IpoFaq component questions so Google can show
+  // expandable answers directly in search results.
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: `What is the lot size and minimum investment for ${ipo.name}?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: `The retail lot size is ${ipo.lotSize} shares. At the upper cut-off price band of ₹${ipo.priceBand.max} per share, the minimum retail investment is ${formatINR(ipo.minInvestment)} per application lot.`,
+        },
+      },
+      {
+        "@type": "Question",
+        name: `When does ${ipo.name} IPO open and close for subscription?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: `The issue opens on ${ipo.openDate} and closes on ${ipo.closeDate}. The UPI mandate authorization window typically closes by 5:00 PM IST on the final closing day.`,
+        },
+      },
+      {
+        "@type": "Question",
+        name: `Who is the registrar for this IPO and how do I check allotment?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: `The designated registrar is ${REGISTRAR_LABELS[ipo.registrar] ?? ipo.registrar}. Once the basis of allotment is finalized${ipo.allotmentDate ? ` on ${ipo.allotmentDate}` : ""}, you can verify status on IPO Desk's allotment checker using your PAN number.`,
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How is allotment calculated in case of retail oversubscription?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Under SEBI guidelines, if the retail portion is oversubscribed, allotment is conducted via a computerised lottery so that as many unique applicants as possible receive at least one minimum lot. Applying for multiple lots under a single PAN does not increase lottery odds.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What is the tax implication on listing day gains?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Profits from selling allotted IPO shares on listing day are treated as Short-Term Capital Gains (STCG) and taxed at 20% (plus surcharge & cess) under Section 111A of the Income Tax Act.",
+        },
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* ── JSON-LD Structured Data ────────────────────────────── */}
@@ -206,6 +255,11 @@ export default async function IPODetailPage({ params }: PageProps) {
         id={`schema-event-${id}`}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema) }}
+      />
+      <Script
+        id={`schema-faq-${id}`}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
 
       <Header />

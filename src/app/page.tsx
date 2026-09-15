@@ -32,6 +32,9 @@ const websiteSchema = {
 };
 
 // JSON-LD: WebApplication schema (helps Google understand this is a finance tool)
+// NOTE: single source of truth — client-page.tsx must NOT inject a second
+// WebApplication block. No aggregateRating here: ratings without visible
+// on-page reviews risk a Google spam penalty.
 const webAppSchema = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -43,13 +46,6 @@ const webAppSchema = {
     "@type": "Offer",
     price: "0",
     priceCurrency: "INR",
-  },
-  aggregateRating: {
-    "@type": "AggregateRating",
-    ratingValue: "4.8",
-    ratingCount: "512",
-    bestRating: "5",
-    worstRating: "1",
   },
   description:
     "Free IPO allotment checker supporting KFintech, Link Intime, Bigshare and MUFG registrars. Bulk PAN check, Excel upload, live GMP, IPO calendar and AI-powered research reports.",
@@ -87,16 +83,13 @@ export default function HomePage() {
       />
 
       {/*
-       * SEO-only hero content — visually hidden from interactive users but
-       * fully readable by Google crawlers. The actual interactive UI is
-       * rendered by ClientPage below.
-       *
-       * Uses sr-only (screen-reader / crawler visible, not visually intrusive)
-       * because the ClientPage already shows a beautiful UI. We want Google to
-       * read meaningful text without duplicating content on screen.
-       */}
+        * SEO hero content — this <h1> is the SINGLE H1 for the homepage.
+        * The interactive hero heading in client-page.tsx is an <h2> styled
+        * identically (client bundle loads with ssr:false, so crawlers without
+        * JS only see this server-rendered H1).
+        */}
       <div className="sr-only">
-        <h1>IPO Desk — Free IPO Allotment Checker & Research Platform for Indian Investors</h1>
+        <h1>IPO Allotment Status Check — Free PAN Checker for Indian IPOs</h1>
         <p>
           Check IPO allotment status instantly using your PAN number. IPO Desk supports all major
           Indian registrars: KFintech, Link Intime, Bigshare, and MUFG. Upload an Excel file for
@@ -112,6 +105,9 @@ export default function HomePage() {
           <ul>
             <li>
               <a href="/calendar">IPO Calendar — Upcoming &amp; Open IPOs 2026</a>
+            </li>
+            <li>
+              <a href="/apply">Family IPO Checklist — Track Bids Across Accounts</a>
             </li>
             <li>
               <a href="/backtest">IPO Strategy Backtesting Engine</a>

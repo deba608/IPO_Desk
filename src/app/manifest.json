@@ -1,6 +1,12 @@
 {
-  "name": "IPO Desk",
+  "id": "/",
+  "name": "IPO Desk — IPO Allotment Checker & Research Platform",
   "short_name": "IPO Desk",
+  "description": "Check IPO allotment status, live GMP, IPO calendar and AI research reports for Indian investors.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -16,6 +22,5 @@
     }
   ],
   "theme_color": "#6366f1",
-  "background_color": "#0f172a",
-  "display": "standalone"
+  "background_color": "#0f172a"
 }

@@ -18,7 +18,6 @@ import { AllotmentResult, CheckResponse, ScanResponse } from "@/types/allotment.
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
 import { useCheckHistory } from "@/hooks/useCheckHistory";
-import { siteUrl } from "@/lib/siteConfig";
 
 /* ------------------------------------------------------------------ */
 /*  Bulk batching                                                         */
@@ -299,40 +298,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebApplication",
-            name: "IPO Desk — IPO Allotment Checker",
-            url: siteUrl,
-            description:
-              "Check IPO allotment status for single or multiple PANs instantly. Free IPO allotment checker supporting KFintech IPOs.",
-            applicationCategory: "FinanceApplication",
-            operatingSystem: "All",
-            browserRequirements: "Modern browser with JavaScript enabled",
-            offers: {
-              "@type": "Offer",
-              price: "0",
-              priceCurrency: "INR",
-            },
-            aggregateRating: {
-              "@type": "AggregateRating",
-              ratingValue: "4.8",
-              ratingCount: "512",
-              bestRating: "5",
-              worstRating: "1",
-            },
-            featureList: [
-              "Single PAN check",
-              "Bulk PAN check",
-              "Excel file upload",
-              "CSV/Excel export",
-            ],
-          }),
-        }}
-      />
       <Header />
 
       <main className="flex-1">
@@ -348,10 +313,13 @@ export default function Home() {
           <div className="relative container mx-auto max-w-5xl text-center">
 
 
-            <h1 className="animate-fade-up delay-100 text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            {/* Single server-rendered <h1> lives in page.tsx (sr-only).
+                This hero heading is an <h2> styled identically to avoid
+                duplicate-H1 dilution after hydration. */}
+            <h2 className="animate-fade-up delay-100 text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Check IPO Allotment
               <span className="block gradient-text mt-2 sm:mt-3">in Seconds</span>
-            </h1>
+            </h2>
 
             <p className="animate-fade-up delay-200 mx-auto mt-4 max-w-2xl text-sm text-muted-foreground sm:text-base">
               Enter your PAN and instantly check allotment status across every Indian registrar.

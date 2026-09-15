@@ -91,7 +91,7 @@ export function AuthButton({ compact = false }: { compact?: boolean }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={session.user.image}
-            alt=""
+            alt={`${session.user.name ?? "Google user"} profile photo`}
             width={40}
             height={40}
             className="h-full w-full object-cover"

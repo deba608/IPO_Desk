@@ -18,6 +18,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: `${siteUrl}/apply`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
       url: `${siteUrl}/backtest`,
       lastModified: new Date(),
       changeFrequency: "weekly",
@@ -31,7 +37,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { ipos } = await getCalendar();
     dynamicRoutes = ipos.map((ipo) => ({
       url: `${siteUrl}/ipo/${ipo.id}`,
-      lastModified: new Date(),
+      // Real freshness signal: prefer subscription/GMP timestamps over "now"
+      // so Google doesn't learn to ignore our lastModified.
+      lastModified: new Date(
+        ipo.subscription?.updatedAt ?? ipo.gmpUpdatedAt ?? ipo.listingDate ?? ipo.closeDate ?? Date.now()
+      ),
       // Open IPOs change frequently; listed ones are stable
       changeFrequency:
         ipo.lifecycle === "open"

@@ -51,6 +51,16 @@ export default function BacktestPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1 container mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        {/* SSR heading — the single H1. The workspace banner heading is an
+            H2 styled identically so crawlers get content without JS. */}
+        <div className="sr-only">
+          <h1>IPO Strategy Backtesting Engine — Test Listing-Day Rules on Historical Data</h1>
+          <p>
+            Simulate quantitative IPO bidding strategies against verified Indian mainboard and SME
+            IPO data from 2023–2026. Filter by GMP, QIB and retail subscription to find
+            high win-rate rules before bidding.
+          </p>
+        </div>
         <BacktestWorkspace />
       </main>
       <footer className="border-t border-border py-4">

@@ -3,11 +3,36 @@ import { Suspense } from "react";
 import { Users } from "lucide-react";
 import { Header } from "@/components/common/Header";
 import { ApplyWorkspace } from "@/features/ipo-apply/components/ApplyWorkspace";
+import { siteUrl } from "@/lib/siteConfig";
 
 export const metadata: Metadata = {
-  title: "Family IPO Checklist — Track Bids Across Accounts — IPO Desk",
+  title: "Family IPO Checklist — Track Bids Across Accounts",
   description:
-    "Don't miss a family bid: save PANs + brokers + UPI IDs once, copy details, apply in each broker's app, and track UPI mandates.",
+    "Don't miss a family bid: save PANs, brokers and UPI IDs once, apply in each broker's app, and track UPI mandates. One PAN = one bid (SEBI rule). Free family IPO checklist for Indian investors.",
+  keywords: [
+    "family IPO apply",
+    "IPO checklist India",
+    "multiple PAN IPO application",
+    "UPI mandate track IPO",
+    "IPO bid tracker",
+  ],
+  alternates: {
+    canonical: `${siteUrl}/apply`,
+    languages: { "en-IN": `${siteUrl}/apply` },
+  },
+  openGraph: {
+    title: "Family IPO Checklist — Never Miss a Family Bid",
+    description:
+      "Save PANs + brokers + UPI IDs once, apply in each broker's app, and track UPI mandates across the family.",
+    url: `${siteUrl}/apply`,
+    images: [{ url: `${siteUrl}/og-banner.jpg`, width: 1200, height: 630, alt: "IPO Desk Family Checklist" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Family IPO Checklist — IPO Desk",
+    description: "Track family IPO bids across PANs, brokers and UPI mandates in one checklist.",
+    images: [`${siteUrl}/og-banner.jpg`],
+  },
 };
 
 export default function ApplyPage() {
