@@ -8,6 +8,23 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Gzip/Brotli compress all responses (default true, explicit for clarity)
+  compress: true,
+  // Tree-shake heavy icon / UI packages — cuts unused JS by 100-200 KiB
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-label",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-progress",
+      "@radix-ui/react-separator",
+      "@radix-ui/react-slot",
+      "@radix-ui/react-tabs",
+      "recharts",
+      "sonner",
+    ],
+  },
   async headers() {
     return [
       {
@@ -32,6 +49,21 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
+          },
+          // Cache static assets aggressively
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      // Don't cache HTML pages — always fresh
+      {
+        source: "/:path((?!_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.svg).*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
           },
         ],
       },

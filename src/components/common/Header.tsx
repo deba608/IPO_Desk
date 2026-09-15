@@ -108,7 +108,6 @@ export function Header() {
             width={32}
             height={32}
             className="rounded-md"
-            style={{ width: 32, height: "auto" }}
             priority
           />
           <span className="text-[17px] font-semibold tracking-tight">
