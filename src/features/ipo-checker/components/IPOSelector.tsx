@@ -76,6 +76,7 @@ const LIST_REFRESH_MS = 60 * 1000;
 
 export function IPOSelector({ value, onChange }: IPOSelectorProps) {
   const [ipos, setIpos] = useState<IPO[]>([]);
+  const [openDates, setOpenDates] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -95,13 +96,29 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
     async function fetchIPOs(initial: boolean) {
       try {
         if (initial) setLoading(true);
-        const response = await fetch("/api/ipos");
-        if (!response.ok) throw new Error("Failed to fetch IPOs");
-        const data = await response.json();
+        // Active list + calendar in parallel; the calendar's openDate is the
+        // recency signal used to sort the dropdown latest-first (same pattern
+        // as RecentIPOsFeed). Calendar failure must not break the selector.
+        const [ipoRes, calRes] = await Promise.allSettled([
+          fetch("/api/ipos"),
+          fetch("/api/calendar"),
+        ]);
+        if (ipoRes.status !== "fulfilled" || !ipoRes.value.ok)
+          throw new Error("Failed to fetch IPOs");
+        const data = await ipoRes.value.json();
         if (!cancelled) {
           const list: IPO[] = data.ipos ?? [];
           setIpos(list);
           setError(null);
+
+          if (calRes.status === "fulfilled" && calRes.value.ok) {
+            const cal = await calRes.value.json();
+            const map: Record<string, string> = {};
+            for (const entry of cal.ipos ?? []) {
+              if (entry.openDate) map[normalizeName(entry.name)] = entry.openDate;
+            }
+            setOpenDates(map);
+          }
 
           // One-time deep-link preselect: /?ipo=<name> from a calendar page.
           if (!didAutoSelect.current && !value) {
@@ -139,15 +156,26 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
 
   const filtered = useMemo(
     () =>
-      ipos.filter(
-        (ipo) =>
-          (registrarFilter === "all" || ipo.registrar === registrarFilter) &&
-          (typeFilter === "all" ||
-            (typeFilter === "mainboard" && !isSME(ipo.name)) ||
-            (typeFilter === "sme" && isSME(ipo.name))) &&
-          ipo.name.toLowerCase().includes(search.toLowerCase())
-      ),
-    [ipos, registrarFilter, typeFilter, search]
+      ipos
+        .filter(
+          (ipo) =>
+            (registrarFilter === "all" || ipo.registrar === registrarFilter) &&
+            (typeFilter === "all" ||
+              (typeFilter === "mainboard" && !isSME(ipo.name)) ||
+              (typeFilter === "sme" && isSME(ipo.name))) &&
+            ipo.name.toLowerCase().includes(search.toLowerCase())
+        )
+        // Latest first: newest calendar openDate on top; entries without a
+        // calendar match keep registrar order at the bottom.
+        .sort((a, b) => {
+          const da = openDates[normalizeName(a.name)];
+          const db = openDates[normalizeName(b.name)];
+          if (da && db) return db.localeCompare(da);
+          if (da) return -1;
+          if (db) return 1;
+          return 0;
+        }),
+    [ipos, openDates, registrarFilter, typeFilter, search]
   );
 
   // The highlight must never point past the end of the list — filtering can
