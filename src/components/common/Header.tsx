@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/apply",
-    label: "Apply",
+    label: "Checklist",
     icon: Users,
     isActive: (p) => p === "/apply",
   },

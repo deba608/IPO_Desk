@@ -161,7 +161,7 @@ export function ApplyWorkspace() {
       {accounts.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">2 · Tick who applies</h2>
+            <h2 className="text-sm font-semibold text-foreground">2 · Tick who applies (1 PAN = 1 bid)</h2>
             <div className="flex gap-2 text-[11px]">
               <button type="button" className="text-primary hover:underline" onClick={() => setTicked(accounts.map((a) => a.id))}>Select all</button>
               <button type="button" className="text-muted-foreground hover:underline" onClick={() => setTicked([])}>Clear</button>
@@ -202,10 +202,13 @@ export function ApplyWorkspace() {
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 <CopyAllButton tsv={tsv} />
-                <Button size="sm" onClick={openAllBrokers}>
-                  <ExternalLink className="h-3.5 w-3.5" /> Open broker pages ({new Set(selected.map((a) => a.broker)).size})
+                <Button size="sm" variant="outline" onClick={openAllBrokers}>
+                  <ExternalLink className="h-3.5 w-3.5" /> Open broker IPO pages ({new Set(selected.map((a) => a.broker)).size})
                 </Button>
               </div>
+              <p className="mt-1.5 text-[10px] text-muted-foreground">
+                Login + bid + UPI approval happen there, per account.
+              </p>
             </div>
           )}
         </div>
@@ -213,7 +216,7 @@ export function ApplyWorkspace() {
 
       {ipo && (
         <div>
-          <h2 className="mb-2 text-sm font-semibold text-foreground">3 · Apply each account, then track UPI</h2>
+          <h2 className="mb-2 text-sm font-semibold text-foreground">3 · Apply in broker app, then tick here</h2>
           <ApplyChecklist
             ipoId={ipo.id}
             ipoName={ipo.name}
