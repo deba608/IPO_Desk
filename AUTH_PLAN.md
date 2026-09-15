@@ -1,18 +1,15 @@
 # Auth Plan — Google login for users, passwordless OTP for admin
 
-> Status: PLAN ONLY — nothing implemented yet.
-> Decisions needed (bottom) before build starts.
+> Status: ✅ IMPLEMENTED (was plan-only). Built per this design; see verification notes in §8.
+> Last updated: 2026-09-15.
 
-## 0. Current state (verified 2026-09-06)
+## 0. Starting state (was verified 2026-09-06, now superseded)
 
-- No auth library, no sessions, no middleware. `User` model exists (email unique,
-  name, avatarUrl) but is fully unused — `userId` is always null.
-- Admin = passcode gate (`ADMIN_PASSCODE`/`CRON_SECRET` via `x-admin-passcode` or
-  Bearer on `/api/admin/sync`; `CRON_SECRET` Bearer on `/api/logs` + cron).
-  Login dialog verifies against `/api/logs` (401 = wrong code).
-- Alerts = anonymous `x-device-id` scoping (self-asserted, not authentication).
-- Goal: Google OAuth for users; a DIFFERENT, password-free mechanism for admin
-  (email and/or mobile OTP). No passwords stored anywhere, ever.
+- ~~No auth library, no sessions, no middleware.~~ Now: Auth.js v5 (`next-auth`) with Google provider + JWT sessions; `AuthSessionProvider` in root layout; `AuthButton` (avatar menu) in header.
+- ~~Admin = passcode gate.~~ Now: `ADMIN_PASSCODE` handling deleted; admin = email-OTP (`/api/admin/otp/request` + `/verify`, `ipodesk_admin` cookie) with `CRON_SECRET` Bearer kept for cron/programmatic access to `/api/admin/sync` + `/api/logs`.
+- ~~Alerts = anonymous `x-device-id` only.~~ Now: user session takes precedence; `POST /api/alerts/link` backfills device alerts to the signed-in user.
+- Prisma: `Account` model + `User.phone` added; `AdminOtpChallenge(identifierHash, codeHash, expiresAt, attempts)` added (hashes only, in-memory fallback when no `DATABASE_URL`).
+- `/api/health` exposes auth/mail/allowlist config flags.
 
 ## 1. Design principles
 
@@ -89,6 +86,18 @@
 
 ## 7. Decisions needed before build
 
-1. Admin factor: **email OTP only** (recommended, free) or must-have SMS too?
-2. Any **forced-login** routes, or keep everything public + optional login?
-3. Admin session lifetime: **30-min sliding** or longer (e.g. 8h)?
+Decided during implementation (kept here for the record):
+
+1. Admin factor: **email OTP only** (shipped; SMS deferred — paid in India, Firebase free quota is the only $0 path).
+2. Forced-login routes: **none** — everything public + optional login.
+3. Admin session lifetime: **30-min sliding** `ipodesk_admin` cookie.
+
+## 8. As-built verification (2026-09-15)
+
+- [x] Deps installed: `next-auth` (+ `@auth/prisma-adapter`), `resend` (see `package.json`).
+- [x] Routes live: `src/app/api/auth/[...nextauth]/route.ts`, `src/app/api/admin/otp/request|verify/route.ts`, `src/app/api/admin/logout/route.ts`, `src/app/api/alerts/link/route.ts`.
+- [x] UI live: `src/components/auth/AuthSessionProvider.tsx`, `src/components/auth/AuthButton.tsx` (header desktop + compact mobile).
+- [x] Schema live: `Account`, `User.phone`, `AdminOtpChallenge` in `prisma/schema.prisma`.
+- [x] Env documented: `.env.example` (Google OAuth, admin allowlists, Resend).
+- [x] `npx tsc --noEmit` clean; `npm test` 57/57 green.
+- Manual re-verify on demand: Google login/logout; cross-device alerts after link; OTP happy path / ×5 wrong (invalidate) / expired / resend cooldown / non-allowlisted learns nothing; old passcode calls 401/503.

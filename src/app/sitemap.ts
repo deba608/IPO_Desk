@@ -2,6 +2,9 @@ import type { MetadataRoute } from "next";
 import { getCalendar } from "@/features/ipo-calendar/lib/calendar.service";
 import { siteUrl } from "@/lib/siteConfig";
 
+// Cache the sitemap for 1 hour; avoids DB round-trip on every crawl.
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static pages
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -18,16 +21,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: `${siteUrl}/upcoming-ipo`,
+      lastModified: new Date(),
+      changeFrequency: "hourly",
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/ipo-gmp-today`,
+      lastModified: new Date(),
+      changeFrequency: "hourly",
+      priority: 0.85,
+    },
+    {
+      url: `${siteUrl}/ipo-allotment-check`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.85,
+    },
+    {
       url: `${siteUrl}/apply`,
       lastModified: new Date(),
       changeFrequency: "weekly",
-      priority: 0.8,
+      priority: 0.75,
     },
     {
       url: `${siteUrl}/backtest`,
       lastModified: new Date(),
       changeFrequency: "weekly",
-      priority: 0.7,
+      priority: 0.65,
     },
   ];
 

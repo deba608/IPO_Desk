@@ -111,10 +111,12 @@ Dashboard for managing IPO data, monitoring syncs, viewing logs, and reviewing A
 
 Testing infrastructure and automated deployment.
 
-- [x] Unit tests: Vitest test suite with 38 unit tests across 4 suites (`npm test`)
+- [x] Unit tests: Vitest test suite with 57 tests across 7 suites (`npm test`) — calendar service, providers, report scoring, backtest engine, registrar adapters (incl. Skyline/Purva/Maashitla), brokers deep-links
 - [x] Calendar lifecycle & date derivation tests
 - [x] Algorithmic score & verdict tests
 - [x] Backtesting engine rule & simulation tests
+- [x] Registrar `not_found` sentinel tests (never `error` for unapplied PANs)
+- [x] `npx tsc --noEmit` clean
 - [x] GitHub Actions CI pipeline (`.github/workflows/ci.yml`)
 - [x] Production multi-stage `Dockerfile` and `docker-compose.yml`
 
@@ -141,7 +143,53 @@ Allow users to build and test quantitative IPO selection strategies against hist
 
 - [x] Global Command Palette (`cmdk` / ⌘K) registered with shortcuts for Allotment Checker, Calendar, Backtester, History, Admin
 - [x] Header navigation with responsive sliding pill indicators and mobile menu
+- [x] Header nav: Checklist (`/apply`), Backtest, History + Google sign-in button + mobile safe-area menu
 
 ---
 
-*Last updated: 2026-09-01*
+## Phase 9 — Registrar Expansion (Skyline / Purva / Maashitla) ← ✅ Done
+
+**Status:** ✅ Done (see [plan.md](./plan.md))
+
+7 live adapters via `REGISTRAR_REGISTRY` (`src/registrars/registry.ts`): KFintech, Link Intime (legacy key), MUFG, Bigshare, Skyline, Purva, Maashitla. `RegistrarName` union + Prisma `enum Registrar` + `/api/scan` zod filter + history/detail labels all extended. Cameo / Beetal / MCS deferred (SPAs, no public API found).
+
+---
+
+## Phase 10 — Auth: Google Users + Admin Passwordless OTP ← ✅ Done
+
+**Status:** ✅ Done (see [AUTH_PLAN.md](./AUTH_PLAN.md))
+
+- [x] Auth.js v5 Google OAuth (`/api/auth/[...nextauth]`), `SessionProvider`, avatar menu, cross-device alert linking (`/api/alerts/link`)
+- [x] Admin email-OTP (`/api/admin/otp/*`, `AdminOtpChallenge` model, `ipodesk_admin` cookie); passcode retired
+- [x] `Account` + `User.phone` Prisma models; `/api/health` exposes auth/mail/allowlist flags
+
+---
+
+## Phase 11 — SEO & Brand (IPODESK) ← ✅ Done (uncommitted: `siteConfig`, `layout`, `page`)
+
+**Status:** ✅ Done — changes live in working tree, not yet committed
+
+- [x] `src/lib/siteConfig.ts`: `siteUrl` (`NEXT_PUBLIC_SITE_URL` override) + `siteName` ("IPO Desk") + `siteAlternateName` ("IPODESK")
+- [x] Root layout: Organization JSON-LD (brand + alias + logo), expanded keywords, `x-default` alternate, GSC verification
+- [x] Homepage: server-rendered visible H1 hero (crawlable without JS) + feature-link nav; WebSite + WebApplication JSON-LD, single-H1 rule
+- [x] Dynamic `sitemap.ts` (static routes + per-IPO `lastModified`) + `robots.ts` (disallow `/admin`, `/api/`, `/history`)
+- [x] Perf: `optimizePackageImports`, browserslist, CLS logo fix, bad `Cache-Control` headers removed
+
+---
+
+## Phase 12 — Family Checklist (`/apply`) ← ✅ Done
+
+**Status:** ✅ Done (see [MULTI_APPLY_PLAN.md](./MULTI_APPLY_PLAN.md) + [FAMILY_CHECKLIST_PLAN.md](./FAMILY_CHECKLIST_PLAN.md))
+
+- [x] `/apply` repositioned: "Apply" → "Checklist" (manual broker + UPI flow, no auto-submit overpromise)
+- [x] `AccountVault` + `ApplyWorkspace` + `ApplyChecklist` components, broker deep-links, UPI mandate tracker
+
+---
+
+## Phase 13 — Checker Sorting ← ✅ Done (uncommitted)
+
+- [x] IPO selector sorted latest-first by allotment date (calendar openDate fallback)
+
+---
+
+*Last updated: 2026-09-15*

@@ -3,7 +3,7 @@
 > India's most intelligent IPO research & decision platform.
 > Goal: move users from *"here's the data"* to *"should I apply or not?"*
 
-**Last updated:** 2026-09-01 (Full Rollout: Backtester, Admin Console, CI/CD, and IPO Details Enrichment)
+**Last updated:** 2026-09-15 (Rollout: registrar expansion ×7, auth, SEO/brand, Family Checklist, perf, checker sorting)
 
 ---
 
@@ -36,7 +36,7 @@ up the spec's separate NestJS + Postgres + Redis backend yet.
 | Backend        | Next.js Route Handlers          | NestJS                            |
 | Data store     | PostgreSQL + Prisma / memory    | PostgreSQL + Prisma               |
 | Cache/queues   | In-memory ring buffer           | Redis + BullMQ                    |
-| Auth           | Admin passcode & device headers | Google OAuth + Email OTP + JWT    |
+| Auth           | Google OAuth (Auth.js v5) + admin email OTP + JWT | Google OAuth + Email OTP + JWT    |
 | AI             | Algorithmic + Claude-ready      | Claude (Opus 4.8) report/score    |
 | Charts         | Recharts (GMP, Backtesting)     | Recharts                          |
 | Deploy         | Docker + Vercel (`vercel.json`) | Docker + GitHub Actions + VPS     |
@@ -49,11 +49,12 @@ The spec's stated order. Check items off as they land.
 
 ### 0. Allotment Checker (pre-existing base app) — ✅ Done
 
-- [x] Dynamic IPO discovery across registrars (KFintech, MUFG, Bigshare, Link Intime)
-- [x] Registrar adapter interface + per-registrar adapters
+- [x] Dynamic IPO discovery across 7 registrars (KFintech, MUFG, Link Intime-legacy, Bigshare, Skyline, Purva, Maashitla)
+- [x] Registrar adapter interface + per-registrar adapters (single source of truth: `src/registrars/registry.ts`)
 - [x] Single PAN check
 - [x] Bulk PAN check (paste multiple)
-- [x] Excel upload (`xlsx`) for bulk checking
+- [x] Excel upload (`xlsx`) for bulk checking (Bigshare bulk: local OCR fast-path, pipelined CAPTCHAs, concurrency-3 batches, progressive rendering)
+- [x] IPO selector sorted latest-first (allotment date, calendar openDate fallback)
 - [x] Results dashboard with status badges
 - [x] CSV / Excel export
 - [x] Cron sync route (`/api/cron/sync-ipos`) + logging service
@@ -93,18 +94,18 @@ The spec's stated order. Check items off as they land.
 
 ### 3. Database + Admin Panel — ✅ Done
 
-- [x] Prisma + Postgres schema with Ipo, GmpSnapshot, SubSnapshot, Report, User, Alert, WatchlistEntry
+- [x] Prisma + Postgres schema with Ipo, GmpSnapshot, SubSnapshot, Report, User, Account (OAuth), AdminOtpChallenge, Alert, WatchlistEntry; `enum Registrar` covers all 7 registrars
 - [x] Auto-persistence of calendar IPO snapshots to database
-- [x] Admin console at `/admin` with passcode security gate
-- [x] Sync monitor with real-time status across 4 Indian registrars + manual trigger `/api/admin/sync`
+- [x] Admin console at `/admin` with passwordless email-OTP gate (passcode retired; `CRON_SECRET` Bearer kept for cron/programmatic)
+- [x] Sync monitor with real-time status across all 7 registrars + manual trigger `/api/admin/sync`
 - [x] Real-time log inspector reading from `logger.service.ts` ring-buffer with filters & search
 - [x] IPO registry catalog viewer with deep links & filters
 - [x] AI and research score report review tool
 
 ### 4. Data Ingestion — ✅ Done
 
-- [x] Sources: Registrars (KFintech, Link Intime, Bigshare, MUFG), InvestorGain, NSE
-- [x] Scheduled jobs: `/api/cron/sync-ipos` (every 6h) auto-persisting snapshots
+- [x] Sources: Registrars (KFintech, Link Intime-legacy, MUFG, Bigshare, Skyline, Purva, Maashitla), InvestorGain, NSE, IPO Guru
+- [x] Scheduled jobs: `/api/cron/sync-ipos` (daily Vercel Cron) auto-persisting snapshots; per-registrar fault isolation
 - [x] Diagnostic logging with execution duration and event classifications
 
 ### 5. Alerts — ✅ Done
@@ -137,9 +138,31 @@ The spec's stated order. Check items off as they land.
 
 ### 9. Testing & CI/CD — ✅ Done
 
-- [x] 38 Vitest unit tests across 4 suites covering providers, calendar service, report scoring, and backtest engine
+- [x] 57 Vitest unit tests across 7 suites covering providers, calendar service, report scoring, backtest engine, registrar adapters (incl. Skyline/Purva/Maashitla sentinels), and broker deep-links
 - [x] GitHub Actions workflow (`.github/workflows/ci.yml`)
 - [x] Production Dockerfile and `docker-compose.yml`
+
+### 10. Registrar Expansion — ✅ Done
+
+- [x] Skyline, Purva, Maashitla adapters live (`src/registrars/skyline.ts`, `purva.ts`, `maashitla.ts`); Cameo/Beetal/MCS deferred — see [plan.md](./plan.md)
+- [x] `RegistrarName` union, Prisma `enum Registrar` + migration, IPO Guru `REGISTRAR_MAP`, `/api/scan` zod enum, history/detail labels
+
+### 11. Auth (Users + Admin) — ✅ Done
+
+- [x] Google OAuth (Auth.js v5), `AuthSessionProvider`, header sign-in/avatar, `/api/alerts/link` device→user linking — see [AUTH_PLAN.md](./AUTH_PLAN.md)
+- [x] Admin passwordless email OTP (`/api/admin/otp/*`, `AdminOtpChallenge`, `ipodesk_admin` cookie)
+
+### 12. SEO, Brand & Performance — ✅ Done
+
+- [x] `src/lib/siteConfig.ts` brand source of truth (`siteUrl` / `siteName` / `siteAlternateName` = IPODESK); Organization JSON-LD in root layout; expanded keywords; `x-default` alternate; GSC verification
+- [x] Homepage server-rendered visible H1 hero + feature links above client checker; WebSite + WebApplication JSON-LD; single-H1 rule
+- [x] Dynamic `sitemap.ts` + `robots.ts`; OG banner; `NEXT_PUBLIC_SITE_URL` env override
+- [x] Perf: `optimizePackageImports`, browserslist targets, CLS logo fix, incorrect `Cache-Control` headers removed
+
+### 13. Family Checklist (`/apply`) — ✅ Done
+
+- [x] `/apply` repositioned from "Apply" to "Family Checklist" (manual broker + UPI flow); header nav label `Checklist` — see [FAMILY_CHECKLIST_PLAN.md](./FAMILY_CHECKLIST_PLAN.md)
+- [x] `AccountVault` + `ApplyWorkspace` + `ApplyChecklist`, broker deep-links, UPI mandate tracker, `useApplyAccounts` vault — see [MULTI_APPLY_PLAN.md](./MULTI_APPLY_PLAN.md)
 
 ---
 
