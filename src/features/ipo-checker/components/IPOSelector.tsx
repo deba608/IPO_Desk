@@ -76,7 +76,8 @@ const LIST_REFRESH_MS = 60 * 1000;
 
 export function IPOSelector({ value, onChange }: IPOSelectorProps) {
   const [ipos, setIpos] = useState<IPO[]>([]);
-  const [openDates, setOpenDates] = useState<Record<string, string>>({});
+  // normName → latest lifecycle date (allotmentDate, else openDate)
+  const [lifecycleDates, setLifecycleDates] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -96,9 +97,10 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
     async function fetchIPOs(initial: boolean) {
       try {
         if (initial) setLoading(true);
-        // Active list + calendar in parallel; the calendar's openDate is the
-        // recency signal used to sort the dropdown latest-first (same pattern
-        // as RecentIPOsFeed). Calendar failure must not break the selector.
+        // Active list + calendar in parallel; the calendar's allotmentDate
+        // is the recency signal used to sort the dropdown latest-first
+        // (same pattern as RecentIPOsFeed). Calendar failure must not
+        // break the selector.
         const [ipoRes, calRes] = await Promise.allSettled([
           fetch("/api/ipos"),
           fetch("/api/calendar"),
@@ -115,9 +117,12 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
             const cal = await calRes.value.json();
             const map: Record<string, string> = {};
             for (const entry of cal.ipos ?? []) {
-              if (entry.openDate) map[normalizeName(entry.name)] = entry.openDate;
+              // Allotment date first (most relevant for a checker); fall back
+              // to openDate for upcoming/open IPOs with no allotment yet.
+              const date = entry.allotmentDate ?? entry.openDate;
+              if (date) map[normalizeName(entry.name)] = date;
             }
-            setOpenDates(map);
+            setLifecycleDates(map);
           }
 
           // One-time deep-link preselect: /?ipo=<name> from a calendar page.
@@ -165,17 +170,18 @@ export function IPOSelector({ value, onChange }: IPOSelectorProps) {
               (typeFilter === "sme" && isSME(ipo.name))) &&
             ipo.name.toLowerCase().includes(search.toLowerCase())
         )
-        // Latest first: newest calendar openDate on top; entries without a
-        // calendar match keep registrar order at the bottom.
+        // Latest first: newest allotment date on top (openDate fallback for
+        // upcoming/open IPOs); entries without a calendar match keep
+        // registrar order at the bottom.
         .sort((a, b) => {
-          const da = openDates[normalizeName(a.name)];
-          const db = openDates[normalizeName(b.name)];
+          const da = lifecycleDates[normalizeName(a.name)];
+          const db = lifecycleDates[normalizeName(b.name)];
           if (da && db) return db.localeCompare(da);
           if (da) return -1;
           if (db) return 1;
           return 0;
         }),
-    [ipos, openDates, registrarFilter, typeFilter, search]
+    [ipos, lifecycleDates, registrarFilter, typeFilter, search]
   );
 
   // The highlight must never point past the end of the list — filtering can
