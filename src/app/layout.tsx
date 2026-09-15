@@ -90,6 +90,9 @@ export const metadata: Metadata = {
     },
   },
   category: "finance",
+  verification: {
+    google: "OXwrpZ8JOnk1Pdevo5iozayiR_91eUE42qaDpp0P6ws",
+  },
 };
 
 export const viewport: Viewport = {
