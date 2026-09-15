@@ -18,6 +18,7 @@ import { AllotmentResult, CheckResponse, ScanResponse } from "@/types/allotment.
 import { IPO } from "@/types/ipo.types";
 import { Header } from "@/components/common/Header";
 import { useCheckHistory } from "@/hooks/useCheckHistory";
+import { siteUrl } from "@/lib/siteConfig";
 
 /* ------------------------------------------------------------------ */
 /*  Bulk batching                                                         */
@@ -305,7 +306,7 @@ export default function Home() {
             "@context": "https://schema.org",
             "@type": "WebApplication",
             name: "IPO Desk — IPO Allotment Checker",
-            url: "https://ipodesk.com",
+            url: siteUrl,
             description:
               "Check IPO allotment status for single or multiple PANs instantly. Free IPO allotment checker supporting KFintech IPOs.",
             applicationCategory: "FinanceApplication",

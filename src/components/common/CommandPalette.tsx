@@ -13,6 +13,7 @@ import {
   SearchCode,
   Tag,
   Flame,
+  Users,
 } from "lucide-react";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { CalendarIPOWithStatus } from "@/types/calendar.types";
@@ -134,6 +135,14 @@ export function CommandPalette() {
                 >
                   <Calendar className="h-4 w-4 text-emerald-400" />
                   <span>IPO Calendar</span>
+                  <span className="ml-auto text-[10px] text-slate-500">Go to</span>
+                </Command.Item>
+                <Command.Item
+                  onSelect={() => navigate("/apply")}
+                  className="flex items-center gap-3 px-3 py-2 text-sm rounded-lg text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 cursor-pointer data-[selected=true]:bg-slate-800 data-[selected=true]:text-slate-100 transition-colors outline-none"
+                >
+                  <Users className="h-4 w-4 text-sky-400" />
+                  <span>Multi-Account Apply</span>
                   <span className="ml-auto text-[10px] text-slate-500">Go to</span>
                 </Command.Item>
                 <Command.Item

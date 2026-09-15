@@ -2,9 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import { CommandPalette } from "@/components/common/CommandPalette";
 import { AuthSessionProvider } from "@/components/auth/AuthSessionProvider";
+import { siteUrl } from "@/lib/siteConfig";
 import "./globals.css";
-
-const siteUrl = "https://ipodesk.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

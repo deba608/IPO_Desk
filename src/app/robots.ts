@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const siteUrl = "https://ipodesk.com";
+import { siteUrl } from "@/lib/siteConfig";
 
 export default function robots(): MetadataRoute.Robots {
   return {

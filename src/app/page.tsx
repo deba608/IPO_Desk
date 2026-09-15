@@ -11,12 +11,11 @@
  */
 import dynamic from "next/dynamic";
 import Script from "next/script";
+import { siteUrl } from "@/lib/siteConfig";
 
 // Lazy-load the interactive client component — it's heavy (bulk checker,
 // Excel upload) and Google doesn't need it for indexing.
 const ClientPage = dynamic(() => import("./client-page"), { ssr: false });
-
-const siteUrl = "https://ipodesk.com";
 
 // JSON-LD: WebSite schema (enables Google Sitelinks Search Box)
 const websiteSchema = {

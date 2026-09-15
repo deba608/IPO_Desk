@@ -41,6 +41,7 @@ const ResearchReport = nextDynamic(
 );
 import { AlertSettings } from "@/features/ipo-detail/components/AlertSettings";
 import { Header } from "@/components/common/Header";
+import { siteUrl } from "@/lib/siteConfig";
 
 import { CompanyOverview } from "@/features/ipo-detail/components/CompanyOverview";
 import { FinancialsTable } from "@/features/ipo-detail/components/FinancialsTable";
@@ -76,7 +77,7 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-const siteUrl = "https://ipodesk.com";
+
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
@@ -374,6 +375,18 @@ export default async function IPODetailPage({ params }: PageProps) {
 
             {/* Add to calendar */}
             <AddToCalendar ipo={ipo} />
+
+            {/* CTA to multi-account apply */}
+            <Link
+              href={`/apply?ipo=${encodeURIComponent(ipo.id)}`}
+              className="flex items-center gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 transition-colors hover:bg-emerald-500/15"
+            >
+              <ClipboardCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Apply from all accounts</p>
+                <p className="text-[11px] text-muted-foreground">One flow for family PANs + UPI tracking</p>
+              </div>
+            </Link>
 
             {/* CTA to allotment checker */}
             <Link

@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { CalendarRange } from "lucide-react";
 import { IPOCalendarView } from "@/features/ipo-calendar/components/IPOCalendarView";
 import { Header } from "@/components/common/Header";
-
-const siteUrl = "https://ipodesk.com";
+import { siteUrl } from "@/lib/siteConfig";
 
 export const metadata: Metadata = {
   title: "IPO Calendar 2026 — Upcoming, Open, Closed & Listed IPOs India",

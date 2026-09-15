@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getCalendar } from "@/features/ipo-calendar/lib/calendar.service";
-
-const siteUrl = "https://ipodesk.com";
+import { siteUrl } from "@/lib/siteConfig";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static pages

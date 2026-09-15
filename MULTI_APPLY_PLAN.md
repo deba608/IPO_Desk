@@ -1,7 +1,7 @@
 # Multi-Account IPO Apply — Plan
 
 > Goal: let a user with family PANs + different brokers/UPI IDs apply for the same IPO from all accounts in an easy way, from our web.
-> Last updated: 2026-09-15 — Status: 📝 PLAN ONLY (no code yet). Scope agreed: Family PANs + brokers, "All of above" (vault + tracker + deep-links now, broker API automation later).
+> Last updated: 2026-09-15 — Status: ✅ Phase 1 BUILT (`/apply` live: vault + workspace + tracker + deep-links). Phase 3 broker-API automation still deferred.
 
 ## 1. Reality check (read before coding)
 

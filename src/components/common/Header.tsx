@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, History, SearchCode, Search, Menu, X, ChartLine } from "lucide-react";
+import { Calendar, History, SearchCode, Search, Menu, X, ChartLine, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AuthButton } from "@/components/auth/AuthButton";
 
@@ -27,6 +27,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Calendar",
     icon: Calendar,
     isActive: (p) => p === "/calendar" || p.startsWith("/ipo/"),
+  },
+  {
+    href: "/apply",
+    label: "Apply",
+    icon: Users,
+    isActive: (p) => p === "/apply",
   },
   {
     href: "/backtest",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { Header } from "@/components/common/Header";
+import { siteUrl } from "@/lib/siteConfig";
 
 // recharts is heavy — split it off the initial page bundle; the workspace
 // (and its charts) loads right after.
@@ -11,8 +12,6 @@ const BacktestWorkspace = dynamic(
     ),
   { loading: () => <p className="py-10 text-center text-sm text-muted-foreground">Loading backtest engine…</p> }
 );
-
-const siteUrl = "https://ipodesk.com";
 
 export const metadata: Metadata = {
   title: "IPO Strategy Backtesting Engine — Quantitative Rules & Historical Returns",
