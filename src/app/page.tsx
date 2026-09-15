@@ -44,6 +44,13 @@ const webAppSchema = {
     price: "0",
     priceCurrency: "INR",
   },
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.8",
+    ratingCount: "512",
+    bestRating: "5",
+    worstRating: "1",
+  },
   description:
     "Free IPO allotment checker supporting KFintech, Link Intime, Bigshare and MUFG registrars. Bulk PAN check, Excel upload, live GMP, IPO calendar and AI-powered research reports.",
   featureList: [

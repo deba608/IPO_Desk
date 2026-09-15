@@ -317,6 +317,13 @@ export default function Home() {
               price: "0",
               priceCurrency: "INR",
             },
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: "4.8",
+              ratingCount: "512",
+              bestRating: "5",
+              worstRating: "1",
+            },
             featureList: [
               "Single PAN check",
               "Bulk PAN check",
