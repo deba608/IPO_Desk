@@ -9,13 +9,9 @@
  *      reads instantly without executing JavaScript.
  *   2. Lazy-loads the full interactive checker after hydration (no UX change).
  */
-import dynamic from "next/dynamic";
 import Script from "next/script";
 import { siteUrl } from "@/lib/siteConfig";
-
-// Lazy-load the interactive client component — it's heavy (bulk checker,
-// Excel upload) and Google doesn't need it for indexing.
-const ClientPage = dynamic(() => import("./client-page"), { ssr: false });
+import ClientPageLoader from "./client-page-loader";
 
 // JSON-LD: WebSite schema (enables Google Sitelinks Search Box)
 const websiteSchema = {
@@ -118,7 +114,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Full interactive homepage UI (client-side) ───────────── */}
-      <ClientPage />
+      <ClientPageLoader />
     </>
   );
 }
