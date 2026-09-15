@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  // Gzip/Brotli compress all responses (default true, explicit for clarity)
+  // Gzip/Brotli compress all responses
   compress: true,
   // Tree-shake heavy icon / UI packages — cuts unused JS by 100-200 KiB
   experimental: {
@@ -50,21 +50,6 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
           },
-          // Cache static assets aggressively
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      // Don't cache HTML pages — always fresh
-      {
-        source: "/:path((?!_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.svg).*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=0, must-revalidate",
-          },
         ],
       },
     ];
@@ -72,4 +57,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
