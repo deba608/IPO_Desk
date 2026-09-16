@@ -97,7 +97,7 @@ Push and email notifications for key events.
 Dashboard for managing IPO data, monitoring syncs, viewing logs, and reviewing AI outputs.
 
 - [x] Route: `/admin` with modern tabs and passcode security gate
-- [x] Sync Monitor: real-time registrar status (KFintech, Link Intime, Bigshare, MUFG, InvestorGain)
+- [x] Sync Monitor: real-time registrar status (KFintech, MUFG, Bigshare, Skyline, Purva, Maashitla, Link Intime-legacy + InvestorGain)
 - [x] Manual Trigger: `/api/admin/sync` with execution latency feedback
 - [x] Log Viewer: tail in-memory ring buffer with level filters (Info, Warn, Error), live 5s auto-refresh
 - [x] IPO Registry: filterable catalog by board/lifecycle with quick links & status badges

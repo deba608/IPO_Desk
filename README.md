@@ -70,7 +70,7 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 - **Landing pages** — `/ipo-allotment-check` (how-to + FAQ schema), `/ipo-gmp-today` (GMP guide + FAQ schema), `/upcoming-ipo` (live upcoming/open IPOs + ItemList); each with canonical + `en-IN`/`x-default` alternates, OG/Twitter cards, BreadcrumbList schema
 - **Sitemap + robots** — dynamic `sitemap.xml` (static routes incl. the 3 landing pages + per-IPO entries with real `lastModified`, cached 1h via `revalidate`); `robots.ts` with per-bot allow rules for major search engines, crawl-delay for generic crawlers, sitemap reference
 - **JSON-LD** — Organization schema (brand + `IPODESK` alias + logo) in root layout; WebSite + WebApplication schemas on homepage; FAQ/Breadcrumb/ItemList schemas on landing pages
-- **Homepage hero** — server-rendered visible H1 + crawlable copy and feature links above the client-side checker UI
+- **Homepage hero** — server-rendered sr-only H1 + crawlable copy and feature links for Google, lazy-loaded client checker UI
 - **Canonical brand config** — `src/lib/siteConfig.ts` (`NEXT_PUBLIC_SITE_URL` override, `en-IN` + `x-default` alternates, Google Search Console verification)
 - **Perf/caching** — `optimizePackageImports`, browserslist targets, CLS logo fix, `poweredByHeader: false`, immutable 1y cache on `/_next/static`, 7-day cache on public icons/images (incorrect blanket `Cache-Control` headers removed)
 

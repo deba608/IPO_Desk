@@ -24,17 +24,17 @@ const organizationSchema = {
     siteUrl,
   ],
   description:
-    "India's smartest IPO research and allotment platform. Free IPO allotment checker, live GMP, IPO calendar, AI research reports and strategy backtesting for Indian investors.",
+    "Check IPO allotment status by PAN online in seconds. All 7 registrars — KFintech, MUFG, Bigshare, Skyline, Purva, Maashitla — with bulk Excel, live GMP and calendar.",
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "IPO Desk — IPO Allotment Checker | Check Status Instantly",
+    default: "IPO Allotment Status Check by PAN Online | IPO Desk",
     template: "%s | IPO Desk",
   },
   description:
-    "Check IPO allotment status instantly for any PAN. Free IPO checker for KFintech, Link Intime, Bigshare & MUFG IPOs. Bulk PAN upload, Excel export, live GMP, IPO calendar & AI research reports for Indian investors.",
+    "Check IPO allotment status by PAN online in seconds. All 7 registrars — KFintech, MUFG, Bigshare, Skyline & more + bulk Excel check, live GMP & calendar.",
   keywords: [
     "IPO allotment check",
     "IPO allotment status",
@@ -44,6 +44,9 @@ export const metadata: Metadata = {
     "Link Intime allotment",
     "Bigshare allotment",
     "MUFG allotment",
+    "Skyline allotment",
+    "Purva Sharegistry allotment",
+    "Maashitla allotment",
     "IPO status checker",
     "bulk PAN checker",
     "India IPO checker",
@@ -85,9 +88,9 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.json",
   openGraph: {
-    title: "IPO Desk — IPO Allotment Checker & Research Platform",
+    title: "IPO Allotment Status Check by PAN Online | IPO Desk",
     description:
-      "Check IPO allotment status for multiple PANs instantly. Live GMP, AI research reports, subscription tracker & IPO calendar for Indian investors.",
+      "Check IPO allotment by PAN in seconds for all 7 registrars — KFintech, MUFG, Bigshare, Skyline & more. Bulk Excel check, live GMP, IPO calendar & AI reports.",
     url: siteUrl,
     siteName: "IPO Desk",
     type: "website",
@@ -103,9 +106,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "IPO Desk — IPO Allotment Checker & Research Platform",
+    title: "IPO Allotment Status Check by PAN Online | IPO Desk",
     description:
-      "Check IPO allotment for any PAN. Live GMP, AI research, subscription tracker & IPO calendar.",
+      "Check IPO allotment by PAN in seconds. All 7 registrars — KFintech, MUFG, Bigshare, Skyline & more + bulk check & live GMP.",
     images: [`${siteUrl}/og-banner.jpg`],
   },
   alternates: {

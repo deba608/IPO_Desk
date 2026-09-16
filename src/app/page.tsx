@@ -20,7 +20,7 @@ const websiteSchema = {
   name: "IPO Desk",
   url: siteUrl,
   description:
-    "India's smartest IPO research and allotment platform. Check allotment status, live GMP, subscription data, AI research reports and IPO calendar.",
+    "Check IPO allotment status by PAN online in seconds. All 7 registrars — KFintech, MUFG, Bigshare, Skyline & more + bulk Excel check, live GMP & calendar.",
   potentialAction: {
     "@type": "SearchAction",
     target: {
@@ -48,7 +48,7 @@ const webAppSchema = {
     priceCurrency: "INR",
   },
   description:
-    "Free IPO allotment checker supporting KFintech, Link Intime, Bigshare and MUFG registrars. Bulk PAN check, Excel upload, live GMP, IPO calendar and AI-powered research reports.",
+    "Check IPO allotment status by PAN online in seconds. All 7 registrars — KFintech, MUFG, Bigshare, Skyline, Purva, Maashitla — with bulk Excel upload, live GMP and calendar.",
   featureList: [
     "IPO Allotment Status Checker",
     "Bulk PAN Upload via Excel",
@@ -88,11 +88,11 @@ export default function HomePage() {
         * The interactive hero in client-page.tsx uses an <h2>.
         */}
       <div className="sr-only">
-        <h1>IPO Allotment Status Check — Free PAN Checker for Indian IPOs</h1>
+        <h1>IPO Allotment Status Check by PAN Online — IPO Desk</h1>
         <p>
-          Check IPO allotment status instantly using your PAN number. IPO Desk (IPODESK) supports
-          all major Indian registrars: KFintech, Link Intime, Bigshare, and MUFG. Upload an Excel
-          file for bulk PAN checking across hundreds of applicants in seconds.
+          Check IPO allotment status by PAN online in seconds. IPO Desk supports all 7 Indian
+          registrars — KFintech, MUFG Intime, Bigshare, Skyline, Purva and Maashitla — with bulk
+          Excel check, live GMP and IPO calendar.
         </p>
         <nav aria-label="Key features">
           <ul>

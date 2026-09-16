@@ -7,7 +7,7 @@ import { siteUrl } from "@/lib/siteConfig";
 export const metadata: Metadata = {
   title: "IPO Allotment Check -- How to Check IPO Allotment Status by PAN",
   description:
-    "Step-by-step guide to check IPO allotment status by PAN number. Covers KFintech, Link Intime, Bigshare and MUFG registrars. Free bulk PAN checker on IPO Desk (IPODESK).",
+    "Step-by-step guide to check IPO allotment status by PAN number. Covers all 7 registrars — KFintech, MUFG, Bigshare, Skyline, Purva, Maashitla & Link Intime. Free bulk PAN checker on IPO Desk.",
   keywords: [
     "IPO allotment check",
     "check IPO allotment status",
@@ -17,6 +17,9 @@ export const metadata: Metadata = {
     "Link Intime allotment check",
     "Bigshare allotment check",
     "MUFG allotment check",
+    "Skyline allotment check",
+    "Purva Sharegistry allotment check",
+    "Maashitla allotment check",
     "IPO allotment result",
     "IPO allotment date",
     "IPODESK allotment checker",
@@ -33,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "IPO Allotment Check -- Verify Status by PAN | IPO Desk",
     description:
-      "Free IPO allotment checker for KFintech, Link Intime, Bigshare and MUFG. Check single or bulk PANs instantly.",
+      "Free IPO allotment checker for all 7 registrars — KFintech, MUFG, Bigshare, Skyline, Purva, Maashitla & Link Intime. Check single or bulk PANs instantly.",
     url: `${siteUrl}/ipo-allotment-check`,
     images: [
       {
@@ -48,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "IPO Allotment Check -- IPO Desk (IPODESK)",
     description:
-      "Check IPO allotment status by PAN for any KFintech, Link Intime, Bigshare or MUFG IPO.",
+      "Check IPO allotment status by PAN for all 7 registrars — KFintech, MUFG, Bigshare, Skyline, Purva, Maashitla & Link Intime.",
     images: [`${siteUrl}/og-banner.jpg`],
   },
 };
@@ -82,7 +85,7 @@ const faqItems = [
   },
   {
     q: "Which registrars does IPO Desk support?",
-    a: "IPO Desk supports all four major Indian IPO registrars: KFintech, Link Intime India, Bigshare Services, and MUFG Intime.",
+    a: "IPO Desk supports all 7 Indian IPO registrars: KFintech, MUFG Intime (ex-Link Intime), Bigshare Services, Skyline Financial Services, Purva Sharegistry, Maashitla Securities, plus the legacy Link Intime key.",
   },
   {
     q: "What if I do not get allotment?",
@@ -101,10 +104,13 @@ const faqSchema = {
 };
 
 const REGISTRARS = [
-  { name: "KFintech", formerly: "Karvy Fintech", ipos: "~40% of mainboard IPOs" },
-  { name: "Link Intime India", formerly: "Link Intime", ipos: "~35% of mainboard IPOs" },
+  { name: "KFintech", formerly: "KFin Technologies", ipos: "~40% of mainboard IPOs" },
+  { name: "MUFG Intime", formerly: "ex-Link Intime", ipos: "~35% of mainboard IPOs" },
   { name: "Bigshare Services", formerly: "Bigshare", ipos: "Most SME IPOs on NSE Emerge" },
-  { name: "MUFG Intime", formerly: "MUFG Intime India", ipos: "Select mainboard IPOs" },
+  { name: "Skyline Financial Services", formerly: "Skyline", ipos: "SME + mainboard IPOs" },
+  { name: "Purva Sharegistry", formerly: "Purva", ipos: "SME IPOs" },
+  { name: "Maashitla Securities", formerly: "Maashitla", ipos: "SME IPOs via JSON API" },
+  { name: "Link Intime (legacy)", formerly: "Link Intime", ipos: "Back-compat key for MUFG portal" },
 ];
 
 export default function IpoAllotmentCheckPage() {
@@ -144,7 +150,7 @@ export default function IpoAllotmentCheckPage() {
             </h1>
             <p className="mt-4 max-w-2xl text-base text-muted-foreground">
               Check your IPO allotment status instantly using your PAN number. IPO Desk (IPODESK)
-              supports all four major Indian registrars &mdash; no login, no fees, results in
+              supports all seven Indian registrars &mdash; no login, no fees, results in
               seconds.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -196,8 +202,8 @@ export default function IpoAllotmentCheckPage() {
             <section>
               <h2 className="text-xl font-bold text-foreground mb-4">Supported Registrars</h2>
               <p className="text-muted-foreground mb-4">
-                Every Indian IPO appoints one of four SEBI-registered registrars. IPO Desk
-                (IPODESK) connects to all four:
+                Every Indian IPO appoints one of seven SEBI-registered registrars. IPO Desk
+                (IPODESK) connects to all seven:
               </p>
               <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-sm">
