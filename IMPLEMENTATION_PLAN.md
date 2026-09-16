@@ -3,7 +3,7 @@
 > India's most intelligent IPO research & decision platform.
 > Goal: move users from *"here's the data"* to *"should I apply or not?"*
 
-**Last updated:** 2026-09-15 (Rollout: registrar expansion ×7, auth, SEO/brand, Family Checklist, perf, checker sorting)
+**Last updated:** 2026-09-16 (Rollout: registrar expansion ×7, auth, SEO landing pages ×3 + brand, Family Checklist, perf/caching, checker sorting)
 
 ---
 
@@ -156,8 +156,9 @@ The spec's stated order. Check items off as they land.
 
 - [x] `src/lib/siteConfig.ts` brand source of truth (`siteUrl` / `siteName` / `siteAlternateName` = IPODESK); Organization JSON-LD in root layout; expanded keywords; `x-default` alternate; GSC verification
 - [x] Homepage server-rendered visible H1 hero + feature links above client checker; WebSite + WebApplication JSON-LD; single-H1 rule
-- [x] Dynamic `sitemap.ts` + `robots.ts`; OG banner; `NEXT_PUBLIC_SITE_URL` env override
-- [x] Perf: `optimizePackageImports`, browserslist targets, CLS logo fix, incorrect `Cache-Control` headers removed
+- [x] SEO landing pages: `/ipo-allotment-check` (how-to + FAQ + BreadcrumbList), `/ipo-gmp-today` (live GMP + ItemList), `/upcoming-ipo` (live upcoming/open + ItemList) — all in `sitemap.ts` (with `revalidate = 3600`)
+- [x] Dynamic `sitemap.ts` + `robots.ts` (per-bot allows, crawl-delay for generic crawlers); OG banner; `NEXT_PUBLIC_SITE_URL` env override
+- [x] Perf: `optimizePackageImports`, browserslist targets, CLS logo fix, `poweredByHeader: false`, immutable `/_next/static` + 7-day public-asset cache, incorrect `Cache-Control` headers removed
 
 ### 13. Family Checklist (`/apply`) — ✅ Done
 

@@ -27,6 +27,7 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 - **Watchlist** — star IPOs to track, persisted in localStorage with cross-tab sync
 - **Data Source Badge** — honest "Live" vs "Sample" indicator
 - **Calendar Highlights** — at-a-glance stats (open count, top GMP, most subscribed)
+- **Related-pages nav** — cross-links to Upcoming IPOs, GMP Today, Allotment Check, Family Checklist (internal SEO)
 
 ### IPO Detail Page
 - **Key Stats** — price band, lot size, issue size, minimum investment
@@ -66,10 +67,12 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 - See [AUTH_PLAN.md](./AUTH_PLAN.md) for the implemented design.
 
 ### SEO
-- **Sitemap + robots** — dynamic `sitemap.xml` (static pages + per-IPO entries with real `lastModified`) and `robots.ts` (disallows `/admin`, `/api/`, `/history`)
-- **JSON-LD** — Organization schema (brand + `IPODESK` alias + logo) in root layout; WebSite + WebApplication schemas on homepage; FAQ schema where applicable
+- **Landing pages** — `/ipo-allotment-check` (how-to + FAQ schema), `/ipo-gmp-today` (live GMP + ItemList), `/upcoming-ipo` (live upcoming/open IPOs + ItemList); each with canonical + `en-IN`/`x-default` alternates, OG/Twitter cards, BreadcrumbList schema
+- **Sitemap + robots** — dynamic `sitemap.xml` (static routes incl. the 3 landing pages + per-IPO entries with real `lastModified`, cached 1h via `revalidate`); `robots.ts` with per-bot allow rules for major search engines, crawl-delay for generic crawlers, sitemap reference
+- **JSON-LD** — Organization schema (brand + `IPODESK` alias + logo) in root layout; WebSite + WebApplication schemas on homepage; FAQ/Breadcrumb/ItemList schemas on landing pages
 - **Homepage hero** — server-rendered visible H1 + crawlable copy and feature links above the client-side checker UI
 - **Canonical brand config** — `src/lib/siteConfig.ts` (`NEXT_PUBLIC_SITE_URL` override, `en-IN` + `x-default` alternates, Google Search Console verification)
+- **Perf/caching** — `optimizePackageImports`, browserslist targets, CLS logo fix, `poweredByHeader: false`, immutable 1y cache on `/_next/static`, 7-day cache on public icons/images (incorrect blanket `Cache-Control` headers removed)
 
 ### Technical
 - **Live Multi-Registrar Discovery** — KFintech, MUFG Intime (ex Link Intime, plus legacy `linkintime` key), Bigshare, Skyline, Purva, Maashitla — all discovered dynamically
@@ -110,6 +113,9 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 | Route | Description |
 |---|---|
 | `/` | Allotment checker — single/bulk/excel check, results dashboard, cross-IPO scan (server-rendered SEO hero + client checker) |
+| `/ipo-allotment-check` | SEO guide — how to check allotment by PAN per registrar, FAQ schema |
+| `/ipo-gmp-today` | SEO page — live Grey Market Premium today, ItemList schema |
+| `/upcoming-ipo` | SEO page — upcoming + open IPOs 2026 from live calendar, ItemList schema |
 | `/calendar` | IPO calendar — live data, lifecycle tabs, search, sort, watchlist |
 | `/ipo/[id]` | IPO detail — key stats, subscription, GMP, timeline, add to calendar, research report, apply CTA |
 | `/apply` | Family IPO checklist — account vault, apply workspace, mandate tracker |

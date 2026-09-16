@@ -165,15 +165,16 @@ Allow users to build and test quantitative IPO selection strategies against hist
 
 ---
 
-## Phase 11 — SEO & Brand (IPODESK) ← ✅ Done (uncommitted: `siteConfig`, `layout`, `page`)
+## Phase 11 — SEO & Brand (IPODESK) ← ✅ Done
 
-**Status:** ✅ Done — changes live in working tree, not yet committed
+**Status:** ✅ Done (committed 2026-09-16)
 
 - [x] `src/lib/siteConfig.ts`: `siteUrl` (`NEXT_PUBLIC_SITE_URL` override) + `siteName` ("IPO Desk") + `siteAlternateName` ("IPODESK")
 - [x] Root layout: Organization JSON-LD (brand + alias + logo), expanded keywords, `x-default` alternate, GSC verification
 - [x] Homepage: server-rendered visible H1 hero (crawlable without JS) + feature-link nav; WebSite + WebApplication JSON-LD, single-H1 rule
-- [x] Dynamic `sitemap.ts` (static routes + per-IPO `lastModified`) + `robots.ts` (disallow `/admin`, `/api/`, `/history`)
-- [x] Perf: `optimizePackageImports`, browserslist, CLS logo fix, bad `Cache-Control` headers removed
+- [x] SEO landing pages: `/ipo-allotment-check` (how-to + FAQ + BreadcrumbList), `/ipo-gmp-today` (live GMP + ItemList), `/upcoming-ipo` (live upcoming/open + ItemList)
+- [x] Dynamic `sitemap.ts` (3 landing pages + static routes + per-IPO `lastModified`, `revalidate = 3600`) + `robots.ts` (per-bot allows, crawl-delay for generic crawlers)
+- [x] Perf: `optimizePackageImports`, browserslist, CLS logo fix, `poweredByHeader: false`, immutable `/_next/static` + 7-day public-asset caching; bad `Cache-Control` headers removed
 
 ---
 
@@ -186,10 +187,10 @@ Allow users to build and test quantitative IPO selection strategies against hist
 
 ---
 
-## Phase 13 — Checker Sorting ← ✅ Done (uncommitted)
+## Phase 13 — Checker Sorting ← ✅ Done
 
 - [x] IPO selector sorted latest-first by allotment date (calendar openDate fallback)
 
 ---
 
-*Last updated: 2026-09-15*
+*Last updated: 2026-09-16*
