@@ -135,8 +135,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-IN" className="dark">
+      {/*
+        * suppressHydrationWarning: browser extensions (IDM, password managers,
+        * Grammarly, etc.) inject attributes like `fdprocessedid` into buttons
+        * and inputs before React hydrates, causing console-only hydration
+        * mismatch noise (see issue #5). This silences the warning for
+        * extension-mutated attributes; it does not change rendering behaviour.
+        * Genuine SSR mismatches from app code should still be caught in dev
+        * by reviewing the elements involved.
+        */}
       <body
         className="antialiased min-h-screen bg-background"
+        suppressHydrationWarning
       >
         <a
           href="#main-content"
