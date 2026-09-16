@@ -156,7 +156,7 @@ The spec's stated order. Check items off as they land.
 
 - [x] `src/lib/siteConfig.ts` brand source of truth (`siteUrl` / `siteName` / `siteAlternateName` = IPODESK); Organization JSON-LD in root layout; expanded keywords; `x-default` alternate; GSC verification
 - [x] Homepage server-rendered visible H1 hero + feature links above client checker; WebSite + WebApplication JSON-LD; single-H1 rule
-- [x] SEO landing pages: `/ipo-allotment-check` (how-to + FAQ + BreadcrumbList), `/ipo-gmp-today` (live GMP + ItemList), `/upcoming-ipo` (live upcoming/open + ItemList) — all in `sitemap.ts` (with `revalidate = 3600`)
+- [x] SEO landing pages: `/ipo-allotment-check` (how-to + FAQ + BreadcrumbList), `/ipo-gmp-today` (GMP guide + FAQ + BreadcrumbList), `/upcoming-ipo` (live upcoming/open + ItemList) — all in `sitemap.ts` (with `revalidate = 3600`)
 - [x] Dynamic `sitemap.ts` + `robots.ts` (per-bot allows, crawl-delay for generic crawlers); OG banner; `NEXT_PUBLIC_SITE_URL` env override
 - [x] Perf: `optimizePackageImports`, browserslist targets, CLS logo fix, `poweredByHeader: false`, immutable `/_next/static` + 7-day public-asset cache, incorrect `Cache-Control` headers removed
 

@@ -172,7 +172,7 @@ Allow users to build and test quantitative IPO selection strategies against hist
 - [x] `src/lib/siteConfig.ts`: `siteUrl` (`NEXT_PUBLIC_SITE_URL` override) + `siteName` ("IPO Desk") + `siteAlternateName` ("IPODESK")
 - [x] Root layout: Organization JSON-LD (brand + alias + logo), expanded keywords, `x-default` alternate, GSC verification
 - [x] Homepage: server-rendered visible H1 hero (crawlable without JS) + feature-link nav; WebSite + WebApplication JSON-LD, single-H1 rule
-- [x] SEO landing pages: `/ipo-allotment-check` (how-to + FAQ + BreadcrumbList), `/ipo-gmp-today` (live GMP + ItemList), `/upcoming-ipo` (live upcoming/open + ItemList)
+- [x] SEO landing pages: `/ipo-allotment-check` (how-to + FAQ + BreadcrumbList), `/ipo-gmp-today` (GMP guide + FAQ + BreadcrumbList), `/upcoming-ipo` (live upcoming/open + ItemList)
 - [x] Dynamic `sitemap.ts` (3 landing pages + static routes + per-IPO `lastModified`, `revalidate = 3600`) + `robots.ts` (per-bot allows, crawl-delay for generic crawlers)
 - [x] Perf: `optimizePackageImports`, browserslist, CLS logo fix, `poweredByHeader: false`, immutable `/_next/static` + 7-day public-asset caching; bad `Cache-Control` headers removed
 

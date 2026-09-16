@@ -107,37 +107,37 @@ export default function HomePage() {
               href="/calendar"
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
-              📅 IPO Calendar 2026
+              IPO Calendar 2026
             </a>
             <a
               href="/ipo-allotment-check"
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
-              ✅ How to Check Allotment
+              How to Check Allotment
             </a>
             <a
               href="/ipo-gmp-today"
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
-              📈 IPO GMP Today
+              IPO GMP Today
             </a>
             <a
               href="/upcoming-ipo"
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
-              🚀 Upcoming IPOs
+              Upcoming IPOs 2026
             </a>
             <a
               href="/apply"
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
-              👨‍👩‍👧 Family IPO Checklist
+              Family IPO Checklist
             </a>
             <a
               href="/backtest"
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
-              🔬 Strategy Backtesting
+              Strategy Backtesting
             </a>
           </nav>
         </div>

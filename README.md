@@ -67,7 +67,7 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 - See [AUTH_PLAN.md](./AUTH_PLAN.md) for the implemented design.
 
 ### SEO
-- **Landing pages** — `/ipo-allotment-check` (how-to + FAQ schema), `/ipo-gmp-today` (live GMP + ItemList), `/upcoming-ipo` (live upcoming/open IPOs + ItemList); each with canonical + `en-IN`/`x-default` alternates, OG/Twitter cards, BreadcrumbList schema
+- **Landing pages** — `/ipo-allotment-check` (how-to + FAQ schema), `/ipo-gmp-today` (GMP guide + FAQ schema), `/upcoming-ipo` (live upcoming/open IPOs + ItemList); each with canonical + `en-IN`/`x-default` alternates, OG/Twitter cards, BreadcrumbList schema
 - **Sitemap + robots** — dynamic `sitemap.xml` (static routes incl. the 3 landing pages + per-IPO entries with real `lastModified`, cached 1h via `revalidate`); `robots.ts` with per-bot allow rules for major search engines, crawl-delay for generic crawlers, sitemap reference
 - **JSON-LD** — Organization schema (brand + `IPODESK` alias + logo) in root layout; WebSite + WebApplication schemas on homepage; FAQ/Breadcrumb/ItemList schemas on landing pages
 - **Homepage hero** — server-rendered visible H1 + crawlable copy and feature links above the client-side checker UI
@@ -114,7 +114,7 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 |---|---|
 | `/` | Allotment checker — single/bulk/excel check, results dashboard, cross-IPO scan (server-rendered SEO hero + client checker) |
 | `/ipo-allotment-check` | SEO guide — how to check allotment by PAN per registrar, FAQ schema |
-| `/ipo-gmp-today` | SEO page — live Grey Market Premium today, ItemList schema |
+| `/ipo-gmp-today` | SEO page — GMP today guide, FAQ + Breadcrumb schemas |
 | `/upcoming-ipo` | SEO page — upcoming + open IPOs 2026 from live calendar, ItemList schema |
 | `/calendar` | IPO calendar — live data, lifecycle tabs, search, sort, watchlist |
 | `/ipo/[id]` | IPO detail — key stats, subscription, GMP, timeline, add to calendar, research report, apply CTA |
