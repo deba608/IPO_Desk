@@ -1,7 +1,7 @@
 # Add Other IPO Registrars — Plan
 
 > Goal: expand allotment checker from 4 registrars (KFintech, MUFG/Link Intime, Bigshare, Link Intime-legacy) to cover the SME-heavy long tail that handles ~15-20% of IPOs.
-> Last updated: 2026-09-05 — ✅ Implemented: Skyline, Purva, Maashitla (live list + live check, 8 new tests green). Deferred: Cameo, Beetal, MCS (SPAs, no public API found — see §8).
+> Last updated: 2026-09-15 — ✅ Implemented: Skyline, Purva, Maashitla (live list + live check, 9 tests green in `other-adapters.test.ts`, 57 total). Deferred: Cameo, Beetal, MCS (SPAs, no public API found — see §8). Remaining: seed samples for new registrars + `IMPLEMENTATION_PLAN.md` (now updated) + manual end-to-end (see Phase 5).
 
 ## 1. Current state
 
@@ -52,7 +52,7 @@ If a portal is CAPTCHA-gated with no bypass (like Bigshare was), fall back to **
 - [x] Update zod filter in `src/app/api/scan/route.ts:24` to accept new keys.
 - [x] Add labels in `src/app/history/page.tsx:22-25` + `src/app/ipo/[id]/page.tsx:37-40` (`REGISTRAR_LABELS`).
 - [x] Admin sync monitor picks up new adapters automatically via `listAdapters()` — just verify labels render (`ROADMAP.md Phase 6` section).
-- [ ] Update `README.md:123-125` adapter table + `prisma/seed.ts` sample rows for new registrars.
+- [ ] Update `README.md` adapter table (done 2026-09-15) + `prisma/seed.ts` sample rows for new registrars (STILL OPEN — see Phase 5).
 
 ### Phase 1 — Skyline (`src/registrars/skyline.ts`) ✅ Done
 - [x] `SkylineAdapter implements RegistrarAdapter` (`name="skyline"`, `displayName="Skyline Financial Services Pvt. Ltd."`), axios 20s timeout + browser UA.
@@ -72,10 +72,11 @@ If a portal is CAPTCHA-gated with no bypass (like Bigshare was), fall back to **
 - [x] JSON API (OpenAPI spec at `api.maashitla.com/openapi.json`): `GET /api/public-issue/companies` for list, `GET /api/public-issue/search?company_name=&pan=` for check; HTTP 404 = `not_found` (verified live); uuid clientId resolved to company_name via 5-min cache.
 
 ### Phase 5 — Tests + docs
-- [x] New `src/registrars/other-adapters.test.ts`: 8 tests (list parsing, not_found sentinels, CSRF-missing error, Maashitla allotted + 404). Existing 6 adapter tests untouched.
-- [x] `npm test` (52 passed), `npx tsc --noEmit`, `npx eslint` on touched files.
+- [x] New `src/registrars/other-adapters.test.ts`: 9 tests (list parsing, not_found sentinels, CSRF-missing error, Maashitla allotted + 404). Existing 6 adapter tests untouched.
+- [x] `npm test` (57 passed across 7 suites, 2026-09-15), `npx tsc --noEmit` clean, `npx eslint` on touched files.
 - [ ] Manual: `/api/ipos?refresh=true` shows new registrar IPOs; single + bulk (20 PANs) + `/api/scan` fan-out; `/admin` sync monitor counts; `/history` labels.
-- [ ] Update `IMPLEMENTATION_PLAN.md §0/§4` registrar lists + this file's checkboxes.
+- [x] Update `IMPLEMENTATION_PLAN.md §0/§3/§4` registrar lists + §§10–11 (done 2026-09-15) + this file's checkboxes.
+- [ ] Update `README.md:123-125` adapter table (done 2026-09-15) + `prisma/seed.ts` sample rows for new registrars (STILL OPEN — seed only has kfintech/mufg/bigshare samples).
 
 ## 8. Deferred: Cameo / Beetal / MCS (evidence from 2026-09-05 recon)
 

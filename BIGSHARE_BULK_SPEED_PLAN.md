@@ -3,7 +3,7 @@
 > Problem: bulk uploads for Bigshare IPOs are slow because **every PAN pays for a full CAPTCHA round-trip** (fetch image → remote OCR.Space solve → POST answer), executed with low parallelism and sequential frontend batches.
 > Goal: cut wall-clock time for 100–500 PAN bulk checks by ~3–5× and show users the first results in seconds (progressive rendering), without breaking single-PAN reliability.
 
-Last updated: 2026-09-05
+Last updated: 2026-09-05 — Status check 2026-09-15: Phases A–C still applied and current (`/api/check` at 60 req/min, frontend batch 20 × concurrency 3, progressive rendering). Phase D follow-ups still open. No doc changes needed beyond this note.
 
 ---
 

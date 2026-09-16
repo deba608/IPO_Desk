@@ -60,6 +60,20 @@ export default function CalendarPage() {
               Upcoming, open, closed and recently listed mainboard &amp; SME issues —
               with price band, lot size, dates, registrar and grey-market premium.
             </p>
+            <nav aria-label="Related IPO pages" className="mt-5 flex flex-wrap gap-2">
+              <a href="/upcoming-ipo" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                🚀 Upcoming IPOs
+              </a>
+              <a href="/ipo-gmp-today" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                📈 IPO GMP Today
+              </a>
+              <a href="/ipo-allotment-check" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                ✅ How to Check Allotment
+              </a>
+              <a href="/apply" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                👨‍👩‍👧 Family Checklist
+              </a>
+            </nav>
           </div>
         </section>
 

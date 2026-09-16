@@ -2,6 +2,7 @@
 
 > Decision: KEEP `/apply`, reframe from "Apply" to "Family Checklist".
 > Date: 2026-09-15 — Status: ✅ Done (copy-only, 3 files)
+> Follow-up landed: homepage SEO hero links to `/apply` as "Family IPO Checklist"; header label confirmed `Checklist` (`src/components/common/Header.tsx`); `ApplyWorkspace` + `ApplyChecklist` components built (see MULTI_APPLY_PLAN.md).
 > Context: Groww / Angel One expose NO IPO-apply API (secondary orders only). Only Upstox has IPO Application API Beta (`POST /v2/ipos/orders`, 14-Aug-2026), and even it needs per-person OAuth + manual UPI mandate. So full auto-apply is out of scope. This plan removes overpromise, keeps low-cost value.
 
 ## 1. Goal
