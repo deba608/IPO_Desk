@@ -378,13 +378,61 @@ export class BigShareAdapter implements RegistrarAdapter {
   }
 
   async checkBulkAllotment(pans: string[], clientId: string): Promise<AllotmentResult[]> {
-    // Rolling captcha pool: maintains a target number of pre-solved tokens at all
-    // times. Unlike the old one-shot pre-warm (8 tokens once at the start), this
-    // refills 1-for-1 as tokens are consumed so every chunk has fresh tokens.
-    // On Vercel (no local ddddocr), every token costs one OCR.Space request;
-    // target=4 matches the chunkSize below so we never request more than needed.
-    const POOL_TARGET = 4;
+    if (pans.length === 0) return [];
 
+    // ── Speed strategy (two-pronged) ─────────────────────────────────────────
+    //
+    // 1. TOKEN SHARING: one OCR solve is shared across ALL PANs in this bulk
+    //    run. Many bulk uploads go to the same IPO with the same session-bound
+    //    CAPTCHA; if Bigshare doesn't single-use-invalidate the token we get
+    //    the entire bulk for the price of one OCR call (~3s total vs n×3s).
+    //    On Status:"CAPTCHA" rejection the shared token is refreshed once and
+    //    sharing continues — a single bad OCR read doesn't abort the whole run.
+    //
+    // 2. DOUBLE-BUFFER POOL: pre-solve chunkSize*2 tokens so the NEXT chunk's
+    //    captchas are ready while the CURRENT chunk is posting. Refills are
+    //    triggered at chunk-start (not just per-token-consume) so OCR latency
+    //    (~3s) is hidden behind POST latency (~1-2s per chunk).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const CHUNK_SIZE = 5;
+    // Double-buffer: keep 2× a full chunk pre-solved so next chunk is ready
+    // before current chunk finishes posting.
+    const POOL_TARGET = CHUNK_SIZE * 2;
+
+    // ── Shared captcha token ─────────────────────────────────────────────────
+    // All PANs attempt to reuse the same token. On rejection we refresh once.
+    let sharedCaptcha: { token: string; answer: string; capturedAt: number } | null = null;
+    let sharedCaptchaRefreshing = false;
+
+    const getOrRefreshShared = async (): Promise<{ token: string; answer: string } | null> => {
+      if (
+        sharedCaptcha &&
+        Date.now() - sharedCaptcha.capturedAt < CAPTCHA_TOKEN_VALIDITY_MS
+      ) {
+        return { token: sharedCaptcha.token, answer: sharedCaptcha.answer };
+      }
+      if (sharedCaptchaRefreshing) return null; // pool fallback will handle it
+      sharedCaptchaRefreshing = true;
+      try {
+        const cf = await this.fetchCaptchaToken();
+        sharedCaptcha = { ...cf, capturedAt: Date.now() };
+        return { token: cf.token, answer: cf.answer };
+      } catch {
+        return null;
+      } finally {
+        sharedCaptchaRefreshing = false;
+      }
+    };
+
+    // Invalidate the shared token when a PAN reports CAPTCHA rejection so the
+    // next caller triggers a fresh solve. Called from checkAllotment indirectly
+    // via the preSolvedCaptcha param: when the server rejects the answer it
+    // retries internally with a freshly fetched token, so we just need to
+    // expire the shared one here so subsequent PANs get the new solve.
+    const invalidateShared = () => { sharedCaptcha = null; };
+
+    // ── Double-buffer pool ───────────────────────────────────────────────────
     interface PooledCaptcha { token: string; answer: string; capturedAt: number }
     const pool: PooledCaptcha[] = [];
     let poolRefillInFlight = 0;
@@ -397,58 +445,78 @@ export class BigShareAdapter implements RegistrarAdapter {
           .then((captcha) => {
             pool.push({ ...captcha, capturedAt: Date.now() });
           })
-          .catch(() => {
-            // Transient fetch failure — pool just has one fewer token; the
-            // checkAllotment fallback (per-PAN solve) handles it gracefully.
-          })
-          .finally(() => {
-            poolRefillInFlight--;
-          });
+          .catch(() => { /* pool just has one fewer slot; per-PAN fallback handles it */ })
+          .finally(() => { poolRefillInFlight--; });
       }
     };
 
-    // Prime the pool before the first chunk so POSTs start immediately.
-    if (pans.length > 0) {
-      const prewarm = Math.min(pans.length, POOL_TARGET);
-      const warmed = await Promise.allSettled(
-        Array.from({ length: prewarm }, () => this.fetchCaptchaToken())
-      );
-      const capturedAt = Date.now();
-      for (const w of warmed) {
-        if (w.status === "fulfilled") pool.push({ ...w.value, capturedAt });
-      }
+    // ── Initial pre-warm ─────────────────────────────────────────────────────
+    // Fetch the shared token + a full double-buffer pool simultaneously so the
+    // first chunk starts with zero captcha wait time.
+    const prewarmCount = Math.min(pans.length, POOL_TARGET);
+    const [sharedResult, ...poolResults] = await Promise.allSettled([
+      this.fetchCaptchaToken(),
+      ...Array.from({ length: prewarmCount }, () => this.fetchCaptchaToken()),
+    ]);
+
+    const capturedAt = Date.now();
+    if (sharedResult.status === "fulfilled") {
+      sharedCaptcha = { ...sharedResult.value, capturedAt };
+    }
+    for (const w of poolResults) {
+      if (w.status === "fulfilled") pool.push({ ...w.value, capturedAt });
     }
 
-    // Only supply a pre-warmed token when it is still within its validity window;
-    // stale tokens trigger a Status:"CAPTCHA" rejection, wasting an extra OCR call.
-    const popFreshCaptcha = (): { token: string; answer: string } | undefined => {
+    // ── Token picker: shared first, pool fallback ─────────────────────────────
+    const pickCaptcha = async (): Promise<{ token: string; answer: string } | undefined> => {
+      // Try the shared token first (zero extra OCR cost).
+      const shared = await getOrRefreshShared();
+      if (shared) return shared;
+
+      // Shared unavailable (refreshing) — drain the pool.
       while (pool.length > 0) {
         const candidate = pool.shift()!;
         if (Date.now() - candidate.capturedAt < CAPTCHA_TOKEN_VALIDITY_MS) {
-          // Immediately schedule a replacement so the pool stays at target size.
-          refillPool();
+          refillPool(); // maintain double-buffer
           return { token: candidate.token, answer: candidate.answer };
         }
         log("warn", "pan_check_failure", "Discarded stale pre-warmed CAPTCHA token", {
           meta: { registrar: this.name },
         });
       }
-      // Pool empty — log so Vercel logs make the cause obvious (quota? slow OCR?).
+
       log("warn", "pan_check_failure", "CAPTCHA pool empty; falling back to per-PAN solve", {
         meta: { registrar: this.name, poolRefillInFlight },
       });
-      // Trigger a refill for subsequent PANs.
       refillPool();
-      return undefined;
+      return undefined; // checkAllotment will solve its own
+    };
+
+    // Wrap checkAllotment to intercept CAPTCHA rejections and expire the shared
+    // token so the next PAN gets a fresh one.
+    const checkWithSharing = async (pan: string): Promise<AllotmentResult> => {
+      const captcha = await pickCaptcha();
+      const result = await this.checkAllotment(pan, clientId, captcha);
+      // If the result is a CAPTCHA error, the shared token was bad — expire it.
+      if (
+        result.status === "error" &&
+        typeof result.error === "string" &&
+        /captcha/i.test(result.error)
+      ) {
+        invalidateShared();
+      }
+      return result;
     };
 
     return bulkCheck(
       pans,
-      (pan) => this.checkAllotment(pan, clientId, popFreshCaptcha()),
+      checkWithSharing,
       {
-        // 4 concurrent checks per chunk keeps OCR.Space concurrent pressure
-        // at half what the old value of 8 produced, preventing bulk 429 cascades.
-        chunkSize: 4,
+        // 5 concurrent checks: matches POOL_TARGET/2 so double-buffer always has
+        // the next chunk ready. Higher than 5 risks OCR.Space 429 under bulk load.
+        chunkSize: CHUNK_SIZE,
+        // Minimal inter-chunk pause — double-buffer means tokens are pre-solved;
+        // the 150ms just avoids Bigshare server-side burst detection.
         chunkDelayMs: 150,
       }
     );
