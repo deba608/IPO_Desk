@@ -247,11 +247,18 @@ export class BigShareAdapter implements RegistrarAdapter {
           // Handle new Status field from server-side CAPTCHA upgrade
           const status = record.Status;
           if (status === "CAPTCHA") {
-            // Captcha answer was invalid; refresh and retry once on the same mirror.
             if (attempt === 0) {
-              log("warn", "pan_check_failure", "Bigshare CAPTCHA invalid, refreshing", {
+              log("warn", "pan_check_failure", "Bigshare CAPTCHA invalid", {
                 meta: { clientId, registrar: this.name, mirror },
               });
+              // Bulk mode: a pre-solved captcha was supplied by checkWithSharing.
+              // DO NOT re-solve internally — that would bypass the shared promise
+              // deduplication and add 3s per PAN. Throw so checkWithSharing can
+              // refresh the shared token (1 OCR call, deduped across all PANs).
+              if (preSolvedCaptcha) {
+                throw new Error("CAPTCHA rejected — shared token invalid");
+              }
+              // Single-PAN path: re-solve here.
               try {
                 const cf2 = await this.fetchCaptchaToken();
                 captchaToken = cf2.token;
@@ -462,28 +469,41 @@ export class BigShareAdapter implements RegistrarAdapter {
       return undefined; // checkAllotment falls back to its own per-PAN solve
     };
 
-    // ── Wrapper: invalidate shared token on CAPTCHA rejection ─────────────────
+    // ── Wrapper: invalidate shared token on CAPTCHA rejection + retry once ─────
     const checkWithSharing = async (pan: string): Promise<AllotmentResult> => {
       const captcha = await pickCaptcha();
-      const result = await this.checkAllotment(pan, clientId, captcha);
-      if (
-        result.status === "error" &&
-        typeof result.error === "string" &&
-        /captcha/i.test(result.error)
-      ) {
-        invalidateShared();
+      try {
+        const result = await this.checkAllotment(pan, clientId, captcha);
+        // Surface-level CAPTCHA error (returned, not thrown) — expire shared token
+        // so the next PAN triggers a fresh solve.
+        if (
+          result.status === "error" &&
+          typeof result.error === "string" &&
+          /captcha/i.test(result.error)
+        ) {
+          invalidateShared();
+        }
+        return result;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "";
+        if (/captcha/i.test(msg)) {
+          // Shared token was rejected — invalidate and refresh via deduped promise
+          // (all concurrent callers share one OCR re-solve, not one each).
+          invalidateShared();
+          const fresh = await getOrRefreshShared();
+          // Retry once with fresh token; surface as error on second rejection.
+          return this.checkAllotment(pan, clientId, fresh ?? undefined);
+        }
+        throw error;
       }
-      return result;
     };
 
     return bulkCheck(pans, checkWithSharing, {
-      // Sequential (1 at a time): with token sharing we still pay only 1 OCR
-      // call total. Sending PANs one-by-one to Bigshare is the only way to
-      // guarantee we never hit their per-IP POST rate limit regardless of how
-      // many PANs are in the batch. Combined with frontend concurrency=1 (one
-      // /api/check in-flight at a time), Bigshare sees at most 1 req/800ms.
       chunkSize: 1,
-      chunkDelayMs: 800,
+      // 300ms gap: sequential requests can't cause rate limits (no concurrency),
+      // so 800ms was 2.7s wasted per 10 PANs. 300ms is enough for Bigshare
+      // server-side anti-burst detection.
+      chunkDelayMs: 300,
     });
   }
 }
