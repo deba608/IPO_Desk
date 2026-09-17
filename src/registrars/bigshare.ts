@@ -225,7 +225,9 @@ export class BigShareAdapter implements RegistrarAdapter {
                 },
                 { headers: { "Content-Type": "application/json; charset=utf-8" } }
               ),
-            3,
+            // 2 attempts max (was 3): a Bigshare 429 wastes at most 1×500ms
+            // backoff instead of 3.5s before we break out of the mirror loop.
+            2,
             500
           );
 
@@ -336,9 +338,11 @@ export class BigShareAdapter implements RegistrarAdapter {
               captchaAnswer = cf2.answer;
             } catch { /* ignore; next mirror will fall back to per-PAN solve */ }
           }
-          // A definitive 4xx (bad request, forbidden) will fail on every mirror
-          // the same way — don't burn the retry budget on the remaining ones.
-          if (httpStatus && httpStatus >= 400 && httpStatus < 500 && httpStatus !== 429) break;
+          // A definitive 4xx will fail on every mirror the same way — break
+          // immediately. IMPORTANT: include 429 here — Bigshare mirrors share
+          // the same rate-limit pool, so trying mirror 2/3 on a 429 is futile
+          // and burns the 50s function timeout budget.
+          if (httpStatus && httpStatus >= 400 && httpStatus < 500) break;
           // A CAPTCHA rejection isn't worth retrying further on this mirror.
           if (errorMessage(error).includes("CAPTCHA")) break;
         }
@@ -473,8 +477,13 @@ export class BigShareAdapter implements RegistrarAdapter {
     };
 
     return bulkCheck(pans, checkWithSharing, {
-      chunkSize: CHUNK_SIZE,
-      chunkDelayMs: 200,
+      // 3 concurrent checks: conservative enough to avoid Bigshare's per-IP
+      // POST rate limit. (5 was too aggressive — Bigshare 429'd later chunks,
+      // triggering cascading retries that hit the 50s function timeout.)
+      chunkSize: 3,
+      // 700ms between chunks gives Bigshare's server time to reset its rate
+      // window without meaningfully hurting throughput when token reuse works.
+      chunkDelayMs: 700,
     });
   }
 }
