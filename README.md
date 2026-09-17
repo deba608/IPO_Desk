@@ -232,7 +232,7 @@ Tried in priority order; first to return data wins. If all live sources fail, cu
 | **NSE India** | None | Official NSE/BSE issue data (no GMP) |
 | **Seed** (fallback) | None | Curated IPOs with dynamic dates |
 
-Bigshare bulk speed: CAPTCHA pool pre-warm, sticky fastest-mirror, parallel frontend batches (×3) with progressive rendering — see [BIGSHARE_BULK_SPEED_PLAN.md](./BIGSHARE_BULK_SPEED_PLAN.md).
+Bigshare bulk speed: CAPTCHA pool pre-warm, sticky fastest-mirror, parallel frontend batches (×3) with progressive rendering.
 
 ---
 
@@ -324,9 +324,6 @@ Trust boundaries: browser never calls registrars; server validates everything; e
 - [ROADMAP.md](./ROADMAP.md) — completed phases and what's next
 - [plan.md](./plan.md) — registrar expansion (Skyline/Purva/Maashitla live; Cameo/Beetal/MCS deferred)
 - [AUTH_PLAN.md](./AUTH_PLAN.md) — auth design (implemented)
-- [MULTI_APPLY_PLAN.md](./MULTI_APPLY_PLAN.md) + [FAMILY_CHECKLIST_PLAN.md](./FAMILY_CHECKLIST_PLAN.md) — family checklist
-- [BIGSHARE_BULK_SPEED_PLAN.md](./BIGSHARE_BULK_SPEED_PLAN.md) — bulk-upload performance
-- [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) — build notes
 
 ---
 

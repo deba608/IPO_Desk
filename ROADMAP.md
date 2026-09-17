@@ -180,7 +180,7 @@ Allow users to build and test quantitative IPO selection strategies against hist
 
 ## Phase 12 — Family Checklist (`/apply`) ← ✅ Done
 
-**Status:** ✅ Done (see [MULTI_APPLY_PLAN.md](./MULTI_APPLY_PLAN.md) + [FAMILY_CHECKLIST_PLAN.md](./FAMILY_CHECKLIST_PLAN.md))
+**Status:** ✅ Done
 
 - [x] `/apply` repositioned: "Apply" → "Checklist" (manual broker + UPI flow, no auto-submit overpromise)
 - [x] `AccountVault` + `ApplyWorkspace` + `ApplyChecklist` components, broker deep-links, UPI mandate tracker
