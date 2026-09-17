@@ -247,6 +247,80 @@ See [ROADMAP.md](./ROADMAP.md) for completed phases and what's next. Key plans: 
 
 ---
 
+## Tool-Call Loop — Archify Workflow (evidence-based)
+
+> Scope note: this repo has **no autonomous agent tool-call loop**. What exists is a
+> **request-driven check pipeline** (`/api/check`, `/api/scan` → `registrar.service.ts` →
+> `RegistrarAdapter`). The lanes below map that real loop. Nothing here is invented —
+> every edge has a code reference.
+
+```mermaid
+flowchart TB
+  subgraph L1[User surface]
+    U1[Checker UI<br/>CheckerTabs + IPOSelector<br/>src/app/client-page.tsx]
+    U2[Bulk batching<br/>20 PANs x 3 parallel<br/>progressive render<br/>src/app/client-page.tsx:31-32,44-121]
+    U3[Family checklist<br/>manual UPI stepper<br/>broker deep-links only<br/>ApplyWorkspace.tsx:206,236]
+  end
+  subgraph L2[Agent runtime = request runtime]
+    R1[/api/check POST<br/>60/min - 500 PANs max<br/>50s timeout<br/>src/app/api/check/route.ts:10,53-67,100-105/]
+    R2[/api/scan POST<br/>5/min - 50 PANs max<br/>55s timeout<br/>src/app/api/scan/route.ts:10,48-54,85-90/]
+    R3[checkAllotment / scanAllotment<br/>findIPO + registry fan-out<br/>SCAN_CONCURRENCY=5<br/>src/services/registrar.service.ts:46-66,78-122]
+    R4[catalogue sync<br/>TTL 5m - cooldown 60s<br/>empty-guard 3 - timeout 15s<br/>src/services/registrar-sync.ts:19-33]
+  end
+  subgraph L3[Policy boundary]
+    P1[Zod PAN + IPO-id validation<br/>400 on fail<br/>check/route.ts:47-67 - scan/route.ts:42-54]
+    P2[per-IP rate limit<br/>check: / scan: namespaces<br/>429 + retry message<br/>rate-limit.ts:25-43 - check/route.ts:71-76]
+    P3[admin gate<br/>allowlist + 6-digit OTP<br/>10m expiry - 5 tries<br/>30m HMAC cookie<br/>admin-auth.ts:15-22,265-335]
+    P4[logs gate<br/>CRON Bearer OR admin cookie<br/>else 401<br/>api/logs/route.ts:11-23]
+  end
+  subgraph L4[Tool execution]
+    T1[RegistrarAdapter interface<br/>getActiveIPOs + checkBulk<br/>adapter.interface.ts:5-33]
+    T2[7 adapters<br/>KFintech - MUFG - Bigshare<br/>Skyline - Purva - Maashitla<br/>+ LinkIntime-legacy]
+    T3[Bigshare CAPTCHA tool<br/>ddddocr local first<br/>OCR.Space fallback<br/>captcha.service.ts:202-242]
+  end
+  subgraph L5[Exception handling]
+    H1[withRetry<br/>4 tries - 429/5xx only<br/>exp backoff<br/>shared.ts:27-49]
+    H2[bulkCheck isolation<br/>Promise.allSettled<br/>invalid PAN = error no call<br/>shared.ts:64-108]
+    H3[per-IPO isolation<br/>catch to error rows<br/>never aborts scan<br/>registrar.service.ts:92-97]
+    H4[fallback chain<br/>live - stale mem - disk - empty<br/>plus per-batch partial results<br/>registrar-sync.ts:105-171 - client-page.tsx:76-85]
+  end
+  subgraph L6[Observability - evidence path]
+    O1[ring-buffer logger<br/>1000 entries<br/>logger.service.ts:26-58]
+    O2[/api/logs<br/>event + limit filter<br/>Bearer-guarded<br/>logs/route.ts:25-33]
+    O3[admin SyncMonitor + LogViewer<br/>5s refresh - level filters<br/>SyncMonitor.tsx - LogViewer.tsx]
+  end
+
+  U1 --> U2 --> R1
+  U1 --> R2
+  U3 -.->|approval is manual UPI in broker/UPI app<br/>never auto-bid| R1
+  R1 --> P1 --> P2 --> R3
+  R2 --> P1 --> P2 --> R3
+  R3 --> R4 --> T1 --> T2
+  T2 --> T3
+  T3 --> H1 --> H2 --> H3 --> H4
+  H4 --> O1 --> O2 --> O3
+  P2 -.->|blocked 429| U2
+  P1 -.->|blocked 400/404| U1
+  P3 -.->|blocked 401| O2
+  P4 -.->|blocked 401| O2
+  H1 -.->|retry| T2
+  H4 -.->|retry list + partial render| U2
+```
+
+Successful path (primary): `Checker UI → /api/check → Zod + rate-limit pass → checkAllotment → registry adapter → live registrar → bulkCheck isolate → JSON + summary → progressive render + history/export`.
+
+Approval path (manual only, no agent auto-approve): UPI mandate stepper `not-started → applied → upi-pending → upi-approved → done + skipped` (`apply-store.ts:4-15`); `Open broker IPO pages` + `Continue in <Broker>` deep-links (`ApplyWorkspace.tsx:206`); guardrail `IPO Desk never places bids or moves money` (`ApplyWorkspace.tsx:236`); admin OTP `createChallenge` / `verifyChallenge` + `ipodesk_admin` cookie (`admin-auth.ts:177-257,265-335`).
+
+Retry path: `withRetry` 429/500/502/503/504 only (`shared.ts:39-45`); Bigshare 3 mirrors × 2 attempts + one CAPTCHA refresh (`bigshare.ts:200-270`); OCR 429 one backoff then parallel fallback engines (`captcha.service.ts:150-187`); sync cooldown 60s + empty-guard 3 (`registrar-sync.ts:24-28`).
+
+Blocked path: `429 Too many requests/scans` (`check/route.ts:72-75`, `scan/route.ts:57-61`); `400 Validation failed` + `404 IPO not found` (`check/route.ts:87-121`); `504 timeout` always JSON never hang (`check/route.ts:112-116`); `401 Unauthorized` on `/api/logs` (`logs/route.ts:21-22`); invalid PAN short-circuits to `error` without upstream call (`shared.ts:76-80`); `not_found` sentinels never become `error` (`bigshare.ts:273-289`).
+
+Evidence path: `log(level, event, message, {durationMs, meta})` (`logger.service.ts:32-58`) with events `ipo_sync_*`, `pan_check_*`, `api_response_time`; mirrored to console + ring buffer; surfaced via Bearer/admin-guarded `/api/logs` and admin LogViewer/SyncMonitor.
+
+Unknowns (not invented): no autonomous planning, tool-approval gate, or push-delivery worker exists in code — alerts are CRUD + local hook only (`/api/alerts`, `useAlerts.ts`); multi-instance rate-limit/OTP-hourly ledger are best-effort in-memory (`rate-limit.ts:1-6`, `admin-auth.ts:88-94`).
+
+---
+
 ## License
 
 MIT
