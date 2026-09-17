@@ -40,8 +40,12 @@ const LOCAL_OCR_TIMEOUT_MS = 10_000;
 const OCR_PRIMARY_ENGINE = 2;
 const OCR_FALLBACK_ENGINES = [1, 3] as const;
 
-/** One short backoff on HTTP 429 before falling back (bulk bursts). */
-const RATE_LIMIT_DELAY_MS = 1500;
+/**
+ * Base backoff on HTTP 429. A random jitter of [0, BASE] is added so parallel
+ * bulk solves do not all retry at the same instant (thundering herd).
+ */
+const RATE_LIMIT_BASE_MS = 1200;
+const RATE_LIMIT_JITTER_MS = 800;
 
 class OcrRateLimitError extends Error {}
 class OcrUnreadableError extends Error {}
@@ -145,30 +149,32 @@ async function ocrWithEngine(engine: number, dataUrl: string): Promise<string> {
 /**
  * Remote OCR with a Vercel-friendly latency profile:
  *  - typical case: ONE request (primary engine) → ~2s;
- *  - primary miss: fallback engines raced IN PARALLEL (latency = slowest
- *    one, not the sum — the old serial loop paid for all three);
- *  - 429: one short backoff retry, then the parallel fallback (another
- *    engine often still has quota).
- * Parallel fallback costs extra quota only on primary misses (the minority).
+ *  - primary 429: jittered backoff then IMMEDIATELY race fallback engines in
+ *    parallel (retrying the same engine is pointless — it's still rate-limited);
+ *  - primary miss (unreadable): fallback engines raced in parallel.
+ * Parallel fallbacks cost extra quota only on primary misses (the minority).
+ *
+ * When ALL engines return 429, we surface a clear "quota exhausted" message
+ * that shows up in Vercel logs so it's obvious the OCR_SPACE_API_KEY is
+ * missing or the free-tier limit has been hit.
  */
 async function ocrImage(imageBase64: string): Promise<string> {
   const dataUrl = imageBase64.startsWith("data:")
     ? imageBase64
     : `data:image/png;base64,${imageBase64}`;
 
+  let primaryRateLimited = false;
   let lastError = "OCR failed on all engines";
   try {
     return await ocrWithEngine(OCR_PRIMARY_ENGINE, dataUrl);
   } catch (error: unknown) {
     lastError = error instanceof Error ? error.message : "OCR request failed";
     if (error instanceof OcrRateLimitError) {
-      await delay(RATE_LIMIT_DELAY_MS);
-      try {
-        return await ocrWithEngine(OCR_PRIMARY_ENGINE, dataUrl);
-      } catch (retryError: unknown) {
-        lastError =
-          retryError instanceof Error ? retryError.message : lastError;
-      }
+      primaryRateLimited = true;
+      // Jitter so parallel bulk solves do not all slam the API at the same ms.
+      await delay(RATE_LIMIT_BASE_MS + Math.random() * RATE_LIMIT_JITTER_MS);
+      // Do NOT retry the primary engine — it just 429'd and the window hasn't
+      // reset. Fall through immediately to the parallel fallback race below.
     }
   }
 
@@ -178,6 +184,21 @@ async function ocrImage(imageBase64: string): Promise<string> {
   for (const result of settled) {
     if (result.status === "fulfilled") return result.value;
   }
+
+  // All engines failed — build a diagnostic error message.
+  const allRateLimited =
+    primaryRateLimited &&
+    settled.every(
+      (r) => r.status === "rejected" && r.reason instanceof OcrRateLimitError
+    );
+  if (allRateLimited) {
+    const keyHint =
+      ocrApiKey() === "helloworld"
+        ? " Set OCR_SPACE_API_KEY in Vercel env vars (free key at ocr.space/ocrapi)."
+        : " Free-tier monthly quota may be exhausted — check ocr.space dashboard.";
+    throw new Error(`OCR quota exhausted on all engines (HTTP 429).${keyHint}`);
+  }
+
   const details = settled
     .filter((r) => r.status === "rejected")
     .map((r) => (r as PromiseRejectedResult).reason)

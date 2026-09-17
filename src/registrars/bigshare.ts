@@ -378,24 +378,41 @@ export class BigShareAdapter implements RegistrarAdapter {
   }
 
   async checkBulkAllotment(pans: string[], clientId: string): Promise<AllotmentResult[]> {
-    // Each PAN needs its own CAPTCHA solve, so hide that latency by solving
-    // the first few CAPTCHAs UP FRONT in parallel — the first chunk's
-    // allotment POSTs then start immediately instead of waiting on serial
-    // captcha fetches. Pre-warmed tokens are consumed FIFO; any shortfall
-    // (failures, more PANs than warmed) falls back to per-PAN solving inside
-    // checkAllotment. Tokens are single-use and must be consumed within their
-    // validity window. Failures stay per-PAN isolated via allSettled inside bulkCheck.
-    const PREWARM_COUNT = Math.min(Math.max(pans.length, 0), 8);
+    // Rolling captcha pool: maintains a target number of pre-solved tokens at all
+    // times. Unlike the old one-shot pre-warm (8 tokens once at the start), this
+    // refills 1-for-1 as tokens are consumed so every chunk has fresh tokens.
+    // On Vercel (no local ddddocr), every token costs one OCR.Space request;
+    // target=4 matches the chunkSize below so we never request more than needed.
+    const POOL_TARGET = 4;
 
     interface PooledCaptcha { token: string; answer: string; capturedAt: number }
     const pool: PooledCaptcha[] = [];
+    let poolRefillInFlight = 0;
 
-    if (PREWARM_COUNT > 1) {
+    const refillPool = () => {
+      const deficit = POOL_TARGET - pool.length - poolRefillInFlight;
+      for (let i = 0; i < deficit; i++) {
+        poolRefillInFlight++;
+        this.fetchCaptchaToken()
+          .then((captcha) => {
+            pool.push({ ...captcha, capturedAt: Date.now() });
+          })
+          .catch(() => {
+            // Transient fetch failure — pool just has one fewer token; the
+            // checkAllotment fallback (per-PAN solve) handles it gracefully.
+          })
+          .finally(() => {
+            poolRefillInFlight--;
+          });
+      }
+    };
+
+    // Prime the pool before the first chunk so POSTs start immediately.
+    if (pans.length > 0) {
+      const prewarm = Math.min(pans.length, POOL_TARGET);
       const warmed = await Promise.allSettled(
-        Array.from({ length: PREWARM_COUNT }, () => this.fetchCaptchaToken())
+        Array.from({ length: prewarm }, () => this.fetchCaptchaToken())
       );
-      // Stamp all tokens with the same acquisition time — they were fetched
-      // concurrently so any individual skew is negligible.
       const capturedAt = Date.now();
       for (const w of warmed) {
         if (w.status === "fulfilled") pool.push({ ...w.value, capturedAt });
@@ -408,12 +425,20 @@ export class BigShareAdapter implements RegistrarAdapter {
       while (pool.length > 0) {
         const candidate = pool.shift()!;
         if (Date.now() - candidate.capturedAt < CAPTCHA_TOKEN_VALIDITY_MS) {
+          // Immediately schedule a replacement so the pool stays at target size.
+          refillPool();
           return { token: candidate.token, answer: candidate.answer };
         }
         log("warn", "pan_check_failure", "Discarded stale pre-warmed CAPTCHA token", {
           meta: { registrar: this.name },
         });
       }
+      // Pool empty — log so Vercel logs make the cause obvious (quota? slow OCR?).
+      log("warn", "pan_check_failure", "CAPTCHA pool empty; falling back to per-PAN solve", {
+        meta: { registrar: this.name, poolRefillInFlight },
+      });
+      // Trigger a refill for subsequent PANs.
+      refillPool();
       return undefined;
     };
 
@@ -421,8 +446,10 @@ export class BigShareAdapter implements RegistrarAdapter {
       pans,
       (pan) => this.checkAllotment(pan, clientId, popFreshCaptcha()),
       {
-        chunkSize: 8,
-        chunkDelayMs: 100,
+        // 4 concurrent checks per chunk keeps OCR.Space concurrent pressure
+        // at half what the old value of 8 produced, preventing bulk 429 cascades.
+        chunkSize: 4,
+        chunkDelayMs: 150,
       }
     );
   }

@@ -247,6 +247,63 @@ See [ROADMAP.md](./ROADMAP.md) for completed phases and what's next. Key plans: 
 
 ---
 
+## Architecture — Archify High-Level (evidence-based)
+
+> 10 core runtime components. One primary path is bold. Detail lives in cards, not extra edges.
+
+```mermaid
+flowchart LR
+  subgraph B1[Browser - untrusted - user owns]
+    C1[1. Web UI<br/>App Router + features<br/>checker - calendar - detail - apply - backtest - history - admin]
+  end
+  subgraph B2[Server - trusted - IPO Desk owns - all registrar calls here]
+    C2[2. API Layer<br/>Route Handlers<br/>check - scan - ipos - calendar - alerts - export - admin - cron]
+    C3[3. Check Pipeline + Registry<br/>single source of truth<br/>fault-isolated fan-out]
+    C4[4. Catalogue Sync<br/>TTL 5m - cooldown 60s<br/>empty-guard 3 - 15s timeout]
+    C5[5. Registrar Adapters x7<br/>KFintech - MUFG - Bigshare<br/>Skyline - Purva - Maashitla<br/>+ LinkIntime-legacy]
+    C6[6. Calendar + Intelligence<br/>provider chain + lifecycle<br/>report/score - backtest - GMP]
+    C7[7. CAPTCHA/OCR<br/>ddddocr local first<br/>OCR.Space fallback]
+    C8[8. Persistence<br/>Prisma + Postgres optional<br/>memory fallback]
+    C9[9. Auth + Policy<br/>Google JWT - admin OTP<br/>Zod - per-IP limit]
+    C10[10. Ops<br/>cron sync - logger<br/>health - SEO/sitemap]
+  end
+  subgraph B3[External - untrusted - third-party owns]
+    E1[Registrar portals x7]
+    E2[Calendar sources<br/>IPO Guru - InvestorGain - NSE]
+    E3[OCR.Space - Google OAuth<br/>Resend - Vercel - Postgres]
+    E4[Broker apps + UPI<br/>actual bidding]
+  end
+
+  C1 ==>|PRIMARY: PANs + IPO| C2
+  C2 ==>|PRIMARY: checkBulk| C3
+  C3 ==>|PRIMARY: live query| C5
+  C5 ==>|PRIMARY: results| C1
+
+  C2 --- N2[API card<br/>check 60/min 500 PANs 50s<br/>scan 5/min 50 PANs 55s<br/>Zod 400 - 429 - 404 - 504 JSON]
+  C3 --- N3[Pipeline card<br/>findIPO + refresh-once<br/>SCAN_CONCURRENCY=5<br/>per-IPO catch to error rows]
+  C4 --- N4[Sync card<br/>live - stale mem - disk - empty<br/>registrar-sync.ts:105-171]
+  C5 --- N5[Adapter card<br/>server-side only<br/>BULK_CHUNK 5 + 500ms<br/>not_found vs error sentinels]
+  C6 --- N6[Intel card<br/>IPO Guru > IG > NSE > Seed<br/>algorithmic score 0-100<br/>GMP history DB or demo]
+  C7 --- N7[OCR card<br/>Bigshare 3 mirrors x2<br/>429 backoff - breaker<br/>captcha.service.ts:202-242]
+  C8 --- N8[DB card<br/>Ipo - Gmp - Sub - Report<br/>Alert - User - Watchlist<br/>prisma.ts lazy singleton]
+  C9 --- N9[Policy card<br/>PAN regex - IPO-id regex<br/>admin 6-digit 10m 5 tries<br/>ipodesk_admin 30m HMAC]
+  C10 --- N10[Ops card<br/>ring-buffer 1000<br/>/api/logs Bearer+admin<br/>cron Bearer sync]
+
+  C4 -.-> E1
+  C5 -.-> E1
+  C6 -.-> E2
+  C7 -.-> E3
+  C9 -.-> E3
+  C10 -.-> E3
+  C1 -.->|deep-link only<br/>never bids| E4
+```
+
+Primary request path: `Investor → C1 Checker UI → C2 /api/check → C3 pipeline/registry → C5 adapter → E1 live registrar → C1 results/export`.
+
+Trust boundaries: `B1 browser` never calls registrars directly (`README:83`, server-side only); `B2 server` validates everything (Zod + rate-limit + timeouts); `B3 external` treated as flaky (retry + fallback + fault isolation); `B1→B2→B3` only. Admin/ops gated by OTP + `CRON_SECRET` Bearer (`admin-auth.ts`, `logs/route.ts:11-23`). Family vault stays in `localStorage`, never sent to server (`ApplyWorkspace.tsx:236`).
+
+---
+
 ## Tool-Call Loop — Archify Workflow (evidence-based)
 
 > Scope note: this repo has **no autonomous agent tool-call loop**. What exists is a
