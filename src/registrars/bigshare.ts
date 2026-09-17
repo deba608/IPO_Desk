@@ -380,124 +380,88 @@ export class BigShareAdapter implements RegistrarAdapter {
   async checkBulkAllotment(pans: string[], clientId: string): Promise<AllotmentResult[]> {
     if (pans.length === 0) return [];
 
-    // ── Speed strategy (two-pronged) ─────────────────────────────────────────
+    // ── Strategy: token sharing + lazy pool ──────────────────────────────────
     //
-    // 1. TOKEN SHARING: one OCR solve is shared across ALL PANs in this bulk
-    //    run. Many bulk uploads go to the same IPO with the same session-bound
-    //    CAPTCHA; if Bigshare doesn't single-use-invalidate the token we get
-    //    the entire bulk for the price of one OCR call (~3s total vs n×3s).
-    //    On Status:"CAPTCHA" rejection the shared token is refreshed once and
-    //    sharing continues — a single bad OCR read doesn't abort the whole run.
-    //
-    // 2. DOUBLE-BUFFER POOL: pre-solve chunkSize*2 tokens so the NEXT chunk's
-    //    captchas are ready while the CURRENT chunk is posting. Refills are
-    //    triggered at chunk-start (not just per-token-consume) so OCR latency
-    //    (~3s) is hidden behind POST latency (~1-2s per chunk).
+    // Fetch exactly ONE captcha token upfront — no burst, no 429s.
+    // Every PAN reuses that same token. If Bigshare doesn't single-use-
+    // invalidate it the whole batch costs 1 OCR call total (~3s flat).
+    // On rejection the shared token is refreshed; concurrent refreshes are
+    // deduplicated via a shared Promise so 5 parallel PANs hitting an expired
+    // token fire ONE re-solve, not 5. A tiny lazy pool (≤2 in-flight at a
+    // time) covers the brief window while a refresh is in-progress.
     // ─────────────────────────────────────────────────────────────────────────
 
     const CHUNK_SIZE = 5;
-    // Double-buffer: keep 2× a full chunk pre-solved so next chunk is ready
-    // before current chunk finishes posting.
-    const POOL_TARGET = CHUNK_SIZE * 2;
 
-    // ── Shared captcha token ─────────────────────────────────────────────────
-    // All PANs attempt to reuse the same token. On rejection we refresh once.
+    // ── Shared token ─────────────────────────────────────────────────────────
     let sharedCaptcha: { token: string; answer: string; capturedAt: number } | null = null;
-    let sharedCaptchaRefreshing = false;
+    let refreshPromise: Promise<{ token: string; answer: string } | null> | null = null;
 
-    const getOrRefreshShared = async (): Promise<{ token: string; answer: string } | null> => {
-      if (
-        sharedCaptcha &&
-        Date.now() - sharedCaptcha.capturedAt < CAPTCHA_TOKEN_VALIDITY_MS
-      ) {
-        return { token: sharedCaptcha.token, answer: sharedCaptcha.answer };
+    const getOrRefreshShared = (): Promise<{ token: string; answer: string } | null> => {
+      if (sharedCaptcha && Date.now() - sharedCaptcha.capturedAt < CAPTCHA_TOKEN_VALIDITY_MS) {
+        return Promise.resolve({ token: sharedCaptcha.token, answer: sharedCaptcha.answer });
       }
-      if (sharedCaptchaRefreshing) return null; // pool fallback will handle it
-      sharedCaptchaRefreshing = true;
-      try {
-        const cf = await this.fetchCaptchaToken();
-        sharedCaptcha = { ...cf, capturedAt: Date.now() };
-        return { token: cf.token, answer: cf.answer };
-      } catch {
-        return null;
-      } finally {
-        sharedCaptchaRefreshing = false;
+      // Deduplicate: all concurrent callers await the same in-flight solve.
+      if (!refreshPromise) {
+        refreshPromise = this.fetchCaptchaToken()
+          .then((cf) => {
+            sharedCaptcha = { ...cf, capturedAt: Date.now() };
+            return { token: cf.token, answer: cf.answer };
+          })
+          .catch(() => null)
+          .finally(() => { refreshPromise = null; });
       }
+      return refreshPromise;
     };
 
-    // Invalidate the shared token when a PAN reports CAPTCHA rejection so the
-    // next caller triggers a fresh solve. Called from checkAllotment indirectly
-    // via the preSolvedCaptcha param: when the server rejects the answer it
-    // retries internally with a freshly fetched token, so we just need to
-    // expire the shared one here so subsequent PANs get the new solve.
     const invalidateShared = () => { sharedCaptcha = null; };
 
-    // ── Double-buffer pool ───────────────────────────────────────────────────
+    // ── Lazy fallback pool (≤2 in-flight) ────────────────────────────────────
     interface PooledCaptcha { token: string; answer: string; capturedAt: number }
     const pool: PooledCaptcha[] = [];
-    let poolRefillInFlight = 0;
+    let poolInFlight = 0;
 
-    const refillPool = () => {
-      const deficit = POOL_TARGET - pool.length - poolRefillInFlight;
-      for (let i = 0; i < deficit; i++) {
-        poolRefillInFlight++;
+    const maybeRefillPool = () => {
+      while (pool.length + poolInFlight < 2 && poolInFlight < 2) {
+        poolInFlight++;
         this.fetchCaptchaToken()
-          .then((captcha) => {
-            pool.push({ ...captcha, capturedAt: Date.now() });
-          })
-          .catch(() => { /* pool just has one fewer slot; per-PAN fallback handles it */ })
-          .finally(() => { poolRefillInFlight--; });
+          .then((c) => { pool.push({ ...c, capturedAt: Date.now() }); })
+          .catch(() => { /* fewer pool tokens; per-PAN fallback handles it */ })
+          .finally(() => { poolInFlight--; });
       }
     };
 
-    // ── Initial pre-warm ─────────────────────────────────────────────────────
-    // Fetch the shared token + a full double-buffer pool simultaneously so the
-    // first chunk starts with zero captcha wait time.
-    const prewarmCount = Math.min(pans.length, POOL_TARGET);
-    const [sharedResult, ...poolResults] = await Promise.allSettled([
-      this.fetchCaptchaToken(),
-      ...Array.from({ length: prewarmCount }, () => this.fetchCaptchaToken()),
-    ]);
-
-    const capturedAt = Date.now();
-    if (sharedResult.status === "fulfilled") {
-      sharedCaptcha = { ...sharedResult.value, capturedAt };
-    }
-    for (const w of poolResults) {
-      if (w.status === "fulfilled") pool.push({ ...w.value, capturedAt });
+    // ── Fetch the ONE shared token upfront (no burst) ─────────────────────────
+    try {
+      const cf = await this.fetchCaptchaToken();
+      sharedCaptcha = { ...cf, capturedAt: Date.now() };
+    } catch {
+      log("warn", "pan_check_failure", "Initial shared CAPTCHA solve failed; will retry per-PAN", {
+        meta: { registrar: this.name },
+      });
     }
 
-    // ── Token picker: shared first, pool fallback ─────────────────────────────
+    // ── Token picker ─────────────────────────────────────────────────────────
     const pickCaptcha = async (): Promise<{ token: string; answer: string } | undefined> => {
-      // Try the shared token first (zero extra OCR cost).
       const shared = await getOrRefreshShared();
       if (shared) return shared;
 
-      // Shared unavailable (refreshing) — drain the pool.
+      // Shared is refreshing — use a pooled token as a bridge.
       while (pool.length > 0) {
-        const candidate = pool.shift()!;
-        if (Date.now() - candidate.capturedAt < CAPTCHA_TOKEN_VALIDITY_MS) {
-          refillPool(); // maintain double-buffer
-          return { token: candidate.token, answer: candidate.answer };
+        const c = pool.shift()!;
+        if (Date.now() - c.capturedAt < CAPTCHA_TOKEN_VALIDITY_MS) {
+          maybeRefillPool();
+          return { token: c.token, answer: c.answer };
         }
-        log("warn", "pan_check_failure", "Discarded stale pre-warmed CAPTCHA token", {
-          meta: { registrar: this.name },
-        });
       }
-
-      log("warn", "pan_check_failure", "CAPTCHA pool empty; falling back to per-PAN solve", {
-        meta: { registrar: this.name, poolRefillInFlight },
-      });
-      refillPool();
-      return undefined; // checkAllotment will solve its own
+      maybeRefillPool();
+      return undefined; // checkAllotment falls back to its own per-PAN solve
     };
 
-    // Wrap checkAllotment to intercept CAPTCHA rejections and expire the shared
-    // token so the next PAN gets a fresh one.
+    // ── Wrapper: invalidate shared token on CAPTCHA rejection ─────────────────
     const checkWithSharing = async (pan: string): Promise<AllotmentResult> => {
       const captcha = await pickCaptcha();
       const result = await this.checkAllotment(pan, clientId, captcha);
-      // If the result is a CAPTCHA error, the shared token was bad — expire it.
       if (
         result.status === "error" &&
         typeof result.error === "string" &&
@@ -508,18 +472,10 @@ export class BigShareAdapter implements RegistrarAdapter {
       return result;
     };
 
-    return bulkCheck(
-      pans,
-      checkWithSharing,
-      {
-        // 5 concurrent checks: matches POOL_TARGET/2 so double-buffer always has
-        // the next chunk ready. Higher than 5 risks OCR.Space 429 under bulk load.
-        chunkSize: CHUNK_SIZE,
-        // Minimal inter-chunk pause — double-buffer means tokens are pre-solved;
-        // the 150ms just avoids Bigshare server-side burst detection.
-        chunkDelayMs: 150,
-      }
-    );
+    return bulkCheck(pans, checkWithSharing, {
+      chunkSize: CHUNK_SIZE,
+      chunkDelayMs: 200,
+    });
   }
 }
 
