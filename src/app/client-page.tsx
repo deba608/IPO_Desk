@@ -25,11 +25,11 @@ import { useCheckHistory } from "@/hooks/useCheckHistory";
 
 // One giant /api/check call for hundreds of PANs would exceed serverless
 // time budgets, so large single-IPO checks are split into small requests.
-// Batches run with limited parallelism (each serverless invocation works
-// independently → ~3x throughput vs sequential) and merge progressively so
-// the first rows render in seconds while the rest stream in.
-const BULK_BATCH_SIZE = 20;
-const BULK_BATCH_CONCURRENCY = 3;
+// Run ONE batch at a time (concurrency=1) for Bigshare: multiple parallel
+// invocations from the same Vercel IP multiply POST pressure and trigger
+// Bigshare's per-IP rate limit even when server-side processing is sequential.
+const BULK_BATCH_SIZE = 10;
+const BULK_BATCH_CONCURRENCY = 1;
 
 function summarizeResults(results: AllotmentResult[]): CheckResponse["summary"] {
   return {

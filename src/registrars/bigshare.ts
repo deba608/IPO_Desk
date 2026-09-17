@@ -477,13 +477,13 @@ export class BigShareAdapter implements RegistrarAdapter {
     };
 
     return bulkCheck(pans, checkWithSharing, {
-      // 3 concurrent checks: conservative enough to avoid Bigshare's per-IP
-      // POST rate limit. (5 was too aggressive — Bigshare 429'd later chunks,
-      // triggering cascading retries that hit the 50s function timeout.)
-      chunkSize: 3,
-      // 700ms between chunks gives Bigshare's server time to reset its rate
-      // window without meaningfully hurting throughput when token reuse works.
-      chunkDelayMs: 700,
+      // Sequential (1 at a time): with token sharing we still pay only 1 OCR
+      // call total. Sending PANs one-by-one to Bigshare is the only way to
+      // guarantee we never hit their per-IP POST rate limit regardless of how
+      // many PANs are in the batch. Combined with frontend concurrency=1 (one
+      // /api/check in-flight at a time), Bigshare sees at most 1 req/800ms.
+      chunkSize: 1,
+      chunkDelayMs: 800,
     });
   }
 }
