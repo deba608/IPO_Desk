@@ -57,31 +57,59 @@ async function fetchCheckInBatches(
   let completed = 0;
 
   const runBatch = async (batch: string[]): Promise<void> => {
-    try {
-      const response = await fetch("/api/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pans: batch, ipoClientId }),
-      });
-      if (!response.ok) {
-        const errBody = (await response
-          .json()
-          .catch(() => null)) as { error?: string } | null;
-        throw new Error(errBody?.error ?? "Check failed");
+    // Auto-retry once on rate-limit/timeout so a Bigshare 429 or 504 batch
+    // recovers silently instead of surfacing as per-PAN errors immediately.
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const isRetryableStatus = (s: number) => s === 429 || s === 504;
+    const isRateLimitResults = (rs: AllotmentResult[]) =>
+      rs.length > 0 && rs.every((r) => r.status === "error" && /rate limit|timed out|429|504/i.test(r.error ?? ""));
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch("/api/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pans: batch, ipoClientId }),
+        });
+        if (!response.ok) {
+          const errBody = (await response
+            .json()
+            .catch(() => null)) as { error?: string } | null;
+          const msg = errBody?.error ?? "Check failed";
+          if (attempt === 0 && (isRetryableStatus(response.status) || /rate limit|timed out/i.test(msg))) {
+            toast.message("Rate-limited — retrying batch…", { id: "bigshare-retry" });
+            await sleep(1500);
+            continue;
+          }
+          throw new Error(msg);
+        }
+        const data = (await response.json()) as CheckResponse;
+        if (attempt === 0 && isRateLimitResults(data.results)) {
+          toast.message("Rate-limited — retrying batch…", { id: "bigshare-retry" });
+          await sleep(2000);
+          continue;
+        }
+        merged.push(...data.results);
+        if (!ipoName) ipoName = data.ipoName;
+        if (data.ipoClientId) resolvedClientId = data.ipoClientId;
+        break;
+      } catch (error: unknown) {
+        if (attempt === 0) {
+          const msg0 = error instanceof Error ? error.message : "Check failed";
+          if (/rate limit|timed out|429|504|failed to fetch|network/i.test(msg0)) {
+            await sleep(1500);
+            continue;
+          }
+        }
+        // A failed batch must not discard the rest — record per-PAN errors
+        // and keep going so the user gets partial results plus a retry list.
+        const msg = error instanceof Error ? error.message : "Check failed";
+        merged.push(
+          ...batch.map(
+            (pan): AllotmentResult => ({ pan, status: "error", error: msg })
+          )
+        );
+        break;
       }
-      const data = (await response.json()) as CheckResponse;
-      merged.push(...data.results);
-      if (!ipoName) ipoName = data.ipoName;
-      if (data.ipoClientId) resolvedClientId = data.ipoClientId;
-    } catch (error: unknown) {
-      // A failed batch must not discard the rest — record per-PAN errors
-      // and keep going so the user gets partial results plus a retry list.
-      const msg = error instanceof Error ? error.message : "Check failed";
-      merged.push(
-        ...batch.map(
-          (pan): AllotmentResult => ({ pan, status: "error", error: msg })
-        )
-      );
     }
     completed += 1;
     onBatchDone(

@@ -34,6 +34,31 @@ const BIGSHARE_MIRRORS = [
 /** Conservative validity window — Bigshare tokens are valid for ~60 s. */
 const CAPTCHA_TOKEN_VALIDITY_MS = 45_000;
 
+/** Upstream 429 cooldown — mirrors share one rate-limit pool, so back off. */
+const BIGSHARE_429_COOLDOWN_MS = 60_000;
+
+/** Retry only server errors for Bigshare — never 429/400 (fail fast). */
+const BIGSHARE_RETRYABLE = [500, 502, 503, 504];
+
+/**
+ * Per-PAN deadline so one slow CAPTCHA/POST can't poison a 10-PAN sequential
+ * batch into the 50s /api/check timeout. Slow PAN becomes one error row;
+ * the rest of the batch still completes. 8s fits ~2 slow + 8 normal PANs.
+ */
+const PER_PAN_TIMEOUT_MS = 8_000;
+
+function withPerPanTimeout<T>(promise: Promise<T>, pan: string): Promise<T> {
+  promise.catch(() => {});
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Bigshare check timed out for ${pan} — please retry this PAN.`)),
+      PER_PAN_TIMEOUT_MS
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 function stripTags(html: string): string {
   return html.replace(/<[^>]*>/g, "");
 }
@@ -90,11 +115,30 @@ export class BigShareAdapter implements RegistrarAdapter {
     ];
   }
 
+  /** Epoch ms until which Bigshare calls short-circuit (upstream 429). */
+  private rateLimitedUntil = 0;
+
+  private rateLimitRetryAfterSec(): number {
+    return Math.max(1, Math.ceil((this.rateLimitedUntil - Date.now()) / 1000));
+  }
+
+  private isUpstreamRateLimited(): boolean {
+    return Date.now() < this.rateLimitedUntil;
+  }
+
+  private noteUpstreamRateLimited(mirror?: string): void {
+    this.rateLimitedUntil = Date.now() + BIGSHARE_429_COOLDOWN_MS;
+    log("warn", "pan_check_failure", "Bigshare upstream 429 — cooling down 60s", {
+      meta: { registrar: this.name, mirror: mirror ?? "unknown" },
+    });
+  }
+
   constructor() {
     this.http = axios.create({
       // Keep well inside serverless function budgets; mirrors are tried in
       // series so every second here multiplies on unreachable networks.
-      timeout: 12000,
+      // 8s (was 12s): 10-PAN sequential batches must fit the 50s /api/check budget.
+      timeout: 8000,
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -115,8 +159,12 @@ export class BigShareAdapter implements RegistrarAdapter {
     for (const mirror of BIGSHARE_MIRRORS) {
       try {
         const html = (
-          await withRetry(() =>
-            this.http.get<string>(`https://${mirror}/IPO_Status.html`)
+          await withRetry(
+            () => this.http.get<string>(`https://${mirror}/IPO_Status.html`),
+            // Fail fast on 429 (shared pool) — default 4x1500ms wastes ~10s per mirror.
+            2,
+            500,
+            BIGSHARE_RETRYABLE
           )
         ).data;
 
@@ -172,6 +220,15 @@ export class BigShareAdapter implements RegistrarAdapter {
     const started = Date.now();
     let lastError: unknown = null;
 
+    // Upstream 429 cooldown: short-circuit without burning CAPTCHA/POST calls.
+    if (this.isUpstreamRateLimited()) {
+      return {
+        pan: normalizedPan,
+        status: "error",
+        error: `Rate limit exceeded. Please wait ~${this.rateLimitRetryAfterSec()}s before retrying.`,
+      };
+    }
+
     // Bulk path can hand us a pre-warmed CAPTCHA so the allotment POST
     // starts immediately; otherwise fetch one (single-PAN path).
     let captchaToken: string;
@@ -225,10 +282,11 @@ export class BigShareAdapter implements RegistrarAdapter {
                 },
                 { headers: { "Content-Type": "application/json; charset=utf-8" } }
               ),
-            // 2 attempts max (was 3): a Bigshare 429 wastes at most 1×500ms
-            // backoff instead of 3.5s before we break out of the mirror loop.
+            // 2 attempts max, server-errors only: 429/400 fail fast (shared
+            // pool) instead of burning backoff before the mirror-loop break.
             2,
-            500
+            500,
+            BIGSHARE_RETRYABLE
           );
 
           // Remember the working mirror so the next PAN tries it first.
@@ -332,8 +390,15 @@ export class BigShareAdapter implements RegistrarAdapter {
           };
         } catch (error: unknown) {
           lastError = error;
-          log("warn", "pan_check_failure", `Bigshare check failed on mirror ${mirror}: ${errorMessage(error)}`);
           const httpStatus = (error as { response?: { status?: number } }).response?.status;
+          log("warn", "pan_check_failure", `Bigshare check failed on mirror ${mirror}: ${errorMessage(error)}`, {
+            meta: { clientId, registrar: this.name, mirror, httpStatus: httpStatus ?? "none" },
+          });
+          // Upstream 429: arm the cooldown so the rest of the batch (and the
+          // next minute of requests) short-circuit instead of hammering.
+          if (httpStatus === 429) {
+            this.noteUpstreamRateLimited(mirror);
+          }
           // HTTP 400 may indicate a stale/invalid CAPTCHA token — Bigshare sometimes
           // rejects at the HTTP layer instead of via Status:"CAPTCHA" in the body.
           // Refresh the token before moving to the next mirror so a stale token
@@ -375,10 +440,11 @@ export class BigShareAdapter implements RegistrarAdapter {
       return { pan: normalizedPan, status: "error", error: "Network error on Bigshare servers. Please try again." };
     }
     if (err?.response?.status === 429) {
+      this.noteUpstreamRateLimited();
       return {
         pan: normalizedPan,
         status: "error",
-        error: "Rate limit exceeded. Please wait before retrying.",
+        error: `Rate limit exceeded. Please wait ~${this.rateLimitRetryAfterSec()}s before retrying.`,
       };
     }
     return {
@@ -390,6 +456,19 @@ export class BigShareAdapter implements RegistrarAdapter {
 
   async checkBulkAllotment(pans: string[], clientId: string): Promise<AllotmentResult[]> {
     if (pans.length === 0) return [];
+
+    // Upstream 429 cooldown: fail the whole batch fast with retry hint.
+    if (this.isUpstreamRateLimited()) {
+      const retryAfter = this.rateLimitRetryAfterSec();
+      log("warn", "pan_check_failure", `Bigshare bulk short-circuited (${pans.length} PANs, cooldown ~${retryAfter}s)`, {
+        meta: { registrar: this.name, pans: pans.length },
+      });
+      return pans.map((pan) => ({
+        pan: pan.toUpperCase().trim(),
+        status: "error" as const,
+        error: `Rate limit exceeded. Please wait ~${retryAfter}s before retrying.`,
+      }));
+    }
 
     // ── Strategy: token sharing + lazy pool ──────────────────────────────────
     //
@@ -427,13 +506,15 @@ export class BigShareAdapter implements RegistrarAdapter {
 
     const invalidateShared = () => { sharedCaptcha = null; };
 
-    // ── Lazy fallback pool (≤2 in-flight) ────────────────────────────────────
+    // ── Lazy fallback pool (≤1 in-flight) ────────────────────────────────────
+    // Single bridge token only: with chunkSize 1 the shared refresh is rarely
+    // contended, so a 2-deep pool just doubles Captcha.ashx burst on a miss.
     interface PooledCaptcha { token: string; answer: string; capturedAt: number }
     const pool: PooledCaptcha[] = [];
     let poolInFlight = 0;
 
     const maybeRefillPool = () => {
-      while (pool.length + poolInFlight < 2 && poolInFlight < 2) {
+      while (pool.length + poolInFlight < 1 && poolInFlight < 1) {
         poolInFlight++;
         this.fetchCaptchaToken()
           .then((c) => { pool.push({ ...c, capturedAt: Date.now() }); })
@@ -470,10 +551,13 @@ export class BigShareAdapter implements RegistrarAdapter {
     };
 
     // ── Wrapper: invalidate shared token on CAPTCHA rejection + retry once ─────
+    // Whole per-PAN unit (pick + POST) races an 8s deadline so one stalled
+    // PAN degrades to a single error row instead of pushing the batch into 504.
     const checkWithSharing = async (pan: string): Promise<AllotmentResult> => {
-      const captcha = await pickCaptcha();
-      try {
-        const result = await this.checkAllotment(pan, clientId, captcha);
+      const run = async (): Promise<AllotmentResult> => {
+        const captcha = await pickCaptcha();
+        try {
+          const result = await this.checkAllotment(pan, clientId, captcha);
         // Surface-level CAPTCHA error (returned, not thrown) — expire shared token
         // so the next PAN triggers a fresh solve.
         if (
@@ -496,6 +580,13 @@ export class BigShareAdapter implements RegistrarAdapter {
         }
         throw error;
       }
+      };
+      try {
+        return await withPerPanTimeout(run(), pan);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Check failed";
+        return { pan: pan.toUpperCase().trim(), status: "error" as const, error: msg };
+      }
     };
 
     return bulkCheck(pans, checkWithSharing, {
@@ -509,3 +600,18 @@ export class BigShareAdapter implements RegistrarAdapter {
 }
 
 export const bigShareAdapter = new BigShareAdapter();
+
+/** Health/ops: is Bigshare in upstream-429 cooldown on this instance? */
+export function isBigshareRateLimited(): boolean {
+  return (bigShareAdapter as unknown as { isUpstreamRateLimited: () => boolean }).isUpstreamRateLimited?.() ?? false;
+}
+
+/** Health/ops: seconds until Bigshare cooldown lifts (0 when not limited). */
+export function getBigshareRetryAfterSec(): number {
+  try {
+    const v = (bigShareAdapter as unknown as { rateLimitRetryAfterSec: () => number }).rateLimitRetryAfterSec?.();
+    return typeof v === "number" && Number.isFinite(v) ? Math.max(0, v) : 0;
+  } catch {
+    return 0;
+  }
+}

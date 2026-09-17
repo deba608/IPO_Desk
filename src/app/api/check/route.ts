@@ -116,6 +116,12 @@ export async function POST(request: Request) {
       );
     }
     const errMsg = error instanceof Error ? error.message : "";
+    if (errMsg.includes("BIGSHARE_BATCH_TOO_LARGE")) {
+      return NextResponse.json(
+        { error: "Bigshare allows 10 PANs per request — split into smaller batches.", max: 10 },
+        { status: 400 }
+      );
+    }
     if (errMsg.includes("not found")) {
       return NextResponse.json({ error: "IPO not found" }, { status: 404 });
     }

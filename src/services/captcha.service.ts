@@ -31,10 +31,10 @@ function ocrApiKey(): string {
 }
 
 /** Per-request timeout so a hung upstream can never stall /api/check. */
-const FETCH_TIMEOUT_MS = 10_000;
+const FETCH_TIMEOUT_MS = 6_000;
 
 /** Hard cap for the local ddddocr subprocess (it is normally ~200-500ms). */
-const LOCAL_OCR_TIMEOUT_MS = 10_000;
+const LOCAL_OCR_TIMEOUT_MS = 4_000;
 
 /** Primary engine first (best for small numeric captchas); fallbacks raced. */
 const OCR_PRIMARY_ENGINE = 2;

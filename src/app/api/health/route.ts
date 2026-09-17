@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { isLocalOcrUnavailable } from "@/services/captcha.service";
+import { getBigshareRetryAfterSec, isBigshareRateLimited } from "@/registrars/bigshare";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,8 @@ export async function GET() {
       join(process.cwd(), "scripts", "solve_captcha.py")
     ),
     localOcrCircuitTripped: isLocalOcrUnavailable(),
+    bigshareRateLimited: isBigshareRateLimited(),
+    bigshareRetryAfterSec: getBigshareRetryAfterSec(),
     databaseConfigured: Boolean(process.env.DATABASE_URL?.trim()),
     cronSecretConfigured: Boolean(process.env.CRON_SECRET?.trim()),
     authSecretConfigured: Boolean(process.env.AUTH_SECRET?.trim()),

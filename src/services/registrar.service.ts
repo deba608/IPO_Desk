@@ -43,12 +43,21 @@ function summarize(results: AllotmentResult[]) {
   };
 }
 
+/** Bigshare sequential bulk must fit the 50s /api/check budget: 10 PANs max per request. */
+export const BIGSHARE_MAX_BATCH = 10;
+
 export async function checkAllotment(request: CheckRequest): Promise<CheckResponse> {
   const { pans, ipoClientId } = request;
 
   const ipo = await findIPO(ipoClientId);
   if (!ipo) {
     throw new Error(`IPO not found for id: ${ipoClientId}`);
+  }
+
+  if (ipo.registrar === "bigshare" && pans.length > BIGSHARE_MAX_BATCH) {
+    throw new Error(
+      `BIGSHARE_BATCH_TOO_LARGE: Bigshare allows ${BIGSHARE_MAX_BATCH} PANs per request — split into smaller batches.`
+    );
   }
 
   const adapter = getAdapter(ipo.registrar);

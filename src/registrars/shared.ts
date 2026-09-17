@@ -27,7 +27,8 @@ export function chunk<T>(arr: T[], size: number): T[][] {
 export async function withRetry<T>(
   fn: () => Promise<T>,
   attempts = 4,
-  startingDelayMs = 1500
+  startingDelayMs = 1500,
+  retryableStatuses: number[] = [429, 500, 502, 503, 504]
 ): Promise<T> {
   let delayMs = startingDelayMs;
   for (let i = 0; i < attempts; i++) {
@@ -37,7 +38,7 @@ export async function withRetry<T>(
       const status = (error as { response?: { status?: number } }).response
         ?.status;
       const isRetryable =
-        status !== undefined && [429, 500, 502, 503, 504].includes(status);
+        status !== undefined && retryableStatuses.includes(status);
 
       if (i === attempts - 1 || !isRetryable) throw error;
 
@@ -100,7 +101,9 @@ export async function bulkCheck(
     });
 
     if (b < batches.length - 1) {
-      await delay(chunkDelayMs);
+      // Base gap plus small jitter so sequential bulk requests don't hit
+      // upstream anti-burst detection in lockstep (Bigshare 429 lesson).
+      await delay(chunkDelayMs + Math.random() * 300);
     }
   }
 
