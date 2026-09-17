@@ -309,13 +309,217 @@ App works without auth. Sign-in unlocks cross-device alert ownership + watchlist
 
 ## Architecture
 
-Browser UI (checker, calendar, detail, apply, backtest) talks only to Next.js route handlers. The server-side check pipeline fans out through a registrar registry to 7 adapters, with catalogue sync (5-min TTL), CAPTCHA/OCR fast-path, optional Prisma persistence, and Zod + per-IP rate-limit policy. Registrar calls never happen in the browser.
+### High-Level System Diagram
 
 ```
-Investor → Checker UI → /api/check → pipeline/registry → adapter → live registrar → results/export
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          Browser (Client)                               │
+│                                                                         │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────┐  ┌───────────────┐  │
+│  │  Checker UI │  │ Calendar /   │  │ Family     │  │  Backtest /   │  │
+│  │  (bulk/scan)│  │ IPO Detail   │  │ Checklist  │  │  History      │  │
+│  └──────┬──────┘  └──────┬───────┘  └─────┬──────┘  └──────┬────────┘  │
+│         │                │                │                │           │
+│  localStorage (vault, labels, history, watchlist — never sent server)  │
+└─────────┼────────────────┼────────────────┼────────────────┼───────────┘
+          │  HTTPS          │                │                │
+          ▼                ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     Next.js App Router (Vercel / Docker)                │
+│                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                      API Route Handlers                          │   │
+│  │                                                                  │   │
+│  │  /api/check ──────────────────────────────────────────────────┐  │   │
+│  │  /api/scan  ──► check pipeline ──► registrar registry ──► 7  │  │   │
+│  │  /api/ipos  ──► sync service   ──► adapters (parallel)    │  │   │   │
+│  │  /api/calendar ──► calendar service ──► 3 live providers  │  │   │   │
+│  │  /api/backtest ──► backtest engine                        │  │   │   │
+│  │  /api/export ──► ExcelJS / CSV builder                    │  │   │   │
+│  │  /api/health, /api/logs (admin)                           │  │   │   │
+│  │  /api/admin/* (OTP gate) /api/auth/* (Auth.js v5)        │  │   │   │
+│  └────────────────────────────────────────────────┬──────────┘   │   │
+│                                                   │              │   │
+│  ┌──────────────────┐   ┌──────────────────────┐  │              │   │
+│  │  Rate Limiter    │   │  Zod Validator       │  │              │   │
+│  │  (per-IP, 60/min)│   │  (all inputs)        │  │              │   │
+│  └──────────────────┘   └──────────────────────┘  │              │   │
+│                                                   ▼              │   │
+│  ┌────────────────────────────────────────────────────────────┐  │   │
+│  │               Prisma ORM (optional)                        │  │   │
+│  │  Ipo · GmpSnapshot · SubSnapshot · Report · User          │  │   │
+│  │  AdminOtpChallenge · Alert · WatchlistEntry               │  │   │
+│  └────────────────────────────────────────────┬───────────────┘  │   │
+└────────────────────────────────────────────────┼──────────────────┘   │
+                                                 │                      │
+                          ┌──────────────────────┘                      │
+                          ▼                                              │
+                 ┌─────────────────┐                                    │
+                 │  PostgreSQL DB  │ (optional — in-memory fallback)     │
+                 └─────────────────┘                                    │
+                                                                        │
+          ┌─────────────────────────────────────────────────────────────┘
+          │  Server → Registrar (never browser → registrar)
+          ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        External Services                                │
+│                                                                         │
+│  Registrars (live, per-check)          Calendar data providers          │
+│  ┌──────────┐ ┌──────────┐            ┌───────────┐ ┌──────────────┐   │
+│  │ KFintech │ │   MUFG   │            │ IPO Guru  │ │InvestorGain  │   │
+│  │  (PAN    │ │  Intime  │            │ (API key) │ │    (free)    │   │
+│  │  query)  │ │  (AJAX)  │            └───────────┘ └──────────────┘   │
+│  └──────────┘ └──────────┘            ┌───────────┐                    │
+│  ┌──────────┐ ┌──────────┐            │    NSE    │ OCR.Space API       │
+│  │Bigshare  │ │ Skyline  │            │  (free)   │ (CAPTCHA solve,     │
+│  │(CAPTCHA) │ │  (CSRF)  │            └───────────┘  free 25k/mo)       │
+│  └──────────┘ └──────────┘                                             │
+│  ┌──────────┐ ┌──────────┐                                             │
+│  │  Purva   │ │Maashitla │                                             │
+│  │ (Django) │ │(OpenAPI) │                                             │
+│  └──────────┘ └──────────┘                                             │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-Trust boundaries: browser never calls registrars; server validates everything; externals treated as flaky (retry + fault isolation); family vault stays in `localStorage`; admin/ops gated by OTP + `CRON_SECRET`. See [plan.md](./plan.md) and [AUTH_PLAN.md](./AUTH_PLAN.md) for details.
+---
+
+### Component Breakdown
+
+| Component | Location | Responsibility |
+|---|---|---|
+| **Registrar Registry** | `src/registrars/registry.ts` | Discovers all `RegistrarAdapter` instances; routes PAN checks by IPO id prefix; merges IPO catalogues |
+| **Check Pipeline** | `src/services/check.service.ts` | Validates PANs, strips duplicates, fans out to the right adapter, coerces errors to `AllotmentResult` |
+| **Sync Service** | `src/services/sync.service.ts` | 5-min TTL catalogue cache; disk snapshot + memory fallback so a registrar hiccup never empties the IPO list |
+| **CAPTCHA Service** | `src/services/captcha.service.ts` | Local `ddddocr` (Docker) fast-path → OCR.Space fallback; jittered 429 backoff; shared promise dedup |
+| **Bigshare Adapter** | `src/registrars/bigshare.ts` | Token-sharing bulk strategy (1 OCR call/batch); lazy pool ≤2 in-flight; sticky fastest-mirror |
+| **Rate Limiter** | `src/lib/rate-limit.ts` | Sliding-window in-memory counter per client IP; 60 req/min on `/api/check` |
+| **Calendar Service** | `src/features/ipo-calendar/lib/calendar.service.ts` | Priority-chain providers; live vs. sample badge; lifecycle derivation (Open/Upcoming/Closed/Listed) |
+| **Report Service** | `src/services/report.service.ts` | Algorithmic 0–100 score (GMP, sub ratios, board, issue size); cached per IPO |
+| **Backtest Engine** | `src/features/backtest/lib/backtest.service.ts` | Strategy simulation over historical dataset; metrics + ₹1L growth curve |
+| **Export Service** | `src/services/export.service.ts` | CSV + styled multi-sheet XLSX via ExcelJS |
+| **Logger** | `src/services/logger.service.ts` | Structured in-memory event ring (size 500); tailed by `/api/logs` |
+
+---
+
+### Bigshare CAPTCHA Flow (Bulk)
+
+```
+checkBulkAllotment(pans)
+        │
+        ▼
+  fetchCaptchaToken()  ←── ONE OCR.Space call (no burst)
+        │
+        │  sharedCaptcha = { token, answer }
+        │
+  ┌─────▼──────────────────────────────────────────────────┐
+  │  bulkCheck — 5 PANs per chunk, 200ms inter-chunk delay │
+  │                                                        │
+  │  For each PAN:                                         │
+  │    pickCaptcha()                                       │
+  │       │                                               │
+  │       ├─► sharedCaptcha still fresh? ──YES──► reuse   │
+  │       │   (zero extra OCR call)                       │
+  │       │                                               │
+  │       └─► expired / refreshing?                       │
+  │              │                                        │
+  │              ├─► getOrRefreshShared()  ← deduped      │
+  │              │   (all concurrent callers await same   │
+  │              │    Promise — only 1 OCR call fires)    │
+  │              │                                        │
+  │              └─► pool fallback (≤2 in-flight solves)  │
+  │                                                        │
+  │  POST FetchIpodetails → Status?                        │
+  │    "OK"      → parse result                            │
+  │    "CAPTCHA" → invalidateShared() + checkAllotment     │
+  │                retries with fresh token internally     │
+  │    "NOTFOUND"→ not_found                               │
+  └────────────────────────────────────────────────────────┘
+```
+
+**OCR call budget per bulk run:**
+
+| Scenario | OCR.Space calls |
+|---|---|
+| All PANs reuse shared token (best case) | **1** |
+| Token rejected once, re-solved | **2** |
+| Shared refresh in-flight, pool used | **1 + ≤2** |
+| Token sharing unsupported (worst case) | 1 per PAN (per-PAN fallback inside `checkAllotment`) |
+
+---
+
+### Data Flow: Single PAN Check
+
+```
+POST /api/check { pans: ["ABCDE1234F"], ipoClientId: "bigshare-42" }
+        │
+        ├── Zod validate → 400 if invalid
+        ├── Rate limit check → 429 if exceeded
+        │
+        ▼
+  checkAllotment({ pans, ipoClientId })
+        │
+        ├── strip "bigshare-" prefix → clientId = "42"
+        ├── resolve adapter = BigShareAdapter
+        │
+        ▼
+  BigShareAdapter.checkAllotment("ABCDE1234F", "42")
+        │
+        ├── fetchCaptchaToken() → { token, answer }
+        │       └── solveBigShareCaptcha()
+        │               ├── GET ipo.bigshareonline.com/Captcha.ashx
+        │               └── OCR.Space engine 2 (primary)
+        │                   └── on 429: jitter + race engines 1+3
+        │
+        ├── POST /Data.aspx/FetchIpodetails (mirror 1)
+        │       └── on Status:"CAPTCHA" → re-solve + retry (attempt 2)
+        │       └── on HTTP 4xx → break mirror loop
+        │
+        └── parse { ALLOTED, APPLIED, Name } → AllotmentResult
+                └── 200 JSON { results: [...] }
+```
+
+---
+
+### Trust Boundaries
+
+```
+┌─────────────────────────────────────────────────┐
+│  BROWSER (untrusted)                            │
+│  • Never calls registrar APIs directly          │
+│  • Family vault stays in localStorage only      │
+│  • All user input re-validated server-side      │
+└──────────────────────┬──────────────────────────┘
+                       │ HTTPS
+┌──────────────────────▼──────────────────────────┐
+│  SERVER (trusted boundary)                      │
+│  • Zod validates every API input                │
+│  • Per-IP rate limiter on all write endpoints   │
+│  • Admin routes: OTP cookie + CRON_SECRET       │
+│  • Registrar errors surfaced as typed results   │
+│    — never raw stack traces to client           │
+└──────────────────────┬──────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────┐
+│  EXTERNALS (untrusted, treated as flaky)        │
+│  • Retry + exponential backoff on 5xx/429       │
+│  • Mirror fallback (Bigshare: 3 mirrors)        │
+│  • Fault isolation: one adapter failure never   │
+│    blocks another                               │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+### Deployment Topology
+
+| Target | Notes |
+|---|---|
+| **Vercel (recommended)** | Serverless functions; `maxDuration=60s`; no Python/ddddocr — OCR.Space remote path used. Set `OCR_SPACE_API_KEY` in env vars. Daily cron via `vercel.json`. |
+| **Docker / VPS** | Multi-stage image; Node 20-slim + Python + `ddddocr`. Local OCR fast-path (~200ms, no quota). Migrations run on boot. Postgres via compose. |
+| **Local dev** | `npm run dev`; in-memory fallback; no env vars required for core checker. |
+
+See [plan.md](./plan.md) and [AUTH_PLAN.md](./AUTH_PLAN.md) for deeper design docs.
+
 
 ---
 
