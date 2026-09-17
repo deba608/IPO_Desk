@@ -43,9 +43,10 @@ const BIGSHARE_RETRYABLE = [500, 502, 503, 504];
 /**
  * Per-PAN deadline so one slow CAPTCHA/POST can't poison a 10-PAN sequential
  * batch into the 50s /api/check timeout. Slow PAN becomes one error row;
- * the rest of the batch still completes. 8s fits ~2 slow + 8 normal PANs.
+ * the rest of the batch still completes. 12s covers a shared-miss solve
+ * (~6s fetch) + POST (~8s) worst-serial case with margin.
  */
-const PER_PAN_TIMEOUT_MS = 8_000;
+const PER_PAN_TIMEOUT_MS = 12_000;
 
 function withPerPanTimeout<T>(promise: Promise<T>, pan: string): Promise<T> {
   promise.catch(() => {});
@@ -421,11 +422,11 @@ export class BigShareAdapter implements RegistrarAdapter {
       }
     }
 
-    const err = lastError as { response?: { status?: number; data?: unknown }; message?: string };
+    const err = lastError as { response?: { status?: number; data?: unknown }; message?: string; code?: string };
 
     log("error", "pan_check_failure", `All Bigshare mirrors failed: ${err?.message ?? "unknown"}`, {
       durationMs: Date.now() - started,
-      meta: { clientId, registrar: this.name, httpStatus: err?.response?.status ?? "none" },
+      meta: { clientId, registrar: this.name, httpStatus: err?.response?.status ?? "none", code: err?.code ?? "none" },
     });
 
     if (
@@ -437,6 +438,10 @@ export class BigShareAdapter implements RegistrarAdapter {
     }
 
     if (!err?.response) {
+      const raw = `${err?.code ?? ""} ${err?.message ?? ""}`;
+      if (/timeout|timed out|ECONNABORTED/i.test(raw)) {
+        return { pan: normalizedPan, status: "error", error: "Bigshare timed out. Please retry this PAN." };
+      }
       return { pan: normalizedPan, status: "error", error: "Network error on Bigshare servers. Please try again." };
     }
     if (err?.response?.status === 429) {
