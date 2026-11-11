@@ -47,11 +47,47 @@ It is built for retail investors running bids across several family accounts: th
 
 ## Table of Contents
 
-- **Product** — [Features](#features) · [Pages](#pages) · [API Endpoints](#api-endpoints)
+- **Product** — [Preview](#preview) · [Features](#features) · [Pages](#pages) · [API Endpoints](#api-endpoints)
 - **Build & run** — [Tech Stack](#tech-stack) · [Getting Started](#getting-started) · [Environment Variables](#environment-variables) · [Docker](#docker)
 - **Data layer** — [Registrar Integrations](#registrar-integrations) · [Calendar Data Providers](#calendar-data-providers) · [Project Structure](#project-structure)
 - **Quality & ops** — [Testing & Quality](#testing--quality) · [Auth & Admin](#auth--admin) · [SEO](#seo) · [Architecture](#architecture) · [Security & Privacy](#security--privacy)
 - **Project** — [FAQ](#faq) · [Roadmap & Docs](#roadmap--docs) · [Contributing](#contributing) · [Disclaimer](#disclaimer) · [License](#license)
+
+---
+
+## Preview
+
+Captured on the live deployment at [ipo-desk.vercel.app](https://ipo-desk.vercel.app).
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="public/screenshots/home.png" alt="IPO Desk landing page with live IPO strip" />
+      <br /><sub><b>Home</b> — live IPO strip and the allotment checker entry point</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="public/screenshots/calendar.png" alt="IPO calendar with lifecycle tabs" />
+      <br /><sub><b>IPO calendar</b> — lifecycle tabs, live GMP, board filter, and watchlist</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="public/screenshots/ipo-detail.png" alt="IPO detail with subscription and GMP" />
+      <br /><sub><b>IPO detail</b> — subscription bars, GMP trend, research score, timeline</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="public/screenshots/backtest.png" alt="IPO backtest workspace" />
+      <br /><sub><b>Backtest</b> — strategy filters, win rate, ₹1L growth curve</sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="public/screenshots/apply.png" alt="Family bid checklist" width="70%" />
+  <br /><sub><b>Family checklist</b> — account vault, lots, blocked amounts, and UPI mandate tracker</sub>
+</p>
+
+<sub>All screenshots come from the live deployment. Data is live registrar/provider data, or sample data where the UI labels it as such.</sub>
 
 ---
 
