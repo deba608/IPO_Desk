@@ -35,11 +35,11 @@ It is built for retail investors running bids across several family accounts: th
 
 | | |
 |---|---|
-| **Registrars** | 7 — KFintech, MUFG Intime, Bigshare, Skyline, Purva, Maashitla (+ legacy Link Intime key) |
+| **Registrars** | 8 adapters — KFintech, MUFG Intime, Bigshare, Skyline, Purva, Maashitla, Integrated Registry (+ legacy Link Intime key) |
 | **PANs per request** | 500 on one IPO · 50 on a cross-IPO scan |
 | **Calendar sources** | IPO Guru · InvestorGain · NSE India · curated seed |
 | **Persistence** | Postgres via Prisma — optional, in-memory fallback |
-| **Deploys to** | Vercel (serverless) or Docker / VPS (local OCR fast-path) |
+| **Deploys to** | Vercel (serverless) or Docker / VPS |
 
 > **Brand:** canonical name is **IPO Desk**, alias **IPODESK** (the no-hyphen form users type in Google). Single source of truth: `src/lib/siteConfig.ts` (`siteUrl`, `siteName`, `siteAlternateName`). The live URL is `https://ipo-desk.vercel.app` unless `NEXT_PUBLIC_SITE_URL` is set.
 
@@ -185,7 +185,7 @@ See [`.env.example`](./.env.example) for the full annotated list.
 | `IPOGURU_API_KEY` | No | Enables IPO Guru as live calendar source (15 req/min, 300/day; cached 5 min) |
 | `CRON_SECRET` | No | Bearer secret for `/api/cron/sync-ipos`, `/api/logs`, `/api/admin/sync` |
 | `DATABASE_URL` | No | Postgres connection string; without it the app uses in-memory fallback |
-| `OCR_SPACE_API_KEY` | No | Bigshare CAPTCHA OCR quota (25k/mo free; else shared demo key) |
+| `OCR_SPACE_API_KEY` | No | Legacy: quota for the standalone `/api/bigshare/captcha` endpoint (25k/mo free; else shared demo key). The check flow no longer solves CAPTCHAs. |
 | `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | No | Enables Google sign-in (Auth.js v5) |
 | `ADMIN_EMAILS`, `ADMIN_PHONES` | No | Allowlisted admin OTP identities |
 | `RESEND_API_KEY`, `RESEND_FROM` | No | Admin email-OTP delivery |
@@ -195,7 +195,7 @@ See [`.env.example`](./.env.example) for the full annotated list.
 
 ## Docker
 
-Production multi-stage image (Node 20-slim + `ddddocr` for Bigshare CAPTCHA) with `standalone` output.
+Production multi-stage image (Node 20-slim + `ddddocr`, kept for the legacy CAPTCHA endpoint) with `standalone` output.
 
 ```bash
 # 1. Copy and fill env (DATABASE_URL + POSTGRES_PASSWORD required)
@@ -233,7 +233,7 @@ docker compose up --build
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/check` | POST | 1–500 PANs on one IPO (60 req/min, 50 s timeout, Bigshare CAPTCHA-aware) |
+| `/api/check` | POST | 1–500 PANs on one IPO (60 req/min, 50 s timeout, Bigshare 429-aware) |
 | `/api/scan` | POST | PANs across all active IPOs (max 50 PANs, all registrars, 5 req/min) |
 | `/api/ipos` | GET | Active IPOs merged across all registrars |
 | `/api/calendar` | GET | Calendar data with lifecycle derivation |
@@ -241,7 +241,7 @@ docker compose up --build
 | `/api/ipo/[id]/report` | GET | Algorithmic research report with scores + verdict |
 | `/api/backtest` | GET/POST | Programmatic strategy simulation |
 | `/api/export` | POST | Results as CSV or XLSX |
-| `/api/bigshare/captcha` | GET | Bigshare CAPTCHA image proxy/solver support |
+| `/api/bigshare/captcha` | GET | Legacy CAPTCHA solver — not used by the check flow |
 | `/api/alerts` | GET/POST/DELETE | IPO alerts (user session or `x-device-id`) |
 | `/api/alerts/link` | POST | Link anonymous device alerts to a signed-in user |
 | `/api/health` | GET | Health + config flags (auth/mail/allowlist, OCR) |
@@ -266,10 +266,13 @@ Every registrar implements the same `RegistrarAdapter` interface (`src/registrar
 | **KFintech** | SPA bundle scrape (`ipostatus.kfintech.com`) | `GET …/prod/api/query?type=pan` |
 | **MUFG Intime** (ex Link Intime) | `POST /Initial_Offer/IPO.aspx/GetDetails` | `POST /Initial_Offer/IPO.aspx/SearchOnPan` |
 | **Link Intime (legacy key)** | Same MUFG portal family (back-compat key) | Same portal |
-| **Bigshare** | HTML `<select>` scrape (`IPO_Status.html` + mirrors) | `POST /Data.aspx/FetchIpodetails` + CAPTCHA (local `ddddocr` fast-path, OCR.Space fallback) |
+| **Bigshare** | HTML `<select>` scrape (`IPO_Status.html` + mirrors) | `POST /Data.aspx/FetchIpodetails` — no CAPTCHA token; shared 429 cooldown + mirror fallback |
 | **Skyline** | IPO `<select>` list scrape | 2-step session POST (CSRF token + search), no CAPTCHA |
 | **Purva Sharegistry** | Django IPO query page | Django CSRF session flow, PAN mode |
 | **Maashitla** | `GET /api/public-issue/companies` (public OpenAPI JSON) | `GET /api/public-issue/search?company_name=&pan=` (`404` = `not_found`) |
+| **Integrated Registry (IRMS)** | ASP.NET WebMethods (`/IRMS_V2/IPO.aspx`) | `POST …/SearchOnPan` |
+
+> **Status:** Integrated Registry was added in issue #7 while the registrar site was unreachable. Its endpoint and field names are assumed from the MUFG pattern and still need live verification, so treat its results as provisional.
 
 ---
 
@@ -284,7 +287,7 @@ Tried in priority order; first to return data wins. If all live sources fail, cu
 | **NSE India** | None | Official NSE/BSE issue data (no GMP) |
 | **Seed** (fallback) | None | Curated IPOs with dynamic dates |
 
-Bigshare bulk speed: CAPTCHA pool pre-warm, sticky fastest-mirror, parallel frontend batches (×3) with progressive rendering.
+Bigshare bulk: mirror fallback with a shared 60 s cooldown after an upstream 429, plus parallel frontend batches with progressive rendering.
 
 ---
 
@@ -316,7 +319,7 @@ src/
     backtest/            # Workspace, strategy engine, historical dataset
   hooks/                 # useWatchlist, usePanLabels, useCheckHistory, useAlerts, …
   lib/                   # siteConfig.ts, prisma.ts, rate-limit.ts, utils.ts
-  registrars/            # Adapter interface + 7 registrar adapters + registry
+  registrars/            # Adapter interface + 8 registrar adapters + registry
   services/              # check pipeline, sync, captcha, export, logger, report, backtest
   types/                 # Allotment, IPO, calendar, API types
 prisma/
@@ -383,7 +386,7 @@ App works without auth. Sign-in unlocks cross-device alert ownership + watchlist
 │  │                      API Route Handlers                          │   │
 │  │                                                                  │   │
 │  │  /api/check ──────────────────────────────────────────────────┐  │   │
-│  │  /api/scan  ──► check pipeline ──► registrar registry ──► 7  │  │   │
+│  │  /api/scan  ──► check pipeline ──► registrar registry ──► 8  │  │   │
 │  │  /api/ipos  ──► sync service   ──► adapters (parallel)    │  │   │   │
 │  │  /api/calendar ──► calendar service ──► 3 live providers  │  │   │   │
 │  │  /api/backtest ──► backtest engine                        │  │   │   │
@@ -423,8 +426,8 @@ App works without auth. Sign-in unlocks cross-device alert ownership + watchlist
 │  │  query)  │ │  (AJAX)  │            └───────────┘ └──────────────┘   │
 │  └──────────┘ └──────────┘            ┌───────────┐                    │
 │  ┌──────────┐ ┌──────────┐            │    NSE    │ OCR.Space API       │
-│  │Bigshare  │ │ Skyline  │            │  (free)   │ (CAPTCHA solve,     │
-│  │(CAPTCHA) │ │  (CSRF)  │            └───────────┘  free 25k/mo)       │
+│  │Bigshare  │ │ Skyline  │            │  (free)   │ (legacy CAPTCHA     │
+│  │(mirrors) │ │  (CSRF)  │            └───────────┘  free 25k/mo)       │
 │  └──────────┘ └──────────┘                                             │
 │  ┌──────────┐ ┌──────────┐                                             │
 │  │  Purva   │ │Maashitla │                                             │
@@ -442,8 +445,8 @@ App works without auth. Sign-in unlocks cross-device alert ownership + watchlist
 | **Registrar Registry** | `src/registrars/registry.ts` | Discovers all `RegistrarAdapter` instances; routes PAN checks by IPO id prefix; merges IPO catalogues |
 | **Check Pipeline** | `src/services/check.service.ts` | Validates PANs, strips duplicates, fans out to the right adapter, coerces errors to `AllotmentResult` |
 | **Sync Service** | `src/services/sync.service.ts` | 5-min TTL catalogue cache; disk snapshot + memory fallback so a registrar hiccup never empties the IPO list |
-| **CAPTCHA Service** | `src/services/captcha.service.ts` | Local `ddddocr` (Docker) fast-path → OCR.Space fallback; jittered 429 backoff; shared promise dedup |
-| **Bigshare Adapter** | `src/registrars/bigshare.ts` | Token-sharing bulk strategy (1 OCR call/batch); lazy pool ≤2 in-flight; sticky fastest-mirror |
+| **CAPTCHA Service** | `src/services/captcha.service.ts` | Legacy solver behind `/api/bigshare/captcha` only — no longer in the check path. |
+| **Bigshare Adapter** | `src/registrars/bigshare.ts` | Mirror fallback with a shared 60 s cooldown after an upstream 429; bulk delegates to `bulkCheck`; no CAPTCHA token sent. |
 | **Rate Limiter** | `src/lib/rate-limit.ts` | Sliding-window in-memory counter per client IP; 60 req/min on `/api/check` |
 | **Calendar Service** | `src/features/ipo-calendar/lib/calendar.service.ts` | Priority-chain providers; live vs. sample badge; lifecycle derivation (Open/Upcoming/Closed/Listed) |
 | **Report Service** | `src/services/report.service.ts` | Algorithmic 0–100 score (GMP, sub ratios, board, issue size); cached per IPO |
@@ -453,49 +456,30 @@ App works without auth. Sign-in unlocks cross-device alert ownership + watchlist
 
 ---
 
-### Bigshare CAPTCHA Flow (Bulk)
+### Bigshare Bulk Flow
 
 ```
 checkBulkAllotment(pans)
         │
         ▼
-  fetchCaptchaToken()  ←── ONE OCR.Space call (no burst)
-        │
-        │  sharedCaptcha = { token, answer }
+  bulkCheck(pans, checkOne)   ← shared helper: 5 PANs per chunk,
+        │                        200 ms inter-chunk delay
         │
   ┌─────▼──────────────────────────────────────────────────┐
-  │  bulkCheck — 5 PANs per chunk, 200ms inter-chunk delay │
-  │                                                        │
   │  For each PAN:                                         │
-  │    pickCaptcha()                                       │
-  │       │                                               │
-  │       ├─► sharedCaptcha still fresh? ──YES──► reuse   │
-  │       │   (zero extra OCR call)                       │
-  │       │                                               │
-  │       └─► expired / refreshing?                       │
-  │              │                                        │
-  │              ├─► getOrRefreshShared()  ← deduped      │
-  │              │   (all concurrent callers await same   │
-  │              │    Promise — only 1 OCR call fires)    │
-  │              │                                        │
-  │              └─► pool fallback (≤2 in-flight solves)  │
-  │                                                        │
-  │  POST FetchIpodetails → Status?                        │
-  │    "OK"      → parse result                            │
-  │    "CAPTCHA" → invalidateShared() + checkAllotment     │
-  │                retries with fresh token internally     │
-  │    "NOTFOUND"→ not_found                               │
+  │    POST /Data.aspx/FetchIpodetails (no CAPTCHA token)  │
+  │       │                                                │
+  │       ├─ "OK"       → parse { ALLOTED, APPLIED, Name } │
+  │       ├─ "NOTFOUND" → not_found                        │
+  │       ├─ "CAPTCHA"  → typed error, no retry            │
+  │       │               (CAPTCHA solving was removed —   │
+  │       │                it produced wrong bulk results) │
+  │       └─ HTTP 429   → shared 60 s cooldown, fail fast  │
+  │       └─ HTTP 4xx   → break mirror loop                │
   └────────────────────────────────────────────────────────┘
 ```
 
-**OCR call budget per bulk run:**
-
-| Scenario | OCR.Space calls |
-|---|---|
-| All PANs reuse shared token (best case) | **1** |
-| Token rejected once, re-solved | **2** |
-| Shared refresh in-flight, pool used | **1 + ≤2** |
-| Token sharing unsupported (worst case) | 1 per PAN (per-PAN fallback inside `checkAllotment`) |
+**Why the CAPTCHA solver is gone (issue #7):** the shared-token pool produced wrong and failed bulk PAN results. Requests now post without a token; if the registrar demands a CAPTCHA the check returns a clear typed error instead of a guess. The solver still exists behind the standalone `/api/bigshare/captcha` endpoint, but the check pipeline never calls it.
 
 ---
 
@@ -516,15 +500,11 @@ POST /api/check { pans: ["ABCDE1234F"], ipoClientId: "bigshare-42" }
         ▼
   BigShareAdapter.checkAllotment("ABCDE1234F", "42")
         │
-        ├── fetchCaptchaToken() → { token, answer }
-        │       └── solveBigShareCaptcha()
-        │               ├── GET ipo.bigshareonline.com/Captcha.ashx
-        │               └── OCR.Space engine 2 (primary)
-        │                   └── on 429: jitter + race engines 1+3
-        │
-        ├── POST /Data.aspx/FetchIpodetails (mirror 1)
-        │       └── on Status:"CAPTCHA" → re-solve + retry (attempt 2)
+        ├── POST /Data.aspx/FetchIpodetails (mirror 1, no CAPTCHA token)
+        │       └── on HTTP 5xx → retry with backoff
+        │       └── on HTTP 429 → 60 s cooldown, fail fast
         │       └── on HTTP 4xx → break mirror loop
+        │       └── next mirror on network failure
         │
         └── parse { ALLOTED, APPLIED, Name } → AllotmentResult
                 └── 200 JSON { results: [...] }
@@ -566,8 +546,8 @@ POST /api/check { pans: ["ABCDE1234F"], ipoClientId: "bigshare-42" }
 
 | Target | Notes |
 |---|---|
-| **Vercel (recommended)** | Serverless functions; `maxDuration=60s`; no Python/ddddocr — OCR.Space remote path used. Set `OCR_SPACE_API_KEY` in env vars. Daily cron via `vercel.json`. |
-| **Docker / VPS** | Multi-stage image; Node 20-slim + Python + `ddddocr`. Local OCR fast-path (~200ms, no quota). Migrations run on boot. Postgres via compose. |
+| **Vercel (recommended)** | Serverless functions; `maxDuration=60s`; no Python/ddddocr needed. Set `OCR_SPACE_API_KEY` only if you use the legacy `/api/bigshare/captcha` endpoint. Daily cron via `vercel.json`. |
+| **Docker / VPS** | Multi-stage image; Node 20-slim + Python + `ddddocr`, kept for the legacy CAPTCHA endpoint. Migrations run on boot. Postgres via compose. |
 | **Local dev** | `npm run dev`; in-memory fallback; no env vars required for core checker. |
 
 See [plan.md](./plan.md) and [AUTH_PLAN.md](./AUTH_PLAN.md) for deeper design docs.
@@ -588,7 +568,7 @@ See [plan.md](./plan.md) and [AUTH_PLAN.md](./AUTH_PLAN.md) for deeper design do
 | **Alert ownership** | Anonymous alerts keyed by `x-device-id`; `/api/alerts/link` transfers them to a signed-in user on demand. |
 | **HTTP headers** | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, HSTS with `preload`, restrictive `Permissions-Policy`, `poweredByHeader: false`. |
 | **Diagnostics** | `/api/health` reports configuration *presence* flags only — never secret values. |
-| **Third parties** | No analytics or ad scripts are bundled. Outbound calls are limited to registrars, calendar providers, OCR.Space, Google OAuth, and Resend. |
+| **Third parties** | No analytics or ad scripts are bundled. Outbound calls are limited to registrars, calendar providers, OCR.Space (legacy CAPTCHA endpoint), Google OAuth, and Resend. |
 
 ---
 
@@ -611,7 +591,7 @@ Only in your own browser, and only if you save it to the family vault, PAN label
 <details>
 <summary><strong>Which registrars are supported?</strong></summary>
 
-Seven: KFintech, MUFG Intime (ex Link Intime), Bigshare, Skyline, Purva Sharegistry, and Maashitla, plus the legacy Link Intime key for older IPO ids. Each syncs independently, so a single failure never hides the rest.
+Eight adapters: KFintech, MUFG Intime (ex Link Intime), Bigshare, Skyline, Purva Sharegistry, Maashitla, and Integrated Registry, plus the legacy Link Intime key for older IPO ids. Each syncs independently, so a single failure never hides the rest.
 
 </details>
 
