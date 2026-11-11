@@ -31,6 +31,8 @@ Check IPO allotment status for single or multiple PANs instantly. Track the IPO 
 
 All IPO data is discovered **dynamically from registrar APIs** — no hardcoded lists. The calendar uses live provider data (IPO Guru, InvestorGain, NSE) with curated sample fallback.
 
+It is built for retail investors running bids across several family accounts: the checker does the bulk work, the calendar tracks the pipeline, the family checklist coordinates who applies with which broker and UPI mandate, and the backtest engine tests whether a GMP or subscription filter would have helped.
+
 | | |
 |---|---|
 | **Registrars** | 7 — KFintech, MUFG Intime, Bigshare, Skyline, Purva, Maashitla (+ legacy Link Intime key) |
@@ -48,8 +50,8 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 - **Product** — [Features](#features) · [Pages](#pages) · [API Endpoints](#api-endpoints)
 - **Build & run** — [Tech Stack](#tech-stack) · [Getting Started](#getting-started) · [Environment Variables](#environment-variables) · [Docker](#docker)
 - **Data layer** — [Registrar Integrations](#registrar-integrations) · [Calendar Data Providers](#calendar-data-providers) · [Project Structure](#project-structure)
-- **Quality & ops** — [Testing & Quality](#testing--quality) · [Auth & Admin](#auth--admin) · [SEO](#seo) · [Architecture](#architecture)
-- **Project** — [Roadmap & Docs](#roadmap--docs) · [Contributing](#contributing) · [Disclaimer](#disclaimer) · [License](#license)
+- **Quality & ops** — [Testing & Quality](#testing--quality) · [Auth & Admin](#auth--admin) · [SEO](#seo) · [Architecture](#architecture) · [Security & Privacy](#security--privacy)
+- **Project** — [FAQ](#faq) · [Roadmap & Docs](#roadmap--docs) · [Contributing](#contributing) · [Disclaimer](#disclaimer) · [License](#license)
 
 ---
 
@@ -103,8 +105,8 @@ All IPO data is discovered **dynamically from registrar APIs** — no hardcoded 
 | Table / Charts / Search | TanStack Table v8, Recharts, cmdk |
 | Auth | Auth.js v5 (Google OAuth, JWT) + Resend email OTP for admin |
 | Database | Prisma + Postgres (`@prisma/client`, `@prisma/adapter-pg`) — optional, in-memory fallback |
-| Validation / HTTP / Files | Zod, Axios, SheetJS (parse/CSV), ExcelJS (styled XLSX) |
-| Tests | Vitest (7 suites, `npm test`) |
+| Validation / HTTP / Files | Zod, Axios, ExcelJS (Excel/CSV import + styled XLSX export) |
+| Tests / CI | Vitest (7 suites) · GitHub Actions (lint → tests → typecheck → build) |
 | PWA | Web app manifest (`standalone` display mode) |
 
 ---
@@ -196,7 +198,7 @@ docker compose up --build
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/check` | POST | 1–500 PANs on one IPO (60 req/min, 50 s timeout, Bigshare CAPTCHA-aware) |
-| `/api/scan` | POST | PANs across all active IPOs (max 50 PANs, all registrars) |
+| `/api/scan` | POST | PANs across all active IPOs (max 50 PANs, all registrars, 5 req/min) |
 | `/api/ipos` | GET | Active IPOs merged across all registrars |
 | `/api/calendar` | GET | Calendar data with lifecycle derivation |
 | `/api/ipo/[id]/gmp-history` | GET | GMP time-series (DB when available, demo fallback) |
@@ -534,6 +536,69 @@ POST /api/check { pans: ["ABCDE1234F"], ipoClientId: "bigshare-42" }
 
 See [plan.md](./plan.md) and [AUTH_PLAN.md](./AUTH_PLAN.md) for deeper design docs.
 
+
+---
+
+## Security & Privacy
+
+| Area | Implementation |
+|---|---|
+| **Data boundary** | The browser never calls a registrar. All registrar traffic is server-side, behind route handlers. |
+| **Personal data** | The family vault (PANs, brokers, UPI IDs), PAN labels, watchlist, and check history live in `localStorage` only. No PAN is written to the database — the Prisma schema has no PAN column. |
+| **Input validation** | Every API input is Zod-validated; failures return field-level `400` responses, never stack traces or upstream URLs. |
+| **Rate limiting** | Sliding-window, per-IP counters: 60 req/min on `/api/check`, 5 req/min on `/api/scan`. |
+| **Secret checks** | Bearer secrets compared in constant time (`crypto.timingSafeEqual` in `src/lib/server-secret.ts`). |
+| **Admin OTP** | 6-digit codes, SHA-256 hashed at rest, 10-minute expiry, 5 attempts, 60-second resend cooldown, 5 requests/hour, HMAC-signed 30-minute `ipodesk_admin` cookie. |
+| **Alert ownership** | Anonymous alerts keyed by `x-device-id`; `/api/alerts/link` transfers them to a signed-in user on demand. |
+| **HTTP headers** | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, HSTS with `preload`, restrictive `Permissions-Policy`, `poweredByHeader: false`. |
+| **Diagnostics** | `/api/health` reports configuration *presence* flags only — never secret values. |
+| **Third parties** | No analytics or ad scripts are bundled. Outbound calls are limited to registrars, calendar providers, OCR.Space, Google OAuth, and Resend. |
+
+---
+
+## FAQ
+
+<details>
+<summary><strong>Is IPO Desk free?</strong></summary>
+
+Yes. Every registrar and calendar endpoint it uses is public. Optional paid/quota services (IPO Guru, OCR.Space, Resend) are only needed for higher limits or extra features.
+
+</details>
+
+<details>
+<summary><strong>Does it store my PAN anywhere?</strong></summary>
+
+Only in your own browser, and only if you save it to the family vault, PAN labels, or check history. Checks are processed in memory per request and no PAN column exists in the database.
+
+</details>
+
+<details>
+<summary><strong>Which registrars are supported?</strong></summary>
+
+Seven: KFintech, MUFG Intime (ex Link Intime), Bigshare, Skyline, Purva Sharegistry, and Maashitla, plus the legacy Link Intime key for older IPO ids. Each syncs independently, so a single failure never hides the rest.
+
+</details>
+
+<details>
+<summary><strong>Why do some IPOs show a “Sample data” badge?</strong></summary>
+
+Live calendar data comes from IPO Guru, InvestorGain, and NSE. If all three fail — or no IPO Guru key is configured — the app falls back to a curated seed set and labels it honestly instead of pretending it is live.
+
+</details>
+
+<details>
+<summary><strong>Can I run it without a database?</strong></summary>
+
+Yes. Without `DATABASE_URL` the app runs entirely in memory: catalogues, GMP history, and reports are generated per process. Add Postgres to persist snapshots and link alerts across devices.
+
+</details>
+
+<details>
+<summary><strong>Are the research scores and backtests financial advice?</strong></summary>
+
+No. Scores are a transparent algorithmic weighting of GMP, subscription ratios, board, and issue size; backtests simulate historical outcomes. Both are illustrations, not recommendations.
+
+</details>
 
 ---
 
