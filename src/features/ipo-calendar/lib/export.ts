@@ -6,6 +6,7 @@ const REGISTRAR_LABELS: Record<string, string> = {
   mufg: "MUFG Intime",
   linkintime: "Link Intime",
   bigshare: "Bigshare",
+  integratedregistry: "Integrated Registry",
   skyline: "Skyline",
   purva: "Purva Sharegistry",
   maashitla: "Maashitla",

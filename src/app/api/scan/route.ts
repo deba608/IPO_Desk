@@ -50,7 +50,7 @@ const ScanRequestSchema = z.object({
     .array(PANSchema)
     .min(1, "At least one PAN is required")
     .max(50, "Maximum 50 PANs per scan"),
-  registrar: z.enum(["kfintech", "linkintime", "bigshare", "mufg", "skyline", "purva", "maashitla"]).optional(),
+  registrar: z.enum(["kfintech", "linkintime", "bigshare", "mufg", "integratedregistry", "skyline", "purva", "maashitla"]).optional(),
 });
 
 export async function POST(request: Request) {

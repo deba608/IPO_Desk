@@ -11,12 +11,14 @@ import { mufgAdapter } from "./mufg";
 import { skylineAdapter } from "./skyline";
 import { purvaAdapter } from "./purva";
 import { maashitlaAdapter } from "./maashitla";
+import { integratedRegistryAdapter } from "./integrated-registry";
 
 export const REGISTRAR_REGISTRY: Record<string, RegistrarAdapter> = {
   kfintech: kfinTechAdapter,
   linkintime: linkInTimeAdapter,
   bigshare: bigShareAdapter,
   mufg: mufgAdapter,
+  integratedregistry: integratedRegistryAdapter,
   skyline: skylineAdapter,
   purva: purvaAdapter,
   maashitla: maashitlaAdapter,

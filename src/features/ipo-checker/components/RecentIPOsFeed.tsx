@@ -15,6 +15,7 @@ const REGISTRAR_COLORS: Record<string, { bg: string; border: string; text: strin
   kfintech:   { bg: "bg-indigo-500/10",  border: "border-indigo-500/25",  text: "text-indigo-400",  dot: "bg-indigo-400" },
   linkintime: { bg: "bg-blue-500/10",    border: "border-blue-500/25",    text: "text-blue-400",    dot: "bg-blue-400" },
   bigshare:   { bg: "bg-violet-500/10",  border: "border-violet-500/25",  text: "text-violet-400",  dot: "bg-violet-400" },
+  integratedregistry: { bg: "bg-amber-500/10", border: "border-amber-500/25", text: "text-amber-400", dot: "bg-amber-400" },
   mufg:       { bg: "bg-cyan-500/10",    border: "border-cyan-500/25",    text: "text-cyan-400",    dot: "bg-cyan-400" },
 };
 
@@ -24,8 +25,8 @@ const REGISTRAR_LABELS: Record<string, string> = {
   linkintime: "LinkIn",
   bigshare:   "Bigshare",
   skyline:    "Skyline",
-  purva:      "Purva",
   maashitla:  "Maashitla",
+  integratedregistry: "Integrated Registry",
 };
 
 /* ── Lifecycle chip styling ───────────────────────────────────────── */

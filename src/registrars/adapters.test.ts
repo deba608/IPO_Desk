@@ -6,8 +6,6 @@ import { MUFGAdapter } from "./mufg";
 describe("Registrar Adapters - Unapplied PAN handling (not_found instead of error)", () => {
   it("Bigshare returns not_found when registrar returns 'Please Enter Valid PAN' sentinel", async () => {
     const adapter = new BigShareAdapter();
-    // Mock captcha token fetch before mocking post
-    vi.spyOn(adapter, "fetchCaptchaToken").mockResolvedValue({ token: "mock-token", answer: "1234" });
     // @ts-expect-error accessing private property for unit testing
     vi.spyOn(adapter.http, "post").mockResolvedValueOnce({
       data: {
@@ -28,7 +26,6 @@ describe("Registrar Adapters - Unapplied PAN handling (not_found instead of erro
 
   it("Bigshare returns not_found when status is NOTFOUND", async () => {
     const adapter = new BigShareAdapter();
-    vi.spyOn(adapter, "fetchCaptchaToken").mockResolvedValue({ token: "mock-token", answer: "1234" });
     // @ts-expect-error accessing private property for unit testing
     vi.spyOn(adapter.http, "post").mockResolvedValueOnce({
       data: {

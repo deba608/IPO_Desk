@@ -4,6 +4,7 @@ export type RegistrarName =
   | "linkintime"
   | "bigshare"
   | "mufg"
+  | "integratedregistry"
   | "skyline"
   | "purva"
   | "maashitla";
