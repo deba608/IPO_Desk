@@ -1,41 +1,55 @@
-# IPO Desk (IPODESK) — Allotment Checker
+<div align="center">
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+<img src="public/logo.png" alt="IPO Desk" width="88" height="88" />
+
+# IPO Desk
+
+**One dashboard for the Indian primary market — allotment status, live IPO calendar, GMP, subscription data, family bid checklist, and strategy backtests.**
+
+[![CI](https://github.com/deba608/IPO_Desk/actions/workflows/ci.yml/badge.svg)](https://github.com/deba608/IPO_Desk/actions/workflows/ci.yml)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![Auth.js](https://img.shields.io/badge/Auth.js-v5-7C3AED)](https://authjs.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-3DA639?logo=opensourceinitiative&logoColor=white)](./LICENSE)
+
+[![Stars](https://img.shields.io/github/stars/deba608/IPO_Desk?style=flat&logo=github&label=stars)](https://github.com/deba608/IPO_Desk/stargazers)
+[![Issues](https://img.shields.io/github/issues/deba608/IPO_Desk?label=issues)](https://github.com/deba608/IPO_Desk/issues)
+[![Last commit](https://img.shields.io/github/last-commit/deba608/IPO_Desk)](https://github.com/deba608/IPO_Desk/commits/main)
+
+[**Live demo →**](https://ipo-desk.vercel.app) &nbsp;·&nbsp; [Quick Start](#getting-started) &nbsp;·&nbsp; [API](#api-endpoints) &nbsp;·&nbsp; [Architecture](#architecture) &nbsp;·&nbsp; [Roadmap](#roadmap--docs)
+
+</div>
+
+---
+
+## Overview
 
 Check IPO allotment status for single or multiple PANs instantly. Track the IPO calendar, analyse GMP, view subscription data, manage check history, coordinate family bids with a checklist, and backtest IPO strategies — all in one dark-themed dashboard.
 
-**Live demo:** https://ipo-desk.vercel.app
-
 All IPO data is discovered **dynamically from registrar APIs** — no hardcoded lists. The calendar uses live provider data (IPO Guru, InvestorGain, NSE) with curated sample fallback.
 
-> Brand: canonical name is **IPO Desk**, alias **IPODESK** (the no-hyphen form users type in Google). Single source of truth: `src/lib/siteConfig.ts` (`siteUrl`, `siteName`, `siteAlternateName`). The live URL is `https://ipo-desk.vercel.app` unless `NEXT_PUBLIC_SITE_URL` is set.
+| | |
+|---|---|
+| **Registrars** | 7 — KFintech, MUFG Intime, Bigshare, Skyline, Purva, Maashitla (+ legacy Link Intime key) |
+| **PANs per request** | 500 on one IPO · 50 on a cross-IPO scan |
+| **Calendar sources** | IPO Guru · InvestorGain · NSE India · curated seed |
+| **Persistence** | Postgres via Prisma — optional, in-memory fallback |
+| **Deploys to** | Vercel (serverless) or Docker / VPS (local OCR fast-path) |
+
+> **Brand:** canonical name is **IPO Desk**, alias **IPODESK** (the no-hyphen form users type in Google). Single source of truth: `src/lib/siteConfig.ts` (`siteUrl`, `siteName`, `siteAlternateName`). The live URL is `https://ipo-desk.vercel.app` unless `NEXT_PUBLIC_SITE_URL` is set.
 
 ---
 
 ## Table of Contents
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Docker](#docker)
-- [Pages](#pages)
-- [API Endpoints](#api-endpoints)
-- [Registrar Integrations](#registrar-integrations)
-- [Calendar Data Providers](#calendar-data-providers)
-- [Project Structure](#project-structure)
-- [Testing & Quality](#testing--quality)
-- [Auth & Admin](#auth--admin)
-- [SEO](#seo)
-- [Architecture](#architecture)
-- [Roadmap & Docs](#roadmap--docs)
-- [Contributing](#contributing)
-- [Disclaimer](#disclaimer)
-- [License](#license)
+- **Product** — [Features](#features) · [Pages](#pages) · [API Endpoints](#api-endpoints)
+- **Build & run** — [Tech Stack](#tech-stack) · [Getting Started](#getting-started) · [Environment Variables](#environment-variables) · [Docker](#docker)
+- **Data layer** — [Registrar Integrations](#registrar-integrations) · [Calendar Data Providers](#calendar-data-providers) · [Project Structure](#project-structure)
+- **Quality & ops** — [Testing & Quality](#testing--quality) · [Auth & Admin](#auth--admin) · [SEO](#seo) · [Architecture](#architecture)
+- **Project** — [Roadmap & Docs](#roadmap--docs) · [Contributing](#contributing) · [Disclaimer](#disclaimer) · [License](#license)
 
 ---
 
@@ -107,17 +121,17 @@ npm run dev
 
 Useful scripts:
 
-```bash
-npm run build        # prisma generate + conditional migrate + next build
-npm start            # serve production build
-npm run lint         # eslint
-npm test             # vitest run
-npm run test:watch   # vitest watch mode
-npm run db:push      # push Prisma schema (needs DATABASE_URL)
-npm run db:migrate   # prisma migrate dev
-npm run db:seed      # seed sample IPOs + GMP history (tsx prisma/seed.ts)
-npm run db:studio    # open Prisma Studio
-```
+| Command | Purpose |
+|---|---|
+| `npm run build` | `prisma generate` + conditional migrate + `next build` |
+| `npm start` | Serve the production build |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run the Vitest suite once |
+| `npm run test:watch` | Run Vitest in watch mode |
+| `npm run db:push` | Push the Prisma schema (needs `DATABASE_URL`) |
+| `npm run db:migrate` | Create and apply a migration |
+| `npm run db:seed` | Seed sample IPOs + GMP history (`tsx prisma/seed.ts`) |
+| `npm run db:studio` | Open Prisma Studio |
 
 No environment variables are required for the core checker — all registrar APIs are public. Set the vars below only for the features you want.
 
@@ -542,10 +556,18 @@ See [plan.md](./plan.md) and [AUTH_PLAN.md](./AUTH_PLAN.md) for deeper design do
 
 ## Disclaimer
 
+<div align="center">
+
 IPO Desk is a convenience dashboard, not a broker, registrar, or investment advisor. Allotment data comes from third-party registrar portals and may be delayed or inaccurate — always confirm on the registrar's official site. Research scores and backtests are algorithmic illustrations, not financial advice. Bidding always happens in your broker/UPI app.
+
+</div>
 
 ---
 
 ## License
 
 MIT — see [LICENSE](./LICENSE).
+
+<div align="center">
+<sub>Built for Indian retail investors. <a href="#ipo-desk">Back to top ↑</a></sub>
+</div>
