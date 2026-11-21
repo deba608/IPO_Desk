@@ -122,6 +122,9 @@ export const metadata: Metadata = {
   verification: {
     google: "OXwrpZ8JOnk1Pdevo5iozayiR_91eUE42qaDpp0P6ws",
   },
+  other: {
+    "google-adsense-account": "ca-pub-4641801878724151",
+  },
 };
 
 export const viewport: Viewport = {
