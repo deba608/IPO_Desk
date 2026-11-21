@@ -138,6 +138,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-IN" className="dark">
+      {/* Google AdSense */}
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4641801878724151"
+        crossOrigin="anonymous"
+        strategy="afterInteractive"
+      />
       {/*
         * suppressHydrationWarning: browser extensions (IDM, password managers,
         * Grammarly, etc.) inject attributes like `fdprocessedid` into buttons
